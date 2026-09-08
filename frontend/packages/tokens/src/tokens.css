@@ -1,0 +1,145 @@
+/* ---------------------------------------------------------------------------
+   CFC design tokens — single source of truth. Palette: "Cobalt".
+
+   Navy is structure. Teal is action. White is content.
+   Navy is never clickable. The bright teal is never text.
+
+   Two teals, two jobs. --color-brand (#00b8c4) is the identity colour and sits
+   at 2.4:1 on white, so it is legal only as a fill on a surface 24px or larger
+   — a logo mark, a hero button, a category tile. --color-action (#0891a0) is
+   the same hue at 4.61:1 and is the only teal permitted on text, links, icons,
+   borders and any control below 24px.
+
+   Status colour is rationed. Neutral grey is the default for every status.
+   Green means live. Amber means a clock is running. Red means money lost or
+   access revoked. Nothing else earns colour, because a table where every row
+   is coloured is a table where nothing stands out.
+
+   No app or component may reference a hex value, a Tailwind default colour, or
+   a hardcoded white/black. Every colour resolves through a token declared here.
+   --------------------------------------------------------------------------- */
+
+:root {
+  /* Content ---------------------------------------------------------------- */
+  --color-surface: #ffffff;
+  --color-canvas: #f7f9fb;
+  --color-ink: #0f1728;
+  --color-ink-muted: #5c6472;
+  --color-ink-faint: #89909d;
+  --color-border: #e7eaef;
+  --color-border-soft: #eff1f5;
+  --color-border-strong: #dce0e7;
+
+  /* Structure — the navy rail, headers, bottom navigation.
+     Never a button, never a link, never a data mark. ------------------------ */
+  --color-structure: #0e1f3d;
+  --color-structure-raised: #172c50;
+  --color-structure-active: #1e3763;
+  --color-structure-muted: #213a62;
+  --color-structure-line: #1b2e4e;
+
+  /* Text and fills that sit ON a navy surface. Authored as flat values rather
+     than white-at-opacity, because the tokens are hex and Tailwind cannot
+     apply an opacity modifier to a var(). */
+  --color-on-structure: #edf2f9;
+  --color-on-structure-muted: #94a6c2;
+  --color-on-structure-faint: #65788f;
+
+  /* Brand — identity only. Fills 24px and larger. Never text. --------------- */
+  --color-brand: #00b8c4;
+  --color-brand-bright: #22c7d4;
+  /* The deep end of the same hue. Exists because the bright brand cyan cannot
+     carry a full panel: white text on it is 2.4:1 and the logo's own cyan is
+     #03b2cd, so a cyan mark disappears and a white one is too faint. At
+     #00707c both the white artwork and white text clear 5.8:1, and the panel
+     still reads as the same colour family. */
+  --color-brand-deep: #00707c;
+
+  /* Action — every button, link, icon and control. AA at 12px. ------------- */
+  --color-action: #0891a0;
+  --color-action-hover: #077985;
+  --color-action-press: #05606a;
+  --color-action-subtle: #ecf9fa;
+  --color-action-line: #c2e7ec;
+
+  /* Foreground on a filled action or brand surface.
+     Declared separately from --color-surface so that a future theme cannot
+     invert a button's label into invisibility. */
+  --color-on-action: #ffffff;
+
+  /* Modal and drawer scrim. */
+  --color-scrim: rgb(15 23 40 / 0.45);
+
+  /* Status — the default is neutral. Colour is the exception. --------------- */
+  --color-neutral: #5c6472;
+  --color-neutral-subtle: #f1f3f6;
+
+  /* Live — online, in progress, tracking. A state, not an outcome. */
+  --color-live: #12a05f;
+  --color-live-ink: #0c6b40;
+  --color-live-subtle: #edf8f2;
+
+  /* Clock — a countdown is running. SLA windows, accept timers, expiry. */
+  --color-clock: #b8790f;
+  --color-clock-ink: #8a5410;
+  --color-clock-subtle: #fdf6e9;
+  --color-clock-line: #f2e1bd;
+
+  /* Critical — money lost, access revoked, a transfer that failed. */
+  --color-critical: #c2352f;
+  --color-critical-hover: #a72b26;
+  --color-critical-ink: #9f2b26;
+  --color-critical-subtle: #fdf0ef;
+  --color-critical-line: #f5d4d2;
+
+  /* Rating stars. Not a status; never used for one. */
+  --color-star: #b98218;
+
+  /* Disabled — a surface, not an opacity. Opacity on a token that is already
+     a flat hex compounds unpredictably against whatever sits behind it. */
+  --color-disabled-surface: #f1f3f6;
+  --color-disabled-ink: #a8aeb9;
+
+  /* Chart series — action teal leads, navy follows. Six maximum. ------------ */
+  --color-series-1: #0891a0;
+  --color-series-2: #0e1f3d;
+  --color-series-3: #b8790f;
+  --color-series-4: #7b5ea7;
+  --color-series-5: #4a7c9b;
+  --color-series-6: #9a5a6b;
+
+  /* Shadows — navy at low alpha, never black on a cool palette ------------- */
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 40 / 0.05);
+  --shadow-md: 0 2px 8px -2px rgb(15 23 40 / 0.08);
+  --shadow-lg: 0 8px 24px -4px rgb(15 23 40 / 0.12);
+
+  /* Radius ---------------------------------------------------------------- */
+  --radius-pill: 5px;
+  --radius-control: 6px;
+  --radius-card: 8px;
+
+  /* Focus — the colour is a token so a danger-context or on-navy ring can be
+     expressed. Previously the ring colour was hardwired in styles.css. ------ */
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --color-focus-ring: #0891a0;
+  --color-focus-ring-on-structure: #22c7d4;
+
+  /* Elevation order. Every overlay previously hardcoded z-50, so sheet-over-
+     dialog and tooltip-over-popover resolved by DOM order alone. ------------ */
+  --z-sticky: 10;
+  --z-drawer-scrim: 40;
+  --z-drawer: 50;
+  --z-dialog-scrim: 60;
+  --z-dialog: 70;
+  --z-popover: 80;
+  --z-toast: 90;
+  --z-tooltip: 100;
+
+  /* Motion. Overlays previously hardcoded duration-200 ease-out inline. ----- */
+  --duration-fast: 120ms;
+  --duration-base: 180ms;
+  --duration-slow: 260ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}

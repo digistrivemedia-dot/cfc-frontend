@@ -1,0 +1,21 @@
+{
+  "name": "@cfc/config",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./tailwind-preset": "./tailwind-preset.js",
+    "./tailwind-preset.js": "./tailwind-preset.js",
+    "./eslint-app": "./eslint-app.js",
+    "./eslint-app.js": "./eslint-app.js",
+    "./eslint-package": "./eslint-package.js",
+    "./eslint-package.js": "./eslint-package.js",
+    "./tsconfig-base": "./tsconfig-base.json",
+    "./tsconfig-base.json": "./tsconfig-base.json",
+    "./tsconfig-next": "./tsconfig-next.json",
+    "./tsconfig-next.json": "./tsconfig-next.json"
+  },
+  "dependencies": {
+    "tailwindcss": "3.4.17",
+    "@tailwindcss/container-queries": "0.1.1"
+  }
+}

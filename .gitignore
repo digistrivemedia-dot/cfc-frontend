@@ -1,0 +1,57 @@
+# ── Confidential client material ───────────────────────────────────────────
+#
+# The signed agreement and the platform PDF are the client's documents, not
+# source code. This repository is currently PUBLIC, so they are excluded
+# outright rather than trusted to a later cleanup — once a file is pushed to a
+# public repo it stays in the history, and in anyone's fork, even after it is
+# deleted.
+#
+# PLATFORM-FACTS.md is the extract of these documents that the code actually
+# needs, and it is committed deliberately: it holds domain rules, not
+# commercial terms.
+*.docx
+~$*.docx
+cfcplatform.pdf
+
+# ── Dependencies ───────────────────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+
+# ── Build output ───────────────────────────────────────────────────────────
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+
+# ── Turbo ──────────────────────────────────────────────────────────────────
+.turbo/
+
+# ── Environment ────────────────────────────────────────────────────────────
+#
+# Nothing here yet, but the backend team will add keys. Excluded before they
+# arrive rather than after.
+.env
+.env*.local
+*.pem
+
+# ── Logs ───────────────────────────────────────────────────────────────────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── Editor and OS ──────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# ── Local agent state ──────────────────────────────────────────────────────
+#
+# Session transcripts and scratch files. Machine-specific and not useful to
+# another developer.
+.claude/

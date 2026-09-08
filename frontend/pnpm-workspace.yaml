@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+# sharp backs next/image optimisation; unrs-resolver backs the eslint import
+# resolver. Both are expected native builds.
+allowBuilds:
+  sharp: true
+  unrs-resolver: true

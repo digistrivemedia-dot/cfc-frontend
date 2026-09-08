@@ -1,0 +1,84 @@
+@import "@cfc/tokens/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    /* Prevents iOS zooming the page when a field is focused. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-archivo), system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 22px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Tabular figures are mandatory for money, counts, IDs, times, and anything
+     in a table column. Applied through this class, never ad hoc. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* Visible keyboard focus, never removed. Mouse users do not see it; keyboard
+     users always do.
+
+     The colour is a token rather than a literal, so a control sitting on the
+     navy rail can override it to the brighter teal and stay visible. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-focus-ring);
+    outline-offset: var(--focus-ring-offset);
+  }
+
+  /* Anything inside the navy rail focuses with the brighter teal — the action
+     teal is too dark to read against structure. */
+  .on-structure-surface :focus-visible {
+    outline-color: var(--color-focus-ring-on-structure);
+  }
+
+  /* Skip link. First tabbable element on every page; visually hidden until
+     focused. There was no way to bypass the 11-item sidebar by keyboard. */
+  .skip-link {
+    position: absolute;
+    left: 8px;
+    top: -100px;
+    z-index: var(--z-tooltip);
+    padding: 8px 16px;
+    border-radius: var(--radius-control);
+    background-color: var(--color-action);
+    color: var(--color-on-action);
+    font-size: 13px;
+    font-weight: 500;
+    transition: top var(--duration-fast) var(--ease-out);
+  }
+  .skip-link:focus {
+    top: 8px;
+  }
+
+  ::selection {
+    background-color: var(--color-action-subtle);
+    color: var(--color-ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

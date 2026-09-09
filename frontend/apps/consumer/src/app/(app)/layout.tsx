@@ -12,10 +12,15 @@ import {
   ConsumerBottomNav,
 } from "@/components/consumer-nav";
 import { ConsumerFooter } from "@/components/consumer-footer";
+import { ScenarioHook } from "@/components/scenario-hook";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
+      {/* Console helpers for reviewing empty / error / slow states.
+          Development only; renders nothing. */}
+      <ScenarioHook />
+
       {/* Desktop top nav */}
       <ConsumerTopBar />
 

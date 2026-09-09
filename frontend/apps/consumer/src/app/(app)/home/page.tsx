@@ -6,19 +6,23 @@ import {
   ArrowRight,
   BadgeCheck,
   CalendarCheck,
+  RotateCcw,
   ShieldCheck,
   Wallet,
 } from "lucide-react";
 import {
+  getActiveBooking,
   getBanners,
   getCategories,
   getConsumerProfile,
+  getRebookable,
   getServices,
   getSubCategories,
 } from "@cfc/mocks";
 import type {
   Banner,
   Category,
+  ConsumerBooking,
   ConsumerProfile,
   ServiceDetail,
   SubCategory,
@@ -29,7 +33,9 @@ import {
   Skeleton,
   SnapScroller,
   cn,
+  formatCurrency,
 } from "@cfc/ui";
+import { ActiveBookingCard } from "@/components/active-booking-card";
 import { BannerCarousel } from "@/components/banner-carousel";
 import { HomeHero } from "@/components/home-hero";
 import { SubCategoryTile } from "@/components/subcategory-tile";
@@ -37,38 +43,31 @@ import { SubCategoryTile } from "@/components/subcategory-tile";
 /**
  * Customer 7 — Home.
  *
- * Design B: editorial storefront.
+ * Design C: utility dashboard.
  *
- * Where Design A answered "what can I search for", this answers "what does
- * this business do, and is it any good" — then gets out of the way. The
- * difference is not decoration; it is the order of the page and the size of
- * the things on it.
+ * The page adapts to who is looking, because "home" means two different things
+ * to two different people:
  *
- * The organising idea is **curated rows grouped by intent**. A customer does
- * not think in the platform's taxonomy — they think "something in my house is
- * broken" or "I want to look good on Saturday". So the rows are named for
- * those moments (Home essentials, Personal care, Deep cleaning) rather than
- * for the database's category table, and each row is a horizontal band of real
- * photographs at a size where the photograph actually reads.
+ *   - Someone with a professional on the way is **not shopping**. They want to
+ *     know where the pro is and how to reach them. That gets the top of the
+ *     screen and the hero is dropped entirely — a marketing headline above a
+ *     live job is noise.
+ *   - Someone with nothing in flight is browsing, and gets the hero, the
+ *     catalogue and the reasons to trust the platform.
  *
- * What that fixes from the original screen:
+ * Between those, a returning customer gets "Book again" from their own
+ * history, because the second booking of a monthly clean should take one tap
+ * rather than a search.
  *
- *  - Nine equal-weight stacked sections became a hero plus four bands, so the
- *    eye has somewhere to land first.
- *  - The five admin categories ("Business & Others", holding nothing) no
- *    longer drive the primary browse. The nine sub-categories do, because
- *    those are the jobs people actually book.
- *  - Every photograph in /public is now used. The old page shipped gradient
- *    boxes with 10%-opacity icons while 22 real images sat unused.
- *  - The placeholder testimonials — which rendered the words "Sample content"
- *    on the landing page — are gone.
+ * This is the version that stays useful after the first booking. A and B are
+ * both permanent front doors — identical on day one and day one hundred.
+ *
+ * Everything the other two directions fixed is kept: sub-categories drive
+ * browsing (the five categories are admin buckets — one holds 12 of 15
+ * services, two hold none), real photographs throughout, a search field that
+ * searches, and no invented testimonials.
  */
 
-/**
- * Sub-category imagery. Four have a dedicated category image; the rest borrow
- * the photograph of their most representative service, which is still a real
- * photograph of that work.
- */
 const SUBCATEGORY_IMAGE: Record<string, string> = {
   "Electrical & AC": "/images/cat-electrical.png",
   Cleaning: "/images/cat-cleaning.png",
@@ -85,14 +84,10 @@ const SUBCATEGORY_IMAGE: Record<string, string> = {
 const FALLBACK_IMAGE = "/images/cat-home-maintenance.png";
 
 /**
- * The editorial rows.
- *
- * Each is a human moment rather than a taxonomy node, mapped to the
- * sub-categories that serve it. A sub-category may appear in more than one row
- * — "Cleaning" is both an essential and the heart of a deep clean — because a
- * customer's intent is not a partition.
+ * Catalogue groupings, named for the moment a customer is in rather than for
+ * the database's category table.
  */
-const ROWS: readonly {
+const GROUPS: readonly {
   id: string;
   title: string;
   description: string;
@@ -107,22 +102,28 @@ const ROWS: readonly {
   {
     id: "clean",
     title: "A cleaner home",
-    description: "Deep cleans, pest control and everything after a long week.",
+    description: "Deep cleans and pest control.",
     subCategories: ["Cleaning", "Pest control"],
   },
   {
     id: "improve",
     title: "Make it yours",
-    description: "Carpentry and painting, done by people who finish properly.",
+    description: "Carpentry and painting, finished properly.",
     subCategories: ["Carpentry", "Painting"],
   },
   {
     id: "care",
     title: "Personal care",
-    description: "Salon and nursing, at home, on your schedule.",
+    description: "Salon and nursing, at home.",
     subCategories: ["Beauty", "Nursing"],
   },
 ];
+
+interface Rebookable {
+  serviceName: string;
+  lastBookedAt: string;
+  totalPaise: number;
+}
 
 export default function HomePage() {
   const [categories, setCategories] = React.useState<Category[] | null>(null);
@@ -132,6 +133,8 @@ export default function HomePage() {
   const [services, setServices] = React.useState<ServiceDetail[] | null>(null);
   const [banners, setBanners] = React.useState<Banner[] | null>(null);
   const [profile, setProfile] = React.useState<ConsumerProfile | null>(null);
+  const [active, setActive] = React.useState<ConsumerBooking | null>(null);
+  const [rebookable, setRebookable] = React.useState<Rebookable[] | null>(null);
   const [error, setError] = React.useState(false);
 
   const load = React.useCallback(() => {
@@ -142,13 +145,17 @@ export default function HomePage() {
       getServices(),
       getBanners(),
       getConsumerProfile(),
+      getActiveBooking(),
+      getRebookable(),
     ])
-      .then(([c, sub, s, b, p]) => {
+      .then(([c, sub, s, b, p, act, re]) => {
         setCategories(c);
         setSubCategories(sub);
         setServices(s);
         setBanners(b.filter((x) => x.active));
         setProfile(p);
+        setActive(act);
+        setRebookable(re);
       })
       .catch(() => setError(true));
   }, []);
@@ -160,7 +167,6 @@ export default function HomePage() {
     [services],
   );
 
-  /** Services grouped by their sub-category, for the editorial rows. */
   const bySubCategory = React.useMemo(() => {
     if (!live) return null;
     const map = new Map<string, ServiceDetail[]>();
@@ -172,7 +178,6 @@ export default function HomePage() {
     return map;
   }, [live]);
 
-  /** Sub-categories that actually have services, for the browse strip. */
   const browsable = React.useMemo(() => {
     if (!subCategories || !live) return null;
     return subCategories
@@ -198,6 +203,12 @@ export default function HomePage() {
     return Math.min(...live.map((s) => s.basePricePaise));
   }, [live]);
 
+  /** Match a past booking back to a live service, so "Book again" can link. */
+  const findService = React.useCallback(
+    (name: string) => live?.find((s) => s.name === name) ?? null,
+    [live],
+  );
+
   if (error) {
     return (
       <div className="mx-auto max-w-screen-xl px-4 py-12 md:px-6 lg:px-8">
@@ -210,23 +221,74 @@ export default function HomePage() {
     );
   }
 
+  const hasActive = active !== null;
+
+  /**
+   * A customer with no history at all.
+   *
+   * They need the one thing a returning customer does not: an explanation of
+   * what happens after they press the button. `rebookable` is null while
+   * loading, so this stays false until the answer is actually known — showing
+   * a first-timer walkthrough for a second and then removing it is worse than
+   * never showing it.
+   */
+  const isNewCustomer =
+    !hasActive && rebookable !== null && rebookable.length === 0;
+
   return (
     <div>
-      <HomeHero area={profile?.area} startingPricePaise={startingPrice} />
+      {/* The hero is for people who are shopping. Someone tracking a pro gets
+          a compact greeting instead, because a marketing headline above a
+          live job is noise. */}
+      {hasActive ? (
+        <div className="mx-auto max-w-screen-xl px-4 pt-6 md:px-6 lg:px-8">
+          <ActiveBookingCard booking={active} />
+        </div>
+      ) : (
+        <HomeHero area={profile?.area} startingPricePaise={startingPrice} />
+      )}
 
-      {/* ── Browse strip ────────────────────────────────────────────────
-          Every kind of work, in one glance, immediately under the hero. A
-          customer who already knows what they want should not have to read
-          four editorial rows to find it. */}
-      <section className="border-b border-border bg-surface">
-        <div className="mx-auto max-w-screen-xl px-4 py-6 md:px-6 lg:px-8">
-          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-heading font-semibold text-ink">
-              Browse every service
-            </h2>
-            <SeeAll href="/categories" label="All services" />
-          </div>
+      <div className="mx-auto max-w-screen-xl px-4 pb-12 md:px-6 lg:px-8">
+        {/* ── First-timer walkthrough ────────────────────────────────────
+            Shown only to someone with no history. A customer who has booked
+            before knows how this works, and repeating it to them is filler. */}
+        {isNewCustomer && <HowItWorks />}
 
+        {/* ── Book again ─────────────────────────────────────────────────
+            A returning customer's shortcut. Only completed jobs, de-duplicated
+            by service, so a monthly clean appears once rather than six times. */}
+        {rebookable !== null && rebookable.length > 0 && (
+          <Band
+            title="Book again"
+            description="Services you've booked before."
+          >
+            <SnapScroller columns={4} aria-label="Book again">
+              {rebookable.map((r) => {
+                const svc = findService(r.serviceName);
+                return (
+                  <RebookCard
+                    key={r.serviceName}
+                    serviceName={r.serviceName}
+                    pricePaise={svc?.basePricePaise ?? r.totalPaise}
+                    imageUrl={svc?.imageUrls[0]}
+                    href={svc ? `/service/${svc.id}` : "/categories"}
+                  />
+                );
+              })}
+            </SnapScroller>
+          </Band>
+        )}
+
+        {/* ── Browse every service ───────────────────────────────────── */}
+        <Band
+          title="What do you need help with?"
+          description={
+            startingPrice !== null
+              ? `Fixed prices from ${formatCurrency(startingPrice)}, shown before you book.`
+              : undefined
+          }
+          href="/categories"
+        >
           {browsable === null ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {Array.from({ length: 10 }, (_, i) => (
@@ -246,13 +308,11 @@ export default function HomePage() {
               ))}
             </div>
           )}
-        </div>
-      </section>
+        </Band>
 
-      <div className="mx-auto max-w-screen-xl px-4 pb-12 md:px-6 lg:px-8">
         {/* ── Most booked ─────────────────────────────────────────────── */}
         <Band
-          title="Most booked this month"
+          title="Most booked"
           description="What people in your area book most often."
           href="/categories"
         >
@@ -278,18 +338,13 @@ export default function HomePage() {
           </Band>
         )}
 
-        {/* ── The catalogue, filtered in place ────────────────────────────
-            One shelf with tabs rather than four stacked shelves. With fifteen
-            services the four-band version repeated the same cards under
-            different headings — "Salon at home" appeared in both Most booked
-            and Personal care — and left ragged half-empty rows where a group
-            held two services. Filtering one grid keeps every grouping reachable
-            without paying four screens of height for it. */}
+        {/* ── The catalogue, filtered in place ────────────────────────── */}
         <CatalogueShelf services={live} bySubCategory={bySubCategory} />
 
-        <WhyCfc />
+        {/* Trust matters less to someone mid-job — they already trusted us —
+            so it is only shown to a customer who is still deciding. */}
+        {!hasActive && <WhyCfc />}
 
-        {/* ── Categories, demoted to a quiet strip ────────────────────── */}
         {categories !== null && (
           <section className="mt-8">
             <h2 className="text-small font-semibold text-ink-muted">
@@ -329,16 +384,64 @@ export default function HomePage() {
 /* ────────────────────────────────────────────────────────────────────────── */
 
 /**
- * The catalogue, as one filterable grid.
+ * One past service, offered again.
  *
- * The groupings are still the human ones — "Home essentials", "Personal care"
- * — but they are tabs across a single shelf rather than four separate bands.
- * A customer sees the whole catalogue at once and narrows it if they want to,
- * instead of scrolling four near-identical rows of the same photographs.
- *
- * A grid rather than a horizontal scroller: with a dozen services the whole
- * set fits on screen, and a scroller would hide half of it behind a gesture.
+ * Shows the current price rather than what they paid last time — a stale
+ * figure here becomes a complaint at checkout.
  */
+function RebookCard({
+  serviceName,
+  pricePaise,
+  imageUrl,
+  href,
+}: {
+  serviceName: string;
+  pricePaise: number;
+  imageUrl?: string | undefined;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "group flex h-full items-center gap-3 overflow-hidden rounded-card",
+        "border border-border bg-surface p-3 shadow-sm",
+        "transition-all duration-base hover:border-action-line hover:shadow-md",
+        "focus-visible:outline-none focus-visible:outline-focus",
+      )}
+    >
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+          className="size-tile-lg shrink-0 rounded-control object-cover"
+        />
+      ) : (
+        <span className="flex size-tile-lg shrink-0 items-center justify-center rounded-control bg-action-subtle text-action">
+          <RotateCcw className="size-5" aria-hidden="true" />
+        </span>
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-small font-semibold text-ink">
+          {serviceName}
+        </span>
+        <span className="mt-1 block text-caption text-ink-muted">
+          from{" "}
+          <span className="tabular font-medium text-ink">
+            {formatCurrency(pricePaise)}
+          </span>
+        </span>
+      </span>
+      <ArrowRight
+        className="size-4 shrink-0 text-ink-faint transition-colors duration-fast group-hover:text-action"
+        aria-hidden="true"
+      />
+    </Link>
+  );
+}
+
 function CatalogueShelf({
   services,
   bySubCategory,
@@ -348,10 +451,9 @@ function CatalogueShelf({
 }) {
   const [active, setActive] = React.useState<string>("all");
 
-  // Only offer a filter that has something behind it.
   const tabs = React.useMemo(() => {
     if (!bySubCategory) return [];
-    return ROWS.filter((r) =>
+    return GROUPS.filter((r) =>
       r.subCategories.some((n) => (bySubCategory.get(n)?.length ?? 0) > 0),
     );
   }, [bySubCategory]);
@@ -359,12 +461,12 @@ function CatalogueShelf({
   const shown = React.useMemo(() => {
     if (!services) return null;
     if (active === "all") return services;
-    const row = ROWS.find((r) => r.id === active);
+    const row = GROUPS.find((r) => r.id === active);
     if (!row || !bySubCategory) return services;
     return row.subCategories.flatMap((n) => bySubCategory.get(n) ?? []);
   }, [services, active, bySubCategory]);
 
-  const current = ROWS.find((r) => r.id === active);
+  const current = GROUPS.find((r) => r.id === active);
 
   return (
     <section className="mt-12">
@@ -379,8 +481,6 @@ function CatalogueShelf({
         </p>
       </div>
 
-      {/* Filters. Horizontally scrollable on a phone rather than wrapping to
-          three lines and pushing the grid off screen. */}
       <div
         role="tablist"
         aria-label="Filter services"
@@ -462,22 +562,6 @@ function HomeServiceCard({ service }: { service: ServiceDetail }) {
   );
 }
 
-function SeeAll({ href, label }: { href: string; label: string }) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "flex shrink-0 items-center gap-1 rounded-control text-small font-medium text-action",
-        "hover:underline focus-visible:outline-none focus-visible:outline-focus",
-      )}
-    >
-      {label}
-      <ArrowRight className="size-4" aria-hidden="true" />
-    </Link>
-  );
-}
-
-/** One editorial band: a titled shelf of services. */
 function Band({
   title,
   description,
@@ -490,7 +574,7 @@ function Band({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-12">
+    <section className="mt-8">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-title font-semibold tracking-tight text-ink">
@@ -500,7 +584,18 @@ function Band({
             <p className="mt-1 text-small text-ink-muted">{description}</p>
           )}
         </div>
-        {href && <SeeAll href={href} label="See all" />}
+        {href && (
+          <Link
+            href={href}
+            className={cn(
+              "flex shrink-0 items-center gap-1 rounded-control text-small font-medium text-action",
+              "hover:underline focus-visible:outline-none focus-visible:outline-focus",
+            )}
+          >
+            See all
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+        )}
       </div>
       {children}
     </section>
@@ -508,11 +603,70 @@ function Band({
 }
 
 /**
- * Why CFC — the reassurance band.
+ * How it works — first booking only.
  *
- * Placed after the customer has seen the services and prices, which is when
- * "can I trust these people with my address" actually becomes the question.
+ * The question a first-time customer actually has is not "are you good", it is
+ * "what happens after I press the button — does someone call me, do I have to
+ * be home, when do I pay". Three steps answer it.
+ *
+ * Numbered rather than iconographic: the point is that it is a short sequence
+ * with an end, and a row of icons does not say that.
  */
+function HowItWorks() {
+  const STEPS = [
+    {
+      n: "1",
+      title: "Pick a service and a slot",
+      body: "Choose what you need and a time that suits you. The price is fixed and shown before you confirm.",
+    },
+    {
+      n: "2",
+      title: "A verified professional accepts",
+      body: "We offer the job to the nearest available pros. You see who is coming, their rating, and their arrival time.",
+    },
+    {
+      n: "3",
+      title: "Pay after the work is done",
+      body: "Share a code to close the job, then pay by UPI, card, wallet or cash. Every job carries a 30-day warranty.",
+    },
+  ];
+
+  return (
+    <section className="mt-8 rounded-card border border-border bg-surface p-6 md:p-8">
+      <h2 className="text-title font-semibold tracking-tight text-ink">
+        New here? This is how it works
+      </h2>
+      <p className="mt-1 text-small text-ink-muted">
+        Three steps, no phone calls, no haggling.
+      </p>
+
+      <ol className="mt-6 grid gap-6 md:grid-cols-3">
+        {STEPS.map(({ n, title, body }) => (
+          <li key={n} className="flex gap-4">
+            <span
+              className={cn(
+                "flex size-tile shrink-0 items-center justify-center rounded-full",
+                "bg-action text-body font-semibold text-on-action",
+              )}
+              aria-hidden="true"
+            >
+              {n}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-small font-semibold text-ink">
+                {title}
+              </span>
+              <span className="mt-1 block text-caption leading-relaxed text-ink-muted">
+                {body}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 function WhyCfc() {
   const ITEMS = [
     {
@@ -566,7 +720,7 @@ function WhyCfc() {
 
 function JoinAsPro() {
   return (
-    <section className="relative mt-8 isolate overflow-hidden rounded-card bg-structure">
+    <section className="relative isolate mt-8 overflow-hidden rounded-card bg-structure">
       <div
         aria-hidden="true"
         className="absolute inset-0 -z-10"

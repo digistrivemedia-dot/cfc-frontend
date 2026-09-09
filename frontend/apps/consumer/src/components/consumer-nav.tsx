@@ -8,9 +8,11 @@ import {
   CalendarDays,
   ChevronDown,
   Home,
+  LogOut,
   MapPin,
   Phone,
   Search,
+  Settings,
   User,
   Wallet,
 } from "lucide-react";
@@ -257,7 +259,43 @@ function AccountMenu({ profile }: { profile: ConsumerProfile | null }) {
                 </Link>
               </li>
             ))}
+            <li>
+              <Link
+                href="/settings"
+                role="menuitem"
+                onClick={() => setOpen(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-control px-3 py-2",
+                  "text-small text-ink",
+                  "transition-colors duration-fast hover:bg-action-subtle hover:text-action",
+                  "focus-visible:outline-none focus-visible:outline-focus",
+                )}
+              >
+                <Settings className="size-4 text-ink-muted" aria-hidden="true" />
+                Settings
+              </Link>
+            </li>
           </ul>
+
+          {/* Sign out is separated by a rule so it is not tapped while
+              scanning the list above. It existed only on Profile and
+              Settings before — which is not where anyone looks for it. */}
+          <div className="border-t border-border pt-1">
+            <Link
+              href="/login"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className={cn(
+                "flex items-center gap-3 rounded-control px-3 py-2",
+                "text-small font-medium text-critical-ink",
+                "transition-colors duration-fast hover:bg-critical-subtle",
+                "focus-visible:outline-none focus-visible:outline-focus",
+              )}
+            >
+              <LogOut className="size-4" aria-hidden="true" />
+              Sign out
+            </Link>
+          </div>
         </div>
       )}
     </div>

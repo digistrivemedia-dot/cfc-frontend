@@ -85,3 +85,69 @@ export async function cancelBooking(id: string): Promise<void> {
     { at: new Date().toISOString(), label: "Cancelled by you" },
   ];
 }
+
+/**
+ * The one booking worth putting at the top of the home screen.
+ *
+ * A customer with a pro on the way does not want to browse a catalogue — they
+ * want to know where the pro is. Returns the most imminent live job, or null
+ * when nothing is in flight, which is the ordinary case and must render as a
+ * normal home screen rather than an empty tracker.
+ *
+ * A job already in progress outranks one merely assigned: the pro is on site
+ * now. Within the same status, the soonest wins.
+ */
+export async function getActiveBooking() {
+  await latency();
+  const live = myBookings.filter((b) =>
+    (["pending", "assigned", "in_progress"] as BookingStatus[]).includes(
+      b.status,
+    ),
+  );
+  if (live.length === 0) return applyScenario(null, null);
+
+  const rank: Record<string, number> = {
+    in_progress: 0,
+    assigned: 1,
+    pending: 2,
+  };
+  const [first] = [...live].sort((a, b) => {
+    const byStatus = (rank[a.status] ?? 9) - (rank[b.status] ?? 9);
+    if (byStatus !== 0) return byStatus;
+    return Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt);
+  });
+
+  return applyScenario(first ?? null, null);
+}
+
+/**
+ * Services this customer has booked before, most recent first.
+ *
+ * Drives "Book again" on the home screen. Only completed jobs count — offering
+ * to re-book something cancelled, or happening right now, is noise.
+ * De-duplicated by service name so a monthly clean appears once, not six times.
+ */
+export async function getRebookable() {
+  await latency();
+  const seen = new Set<string>();
+  const out: {
+    serviceName: string;
+    lastBookedAt: string;
+    totalPaise: number;
+  }[] = [];
+
+  for (const b of [...myBookings].sort(
+    (a, b2) => Date.parse(b2.scheduledAt) - Date.parse(a.scheduledAt),
+  )) {
+    if (b.status !== "completed") continue;
+    if (seen.has(b.serviceName)) continue;
+    seen.add(b.serviceName);
+    out.push({
+      serviceName: b.serviceName,
+      lastBookedAt: b.scheduledAt,
+      totalPaise: b.totalPaise,
+    });
+  }
+
+  return applyScenario(out, []);
+}

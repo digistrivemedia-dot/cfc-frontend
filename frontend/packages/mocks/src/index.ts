@@ -118,13 +118,6 @@ export {
   askQuotationQuestion,
   getPendingQuotationCount,
 } from "./api/my-quotations";
-export {
-  getMyBookings,
-  getMyBooking,
-  getMyBookingCounts,
-  cancelBooking,
-  type BookingTab,
-} from "./api/my-bookings";
 export { getAddresses, saveAddress, deleteAddress } from "./api/addresses";
 export {
   getWalletBalance,
@@ -192,3 +185,23 @@ export {
   type CompletionResult,
   type CompletionRejection,
 } from "./api/pro-work";
+export {
+  getProServices,
+  setProServiceEnabled,
+  getProAvailability,
+  saveProAvailability,
+  updateProProfile,
+  getServiceAreas,
+} from "./api/pro-profile";
+
+// The signed-in customer's own bookings — Customer 25 to 29, plus the home
+// screen's active-job tracker and "Book again" shortcut.
+export {
+  getMyBookings,
+  getMyBooking,
+  getMyBookingCounts,
+  cancelBooking,
+  getActiveBooking,
+  getRebookable,
+  type BookingTab,
+} from "./api/my-bookings";

@@ -44,7 +44,18 @@ The onboarding offer is a real documented term. Ambiguity: is it the first 20
 jobs *ever*, or 20 within some window? Implemented as first-20-ever, which is
 the plain reading. **Needed:** confirmation, since it is money.
 
-### 1.5 Account deactivation (Pro 33)
+### 1.5 A pro serves several areas, but the record holds one
+`ProListItem.area` is a single string, and Pro 5 and 27 both ask for "service
+area selection" — plural in practice, because a pro who will travel to three
+neighbourhoods is under-served by a field holding one.
+
+The form collects several and writes the first back as their primary, so the
+screen is honest about intent while the current data shape is respected.
+**Needed from the backend:** `areas: string[]` on the pro record, and
+confirmation that dispatch matches against all of them rather than just the
+primary.
+
+### 1.6 Account deactivation (Pro 33)
 "Account deactivation" is listed. Whether a pro can self-deactivate, or must
 request it from an admin, is not stated — and it matters, because a pro with
 active jobs cannot simply vanish. Built as a request, not an instant switch.
@@ -115,6 +126,20 @@ count now agree exactly across today, week and month.
 **The general lesson:** two functions that each independently decide what "this
 week" means will eventually disagree. One of them has to own the window.
 
+### 4.5 `max-w-line-sm` generated no CSS — caught in Phase 7
+`line-sm` (96px) exists in `width` but **not** in `maxWidth`. Tailwind does not
+share the two scales, so `max-w-line-sm` emitted nothing and the
+years-of-experience field on Pro 27 was silently full-width instead of capped.
+
+Added to `maxWidth`. This is the **third** instance of the same family in this
+build (`bottom-tab-bar`, then `grid-cols-[...]` needing a named template, now
+this one), and the pattern is always the same: **a token existing in one Tailwind
+scale is no evidence at all that it exists in a sibling scale.** `width`,
+`maxWidth`, `padding`, `inset` and `height` are five separate maps.
+
+The Phase 10 sweep greps the built CSS for every spacing and sizing class the
+app uses, which is how all three were found.
+
 ---
 
 ## 5. Verified, and deliberately left alone
@@ -145,6 +170,28 @@ week" means will eventually disagree. One of them has to own the window.
 - **An overdue settlement is treated as the platform's failure, not a rounding
   error.** Past 48 hours the pro is owed money against a stated commitment, so
   those rows sort to the top, colour `critical`, and carry the support route.
+- **Service rates are read-only, with their owner named.** The agreement is
+  unambiguous that the admin owns all pricing, so Pro 28 shows the rate as a
+  fact rather than an editable field. An editable price that silently cannot
+  save would have a pro set ₹800, take a job at ₹499, and conclude the platform
+  was underpaying them. Verified: every rate matches the admin catalogue's own
+  `basePricePaise`, and the net follows the 15% rule exactly.
+- **Pro 28 shows what the customer pays AND what the pro keeps.** A pro
+  deciding whether to keep a service switched on is deciding on the second
+  number; making them apply 15% in their head is a cruelty with no purpose.
+- **Editing a profile cannot touch admin-owned fields.** `updateProProfile`
+  accepts only bio, experience, areas, phone and UPI. Verified through the real
+  mutation: bio, years and primary area changed; **name and skills did not.**
+- **Holiday mode is a separate state from "all seven days off".** A pro away
+  for a week who cleared their schedule would have to rebuild it from memory on
+  return. Holiday mode suspends the week without destroying it. Verified: the
+  schedule survives the toggle intact.
+- **Switching every service off is allowed, and warned about.** It is a
+  legitimate thing to want for a day and a terrible thing to do by accident, so
+  the screen states plainly that no jobs will arrive — even while online.
+- **The rating is shown with the 2.5 auto-block threshold attached.** A pro at
+  2.7 is one bad week from losing their account, and a bare number does not
+  convey that. The threshold is never hidden.
 - **Offline is the default on app open.** A pro who has not said they are ready
   should not be in the dispatch pool — being alerted for a job they cannot take
   costs them a penalty, not just an annoyance.

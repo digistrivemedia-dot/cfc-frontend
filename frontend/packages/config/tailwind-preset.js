@@ -401,6 +401,11 @@ module.exports = {
         // Skeleton lines, and any label that should cap rather than fix its
         // width: the same length on a wide row, shrinking instead of
         // overflowing on a narrow one.
+        //
+        // These mirror the same names in `width`, but Tailwind does NOT share
+        // width values with maxWidth - `max-w-line-sm` generated no CSS at all
+        // until this line existed, so a capped field was silently full-width.
+        "line-sm": "96px",
         "line-md": "128px",
         "line-xl": "192px",
         "line-2xl": "256px",

@@ -11,6 +11,8 @@ export { cn } from "./lib/cn";
 export {
   formatCurrency,
   formatCount,
+  formatDayShort,
+  formatTime,
   formatCurrencyAxis,
   formatDate,
   formatSchedule,
@@ -171,8 +173,11 @@ export {
 } from "./components/stat-card";
 // Consumer-facing composites. Built for the customer app; the pro app reuses
 // StarRating and SnapScroller.
+export { Accordion } from "./components/accordion";
+export { OtpDisplay } from "./components/otp-display";
+export { PhotoGrid } from "./components/photo-grid";
 export { SnapScroller } from "./components/snap-scroller";
-export { StarRating } from "./components/star-rating";
+export { StarRating, StarRatingInput } from "./components/star-rating";
 export { ServiceCard } from "./components/service-card";
 export {
   DateRangePicker,

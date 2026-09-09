@@ -115,9 +115,9 @@ function MobileSlide({
       }}
     >
       <div
-        className={`mb-6 flex size-20 items-center justify-center rounded-full ${slide.iconBg}`}
+        className={`mb-6 flex size-tile-lg items-center justify-center rounded-full ${slide.iconBg}`}
       >
-        <Icon className={`size-10 ${slide.iconColor}`} />
+        <Icon className={`size-tile ${slide.iconColor}`} />
       </div>
       <h2 className="text-title font-semibold text-ink">{slide.title}</h2>
       <p className="mt-3 max-w-xs text-body text-ink-muted">{slide.body}</p>
@@ -157,9 +157,9 @@ export default function OnboardingPage() {
       {/* ══ DESKTOP LAYOUT ═══════════════════════════════════════════════ */}
       <div className="hidden min-h-screen flex-col bg-canvas md:flex">
         {/* Nav */}
-        <header className="flex items-center justify-between border-b border-border bg-surface px-10 py-4">
+        <header className="flex items-center justify-between border-b border-border bg-surface px-panel py-4">
           <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-control bg-action">
+            <div className="flex size-tile items-center justify-center rounded-control bg-action">
               <Shield className="size-5 text-on-structure" />
             </div>
             <span className="text-heading font-semibold text-ink">
@@ -177,7 +177,7 @@ export default function OnboardingPage() {
         </header>
 
         {/* Hero */}
-        <section className="bg-structure px-10 py-16">
+        <section className="bg-structure px-panel py-panel-lg">
           <div className="mx-auto max-w-screen-lg">
             <div className="flex items-end justify-between gap-8">
               <div className="max-w-lg">
@@ -220,7 +220,7 @@ export default function OnboardingPage() {
                     key={label}
                     className="flex flex-col gap-2 rounded-card border border-on-structure-faint bg-structure-raised px-5 py-4"
                   >
-                    <div className="flex size-10 items-center justify-center rounded-control bg-action">
+                    <div className="flex size-tile items-center justify-center rounded-control bg-action">
                       <Icon className="size-5 text-on-structure" />
                     </div>
                     <p className="text-small font-medium text-on-structure">
@@ -237,7 +237,7 @@ export default function OnboardingPage() {
         </section>
 
         {/* Stats bar */}
-        <section className="border-b border-border bg-surface px-10 py-6">
+        <section className="border-b border-border bg-surface px-panel py-6">
           <div className="mx-auto flex max-w-screen-lg items-center justify-between">
             {PROMISES.map(({ value, label }) => (
               <div key={label} className="text-center">
@@ -251,9 +251,9 @@ export default function OnboardingPage() {
         </section>
 
         {/* Feature cards */}
-        <section className="flex-1 px-10 py-16">
+        <section className="flex-1 px-panel py-panel-lg">
           <div className="mx-auto max-w-screen-lg">
-            <h2 className="mb-10 text-center text-title font-semibold text-ink">
+            <h2 className="mb-8 text-center text-title font-semibold text-ink">
               Why customers choose CFC
             </h2>
             <div className="grid grid-cols-3 gap-6">
@@ -284,7 +284,7 @@ export default function OnboardingPage() {
                 variant="primary"
                 size="lg"
                 onClick={goToLogin}
-                className="px-10"
+                className="px-panel"
               >
                 Create your free account
                 <ChevronRight className="size-5" />
@@ -330,7 +330,7 @@ export default function OnboardingPage() {
         </div>
 
         {/* Bottom card */}
-        <div className="border-t border-border bg-surface px-6 pb-10 pt-6">
+        <div className="border-t border-border bg-surface px-6 pb-panel pt-6">
           {/* Dot indicators */}
           <div className="mb-6 flex items-center justify-center gap-2">
             {SLIDES.map((s, i) => (

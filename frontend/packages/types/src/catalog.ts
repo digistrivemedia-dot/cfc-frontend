@@ -1,4 +1,4 @@
-import type { BasisPoints, Id, Paise } from "./primitives";
+import type { BasisPoints, Id, Paise, Timestamp } from "./primitives";
 
 /** Admin 22–29 — categories, sub-categories, services, pricing, commission. */
 
@@ -29,6 +29,16 @@ export interface ServiceListItem {
   basePricePaise: Paise;
   active: boolean;
   bookingCount: number;
+  /**
+   * Average rating across completed jobs for this service, 0 when none yet.
+   *
+   * Customer 9 sorts on it, and Customer 12 and 13 display it. Reviews are
+   * OTP-gated (Customer 30), so a rating here is backed by jobs a pro actually
+   * closed on site rather than by anonymous submissions.
+   */
+  rating: number;
+  /** How many ratings the average is drawn from. Zero is shown as "New". */
+  reviewCount: number;
 }
 
 /**
@@ -84,4 +94,33 @@ export interface CommissionRule {
   targetName: string;
   commissionBps: BasisPoints;
   note?: string | undefined;
+}
+
+/**
+ * A question a customer asks before booking. Customer 12 — "FAQs".
+ *
+ * Answers are platform policy, not per-service copy, so most services share
+ * the same set. `serviceId` is null for a question that applies everywhere,
+ * which is the common case.
+ */
+export interface ServiceFaq {
+  id: Id;
+  serviceId: Id | null;
+  question: string;
+  answer: string;
+}
+
+/**
+ * One bookable arrival window. Customer 15 — "calendar + slot grid, AM/PM".
+ *
+ * `startsAt` is a full timestamp rather than a time string, so a slot carries
+ * its own date and the UI never has to combine the two — the class of bug that
+ * makes a booking land on the wrong day.
+ */
+export interface Slot {
+  /** ISO timestamp of the window's start, in the customer's local day. */
+  startsAt: Timestamp;
+  /** Minutes the window spans. Two hours is the platform default. */
+  durationMinutes: number;
+  available: boolean;
 }

@@ -1,9 +1,12 @@
-/** Temporary placeholder. Replaced by the first screen built in this app. */
-export default function Page() {
-  return (
-    <main className="mx-auto max-w-screen-sm p-6">
-      <h1 className="text-title font-semibold text-ink">pro</h1>
-      <p className="mt-2 text-body text-ink-muted">Foundation is in place.</p>
-    </main>
-  );
+import { redirect } from "next/navigation";
+
+/**
+ * Root entry point.
+ *
+ * Nothing lives at "/" — it is a pure routing node. `/splash` decides where a
+ * pro actually lands: onboarding if they have never signed in, the approval
+ * screen if their KYC is still pending, otherwise the dashboard.
+ */
+export default function Root() {
+  redirect("/splash");
 }

@@ -1079,7 +1079,7 @@ function SubAdminsTab() {
               className="rounded-card border border-border bg-surface p-4"
             >
               <div className="flex flex-wrap items-start gap-3">
-                <Avatar className="size-10">
+                <Avatar className="size-tile">
                   <AvatarFallback>{initials(a.name)}</AvatarFallback>
                 </Avatar>
                 <div className="min-w-0 flex-1">

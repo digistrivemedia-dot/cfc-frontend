@@ -335,10 +335,10 @@ function ApprovalQueue({
             <div key={i} className="flex items-center gap-3 p-4">
               <Skeleton className="size-avatar rounded-control" />
               <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-40" />
-                <Skeleton className="h-3 w-56" />
+                <Skeleton className="h-4 w-line-md" />
+                <Skeleton className="h-3 w-line-xl" />
               </div>
-              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-line-xs" />
             </div>
           ))}
         </div>
@@ -644,10 +644,10 @@ function JobFeed({
             <div key={i} className="flex items-center gap-3 p-3">
               <Skeleton className="size-8 rounded-full" />
               <div className="flex-1 space-y-2">
-                <Skeleton className="h-3 w-48" />
-                <Skeleton className="h-3 w-64" />
+                <Skeleton className="h-3 w-line-lg" />
+                <Skeleton className="h-3 w-line-2xl" />
               </div>
-              <Skeleton className="h-5 w-20" />
+              <Skeleton className="h-5 w-line-xs" />
             </div>
           ))}
         </div>

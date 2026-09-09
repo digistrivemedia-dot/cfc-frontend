@@ -99,6 +99,17 @@ export const services: ServiceDetail[] = SERVICE_CATALOG.map(
     basePricePaise: lo,
     active: true,
     bookingCount: Math.floor(20 + rand() * 400),
+    // Ratings cluster between 4.1 and 4.9 with a long tail: a catalogue where
+    // everything is 4.8 reads as fabricated, and the UI has to handle a 3.9
+    // without the layout shifting. A handful stay at 0 so "New" is a state
+    // that actually gets exercised.
+    ...(() => {
+      const isNew = rand() < 0.12;
+      if (isNew) return { rating: 0, reviewCount: 0 };
+      const reviewCount = Math.floor(8 + rand() * 240);
+      const rating = Math.round((3.9 + rand() * 1.0) * 10) / 10;
+      return { rating: Math.min(5, rating), reviewCount };
+    })(),
     description: `Professional ${name.toLowerCase()}, done right the first time. Verified pros, transparent pricing, warranty included.`,
     imageUrls: [`/mock/services/${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.jpg`],
     variants: (VARIANT_SETS[name] ?? STANDARD_VARIANT).map(

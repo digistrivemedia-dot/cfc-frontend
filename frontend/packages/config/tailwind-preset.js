@@ -152,6 +152,7 @@ module.exports = {
         DEFAULT: "var(--color-live)",
         ink: "var(--color-live-ink)",
         subtle: "var(--color-live-subtle)",
+        line: "var(--color-live-line)",
       },
       // Clock — a countdown is running. SLA windows, accept timers, expiry.
       clock: {
@@ -229,6 +230,11 @@ module.exports = {
       8: "32px",
       12: "48px",
       touch: "44px", // minimum target on consumer and pro
+      // The pro app's primary action — ACCEPT, I'M HERE, COMPLETE JOB. A pro
+      // presses these one-handed, standing, often in daylight, and getting one
+      // wrong costs them money. 56px is the smallest that is comfortably
+      // thumb-safe without aiming; `touch` (44px) is a MINIMUM, not a target.
+      "touch-lg": "56px",
       // Large fixed-height panels: the map surface, a full-height chart
       // panel. Not a spacing step — deliberately named so it cannot be
       // confused for one.
@@ -352,6 +358,10 @@ module.exports = {
         "line-lg": "160px",
         "line-xl": "192px",
         "line-2xl": "256px",
+        // The pro app's docked action panel. On mobile the primary decision is
+        // a sticky bottom bar; at `lg:` it becomes this column beside the
+        // content. One value, so all 35 screens dock identically.
+        "action-panel": "320px",
       },
       height: {
         bar: "56px", // top bars and mobile header
@@ -400,6 +410,11 @@ module.exports = {
         detail: "640px",
       },
       size: {
+        // A round icon tile - a category glyph, a trust mark, an avatar
+        // stand-in. 40px is the smallest that reads as deliberate rather than
+        // cramped, and it clears the 44px touch rule when it is a link.
+        tile: "40px",
+        "tile-lg": "80px",
         mark: "28px", // brand mark in the rail
         avatar: "36px",
         emblem: "80px", // auth panel roundel
@@ -410,8 +425,52 @@ module.exports = {
       },
       // Backdrop washes sit outside their container on purpose. Positive
       // value; the utility carries the minus (-bottom-wash).
+      padding: {
+        // Clears the fixed mobile tab strip. The bar is 56px plus the iOS
+        // safe-area inset, so content needs at least that much room beneath
+        // it or the last row sits under the bar.
+        "tab-bar": "80px",
+        // The generous inner padding of an auth or marketing panel, where the
+        // page has one job and room to breathe.
+        panel: "40px",
+        "panel-lg": "64px",
+        // Clears the pro app's fixed 240px desktop rail. `width.rail` is the
+        // rail itself; Tailwind does not share width values with padding, so
+        // the same number is named here for the content beside it.
+        rail: "240px",
+        // Clears the pro app's mobile action bar — a 56px primary button plus
+        // its 16px padding on both sides, plus the tab strip beneath it.
+        "action-bar": "88px",
+      },
+
       inset: {
+        // Sticks an element directly below a top bar. `bar` and `bar-lg` are
+        // heights, and Tailwind does not share those with inset, so the same
+        // two values are named here as well.
+        bar: "56px",
+        // Named `bar-tall` rather than `bar-lg`: a utility ending in a
+        // breakpoint name (`top-bar-lg`) is ambiguous to Tailwind's parser and
+        // silently generates nothing at all.
+        "bar-tall": "64px",
         wash: "128px",
+        // The pro app's fixed desktop rail width, so a sticky element can be
+        // positioned from the rail's inner edge rather than the viewport's.
+        rail: "240px",
+        // Sits an element directly ABOVE the mobile tab strip - the pro app's
+        // action bar. `padding.tab-bar` is the same 80px, but Tailwind does not
+        // share padding values with inset, so `bottom-tab-bar` generated no
+        // CSS at all until this existed.
+        "tab-bar": "80px",
+      },
+
+      // Named grid templates.
+      //
+      // Arbitrary values are banned by lint, so a layout used across many
+      // screens is named here rather than written as `grid-cols-[...]` in each
+      // one. `action` is the pro app's content-plus-docked-panel split: the
+      // content column may shrink, the action panel never does.
+      gridTemplateColumns: {
+        action: "minmax(0, 1fr) 320px",
       },
 
       // Named so a progress bar or meter can animate its fill without an
@@ -429,6 +488,7 @@ module.exports = {
         fast: "var(--duration-fast)",
         base: "var(--duration-base)",
         slow: "var(--duration-slow)",
+        carousel: "var(--duration-carousel)",
       },
       transitionTimingFunction: {
         out: "var(--ease-out)",

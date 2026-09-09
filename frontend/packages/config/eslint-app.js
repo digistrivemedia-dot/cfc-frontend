@@ -104,7 +104,7 @@ module.exports = {
         // belong in the preset as NAMED values (w-rail, h-bar, size-avatar)
         // where a reviewer can see what each one is for.
         selector:
-          "JSXAttribute[name.name='className'] Literal[value=/(?:^|\s)(?:p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap|gap-x|gap-y|space-x|space-y|size|w|h|min-w|min-h|max-w|max-h)-(?:7|9|10|11|13|14|16|20|24|28|32|36|40|44|48|52|56|60|64|72|80|96)\b/]",
+          "JSXAttribute[name.name='className'] Literal[value=/(?<![\\w-])(?:p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap|gap-x|gap-y|space-x|space-y|size|w|h|min-w|min-h|max-w|max-h)-(?:7|9|10|11|13|14|16|20|24|28|32|36|40|44|48|52|56|60|64|72|80|96)(?![\\w-])/]",
         message:
           "This dimension is not on the closed scale and silently generates no CSS. Add a named value to the preset (w-rail, h-bar, size-avatar) rather than reaching for a Tailwind default step.",
       },

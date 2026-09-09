@@ -78,6 +78,9 @@
   --color-live: #12a05f;
   --color-live-ink: #0c6b40;
   --color-live-subtle: #edf8f2;
+  /* Completes the set: clock and critical already carry a -line, and a
+     success panel needs a border of its own rather than borrowing one. */
+  --color-live-line: #c7e9d6;
 
   /* Clock — a countdown is running. SLA windows, accept timers, expiry. */
   --color-clock: #b8790f;
@@ -142,4 +145,10 @@
   --duration-slow: 260ms;
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Homepage hero and feature sections ------------------------------------ */
+  --color-hero-overlay: rgb(14 31 61 / 0.72);
+  --color-trust-start: #0e1f3d;
+  --color-trust-end: #0a3a40;
+  --duration-carousel: 400ms;
 }

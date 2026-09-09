@@ -4,8 +4,8 @@ import { Skeleton } from "@cfc/ui";
 export function FormFallback() {
   return (
     <div className="space-y-4">
-      <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-96 max-w-xl rounded-card" />
+      <Skeleton className="h-8 w-line-lg" />
+      <Skeleton className="h-block-lg max-w-xl rounded-card" />
     </div>
   );
 }

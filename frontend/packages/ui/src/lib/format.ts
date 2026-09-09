@@ -79,6 +79,17 @@ const dateTime = new Intl.DateTimeFormat("en-IN", {
   hour12: true,
 });
 
+const monthYear = new Intl.DateTimeFormat("en-IN", {
+  month: "long",
+  year: "numeric",
+});
+
+const dayShort = new Intl.DateTimeFormat("en-IN", {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+});
+
 const timeOnly = new Intl.DateTimeFormat("en-IN", {
   hour: "numeric",
   minute: "2-digit",
@@ -91,12 +102,14 @@ const timeOnly = new Intl.DateTimeFormat("en-IN", {
  */
 export function formatDate(
   value: Timestamp,
-  style: "date" | "datetime" | "time" = "date",
+  style: "date" | "datetime" | "time" | "monthYear" = "date",
 ): string {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";
   if (style === "datetime") return dateTime.format(d);
   if (style === "time") return timeOnly.format(d);
+  // "March 2025" — for a joining date, where the day is noise.
+  if (style === "monthYear") return monthYear.format(d);
   return dateOnly.format(d);
 }
 
@@ -105,6 +118,30 @@ export function formatDate(
  * the near window. "Tomorrow, 10:30 am" is more useful to an operator scanning
  * a queue than "05 Sep 2026, 10:30 am".
  */
+/**
+ * Just the clock time - "10:00 am".
+ *
+ * Slot grids and arrival windows show a time without a date, because the date
+ * is already the heading above them. `formatSchedule` would repeat it on every
+ * cell.
+ */
+export function formatTime(value: Timestamp | Date): string {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return timeOnly.format(d);
+}
+
+/**
+ * A day, without the year - "Tue, 9 Sep".
+ *
+ * For a booking within the next month, where the year is noise.
+ */
+export function formatDayShort(value: Timestamp | Date): string {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return dayShort.format(d);
+}
+
 export function formatSchedule(value: Timestamp): string {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "—";

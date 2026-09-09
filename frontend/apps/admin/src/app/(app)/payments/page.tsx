@@ -1279,7 +1279,7 @@ function CatalogueSkeleton() {
 
 export default function PaymentsAndFinancePage() {
   return (
-    <Suspense fallback={<Skeleton className="h-96 rounded-card" />}>
+    <Suspense fallback={<Skeleton className="h-block-lg rounded-card" />}>
       <PaymentsAndFinanceInner />
     </Suspense>
   );

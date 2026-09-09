@@ -70,7 +70,7 @@ export function AuthShell({
     <div className="min-h-screen bg-canvas md:grid md:grid-cols-2">
       {/* ── Left brand panel (desktop only) ──────────────────────────────── */}
       <div
-        className="relative hidden flex-col justify-between overflow-hidden p-12 lg:p-16 md:flex"
+        className="relative hidden flex-col justify-between overflow-hidden p-12 lg:p-panel-lg md:flex"
         style={{
           background:
             "linear-gradient(135deg, var(--color-structure) 0%, var(--color-structure-raised) 50%, var(--color-ink) 100%)",
@@ -157,7 +157,7 @@ export function AuthShell({
               key={title}
               className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-md transition-all hover:bg-white/10 hover:shadow-lg"
             >
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white/10 text-white shadow-inner transition-transform group-hover:scale-110">
+              <div className="flex size-tile shrink-0 items-center justify-center rounded-full bg-white/10 text-white shadow-inner transition-transform group-hover:scale-110">
                 <Icon className="size-5" />
               </div>
               <div>
@@ -195,8 +195,8 @@ export function AuthShell({
         </div>
 
         {/* Form content — centered and elevated on desktop */}
-        <div className="flex flex-1 items-center justify-center p-6 sm:p-10 md:p-12 lg:p-16">
-          <div className="w-full rounded-3xl bg-surface px-6 py-10 shadow-none sm:px-10 sm:py-12 md:border md:border-border/50 lg:p-12" style={{ maxWidth: "420px", boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
+        <div className="flex flex-1 items-center justify-center p-6 sm:p-panel md:p-12 lg:p-panel-lg">
+          <div className="w-full rounded-3xl bg-surface px-6 py-panel shadow-none sm:px-panel sm:py-12 md:border md:border-border/50 lg:p-12" style={{ maxWidth: "420px", boxShadow: "0 8px 30px rgba(0,0,0,0.04)" }}>
             {/* Desktop back button */}
             {backHref && (
               <button

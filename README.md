@@ -51,7 +51,10 @@ Four documents, in this order:
    here.
 3. **`ADMIN-SUMMARY.md`** — what was built, what was wrong with it, and what is
    still pending.
-4. **`frontend/RUNBOOK.md`** — commands and troubleshooting.
+4. **`CONSUMER-OPEN-ITEMS.md`** — decisions waiting on the client, spec clauses
+   that cannot be honoured as written, and the design-system traps that fail
+   silently. Read section 5 before writing any Tailwind.
+5. **`frontend/RUNBOOK.md`** — commands and troubleshooting.
 
 ## Three things that will bite you
 

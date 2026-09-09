@@ -11,10 +11,11 @@ import {
   ConsumerMobileTopBar,
   ConsumerBottomNav,
 } from "@/components/consumer-nav";
+import { ConsumerFooter } from "@/components/consumer-footer";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="flex min-h-screen flex-col bg-canvas">
       {/* Desktop top nav */}
       <ConsumerTopBar />
 
@@ -22,7 +23,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <ConsumerMobileTopBar />
 
       {/* Main content — bottom padding on mobile leaves room for the tab bar */}
-      <main className="pb-20 md:pb-0">{children}</main>
+      {/* `flex-1` so a short page still pushes the footer to the bottom of
+          the viewport rather than leaving it floating mid-screen. */}
+      <main className="flex-1 pb-tab-bar md:pb-0">{children}</main>
+
+      <ConsumerFooter />
 
       {/* Mobile bottom tab bar */}
       <ConsumerBottomNav />

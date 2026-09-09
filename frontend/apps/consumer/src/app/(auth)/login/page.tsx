@@ -123,7 +123,7 @@ export default function LoginPage() {
         </button>
       </div>
 
-      <p className="mt-10 text-center text-caption text-ink-muted">
+      <p className="mt-8 text-center text-caption text-ink-muted">
         By continuing you agree to our{" "}
         <span className="text-action">Terms of Service</span> and{" "}
         <span className="text-action">Privacy Policy</span>

@@ -83,3 +83,82 @@ export function StarRating({
     </span>
   );
 }
+
+/**
+ * A rating, given.
+ *
+ * The interactive half of `StarRating`. Customer 30 needs a customer to set
+ * one, and that is a different control from displaying one: it must be
+ * operable by keyboard, announce what each option means, and be big enough for
+ * a thumb.
+ *
+ * A radiogroup rather than five buttons, because that is what this is — five
+ * mutually exclusive options — and it gets arrow-key navigation from the
+ * browser for free. Each star carries its own label ("3 stars, Fine") so a
+ * screen reader user is not choosing between five identical "star" buttons.
+ *
+ * Whole stars only. Half a star is a distinction a customer does not
+ * meaningfully make, and offering it makes the control fussy to hit.
+ */
+export function StarRatingInput({
+  value,
+  onChange,
+  /** Labels the group. Required — "Rating" alone does not say of what. */
+  label,
+  className,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+  label: string;
+  className?: string | undefined;
+}) {
+  // The meaning matters more than the number. A customer picking "2" should
+  // see what they are saying, and the word is what gets read aloud.
+  const MEANING = ["Poor", "Not good", "Fine", "Good", "Excellent"] as const;
+
+  return (
+    <div className={cn("flex flex-col items-center gap-2", className)}>
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className="flex items-center gap-1"
+      >
+        {[1, 2, 3, 4, 5].map((n) => {
+          const filled = n <= value;
+          return (
+            <button
+              key={n}
+              type="button"
+              role="radio"
+              aria-checked={n === value}
+              aria-label={`${n} ${n === 1 ? "star" : "stars"}, ${MEANING[n - 1]}`}
+              onClick={() => onChange(n)}
+              className={cn(
+                // Generous target: this is the primary control on its screen
+                // and it is used once, with a thumb.
+                "flex size-touch items-center justify-center rounded-full",
+                "transition-colors duration-fast",
+                "hover:bg-canvas",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+              )}
+            >
+              <Star
+                className={cn(
+                  "size-8 transition-colors duration-fast",
+                  filled ? "fill-star text-star" : "text-border-strong",
+                )}
+                aria-hidden="true"
+              />
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Reserves its line whether or not a rating is set, so the layout does
+          not jump the moment a customer taps a star. */}
+      <p className="min-h-4 text-small font-medium text-ink">
+        {value > 0 ? MEANING[value - 1] : ""}
+      </p>
+    </div>
+  );
+}

@@ -65,6 +65,14 @@ const buttonVariants = cva(
         ),
         md: "h-touch px-4 text-body [&_svg]:size-5",
         lg: "h-12 px-6 text-body [&_svg]:size-5",
+        // The pro app's primary decision — ACCEPT, I'M HERE, COMPLETE JOB.
+        //
+        // 56px rather than `lg`'s 48px, and `heading` rather than `body`,
+        // because the reading conditions are different in kind: a pro presses
+        // these one-handed, standing, often in daylight, and pressing the wrong
+        // one costs them money. `touch` (44px) is a MINIMUM for anything
+        // tappable; this is a target for the one control that matters.
+        pro: "h-touch-lg px-6 text-heading font-semibold [&_svg]:size-5",
         icon: cn(
           "size-8 [&_svg]:size-4",
           "relative coarse:after:absolute coarse:after:left-1/2",

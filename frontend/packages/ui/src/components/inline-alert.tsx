@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CircleAlert, Info, TriangleAlert, X } from "lucide-react";
+import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from "lucide-react";
 import { cn } from "../lib/cn";
 import { Button } from "../primitives/button";
 
@@ -20,6 +20,16 @@ const TONE = {
     icon: Info,
     frame: "border-border bg-canvas",
     accent: "text-ink-muted",
+  },
+  /**
+   * Something completed successfully and the customer should keep reading it —
+   * "advance paid, balance due on completion" is the case this exists for.
+   * Rationed the same way as the badges: green means done, not merely good.
+   */
+  live: {
+    icon: CircleCheck,
+    frame: "border-live-line bg-live-subtle",
+    accent: "text-live-ink",
   },
   clock: {
     icon: TriangleAlert,

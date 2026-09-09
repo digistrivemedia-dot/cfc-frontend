@@ -44,7 +44,8 @@ export function ServiceCard({
       href={href}
       className={cn(
         "group flex h-full flex-col overflow-hidden rounded-card border border-border bg-surface",
-        "transition-colors duration-fast hover:border-action-line",
+        "shadow-sm transition-all duration-base",
+        "hover:border-action-line hover:shadow-md hover:-translate-y-0.5",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
         className,
       )}
@@ -65,11 +66,13 @@ export function ServiceCard({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-1 p-3">
-        <p className="text-caption text-ink-muted">{categoryName}</p>
-        <p className="line-clamp-2 text-small font-medium text-ink">{name}</p>
+        <p className="text-caption font-medium text-action">{categoryName}</p>
+        <p className="line-clamp-2 text-small font-semibold text-ink">{name}</p>
 
-        {rating !== undefined && rating > 0 && (
+        {rating !== undefined && rating > 0 ? (
           <StarRating value={rating} count={reviewCount} />
+        ) : (
+          <span className="text-caption text-ink-faint">New</span>
         )}
 
         <div className="mt-auto flex items-baseline justify-between gap-2 pt-1">
@@ -87,3 +90,4 @@ export function ServiceCard({
     </a>
   );
 }
+

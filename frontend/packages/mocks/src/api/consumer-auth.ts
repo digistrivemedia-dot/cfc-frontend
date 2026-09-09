@@ -1,6 +1,7 @@
 import type { ConsumerProfile, OtpSendResult, OtpVerifyResult } from "@cfc/types";
 import { latency, applyScenario } from "../control";
 import { CUSTOMER_NAMES, AREAS } from "../fixtures/seed";
+import { getAddresses } from "./addresses";
 
 /**
  * Consumer auth mock API.
@@ -35,34 +36,57 @@ export async function verifyOtp(
   });
 }
 
+/**
+ * The signed-in customer.
+ *
+ * Module state rather than a fresh object per call, so an edit on Customer 34
+ * shows on 33 and in the navigation at once — the way it will behave when a
+ * backend owns it. It resets on reload, which is the honest boundary of a
+ * mock.
+ *
+ * Addresses are NOT held here. `api/addresses.ts` owns those and their
+ * mutations; duplicating them would give two sources of truth for one list.
+ */
+const profile: ConsumerProfile = {
+  id: "cust_01",
+  name: CUSTOMER_NAMES[0] as string,
+  phone: "+919876543210",
+  area: AREAS[0],
+  walletPaise: 24900,
+  totalBookings: 7,
+  joinedAt: "2025-03-12T08:00:00Z",
+  addresses: [],
+};
+
 /** The logged-in customer's own profile — used by My Profile and the app shell. */
 export async function getConsumerProfile(): Promise<ConsumerProfile> {
   await latency();
+  // Addresses are read from their own module so the two never disagree.
+  const addresses = await getAddresses();
+  return applyScenario({ ...profile, addresses });
+}
 
-  const profile: ConsumerProfile = {
-    id: "cust_01",
-    name: CUSTOMER_NAMES[0] as string,
-    phone: "+919876543210",
-    area: AREAS[0],
-    walletPaise: 24900,
-    totalBookings: 7,
-    joinedAt: "2025-03-12T08:00:00Z",
-    addresses: [
-      {
-        id: "addr_01",
-        label: "home",
-        line1: "42, Kaveri Nagar",
-        line2: "Near Temple Street",
-        landmark: "Opposite Saravana Stores",
-        area: AREAS[0],
-        city: "Tiruchirappalli",
-        state: "Tamil Nadu",
-        pincode: "620006",
-        point: { lat: 10.8505, lng: 78.6837 },
-        isDefault: true,
-      },
-    ],
-  };
+/**
+ * Customer 34 — saving edited details.
+ *
+ * Only the fields that screen offers. The phone number is deliberately absent:
+ * it is the login identity, and changing it is an OTP flow of its own rather
+ * than a text field on a profile form.
+ */
+export async function updateConsumerProfile(patch: {
+  name?: string;
+  area?: string;
+  avatarUrl?: string | undefined;
+}): Promise<ConsumerProfile> {
+  await latency();
+  if (patch.name !== undefined && patch.name.trim() !== "") {
+    profile.name = patch.name.trim();
+  }
+  if (patch.area !== undefined && patch.area.trim() !== "") {
+    profile.area = patch.area.trim();
+  }
+  if (patch.avatarUrl !== undefined) profile.avatarUrl = patch.avatarUrl;
 
-  return applyScenario(profile);
+  const addresses = await getAddresses();
+  return applyScenario({ ...profile, addresses });
 }

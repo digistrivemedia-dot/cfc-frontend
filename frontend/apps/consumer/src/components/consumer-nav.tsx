@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Bell,
   CalendarDays,
@@ -11,9 +11,8 @@ import {
   MapPin,
   Search,
   User,
-  Wallet,
 } from "lucide-react";
-import { getConsumerProfile } from "@cfc/mocks";
+import { getConsumerProfile, getUnreadNotificationCount } from "@cfc/mocks";
 import type { ConsumerProfile } from "@cfc/types";
 import { Avatar, AvatarFallback, cn, initials } from "@cfc/ui";
 import { Logo } from "@/components/logo";
@@ -28,7 +27,7 @@ import { Logo } from "@/components/logo";
  * Rebuilt in Phase 0. The previous version had the right shape and a broken
  * implementation: `bg-surface/95` generated no CSS at all (opacity modifiers
  * do not work on hex tokens), so the `backdrop-blur` beside it was blurring an
- * opaque bar; `size-9` and `py-2.5` are off the closed scale, so every avatar
+ * opaque bar; `size-tile` and `py-2.5` are off the closed scale, so every avatar
  * and icon button in the nav had no size; the area was hardcoded to one
  * neighbourhood; and every link was a bare `<a>`, which reloads the whole
  * document on each tab press instead of navigating client-side.
@@ -37,7 +36,7 @@ import { Logo } from "@/components/logo";
 const NAV_ITEMS = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/bookings", label: "Bookings", icon: CalendarDays },
-  { href: "/wallet", label: "Wallet", icon: Wallet },
+  { href: "/search", label: "Search", icon: Search },
   { href: "/profile", label: "Profile", icon: User },
 ] as const;
 
@@ -95,22 +94,7 @@ export function ConsumerTopBar() {
 
         <LocationButton area={profile?.area} />
 
-        {/* A button rather than an input: search is its own screen with recent
-            and trending, so tapping here navigates rather than typing in place. */}
-        <Link
-          href="/search"
-          className={cn(
-            "group flex h-field min-w-0 flex-1 items-center gap-3 rounded-control",
-            "border border-border bg-canvas px-4 text-small text-ink-muted",
-            "transition-colors duration-fast hover:border-action-line hover:bg-action-subtle",
-          )}
-        >
-          <Search
-            className="size-4 shrink-0 transition-colors duration-fast group-hover:text-action"
-            aria-hidden="true"
-          />
-          <span className="truncate">Search for a service</span>
-        </Link>
+        <HeaderSearch />
 
         <div className="flex shrink-0 items-center gap-2">
           <NotificationBell />
@@ -248,6 +232,59 @@ function BottomNavLink({
   );
 }
 
+/**
+ * Search, in the desktop header.
+ *
+ * A real input rather than a link to the search screen. On desktop the header
+ * is always visible, so making it the one place search lives means the search
+ * page shows results and nothing else - two boxes for one job was the first
+ * thing that looked wrong about that screen.
+ *
+ * It mirrors `?q=` so navigating to a result keeps the term visible, and
+ * submitting pushes the same URL a typed search would.
+ */
+function HeaderSearch() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const query = params.get("q") ?? "";
+  const [value, setValue] = React.useState(query);
+
+  // A shared link, or the back button, must win over stale local state.
+  React.useEffect(() => setValue(query), [query]);
+
+  return (
+    <form
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const term = value.trim();
+        if (term !== "") router.push(`/search?q=${encodeURIComponent(term)}`);
+      }}
+      className="relative flex min-w-0 flex-1 items-center"
+    >
+      <Search
+        className="pointer-events-none absolute left-3 size-4 text-ink-muted"
+        aria-hidden="true"
+      />
+      <input
+        type="search"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="Search for a service"
+        aria-label="Search for a service"
+        autoComplete="off"
+        className={cn(
+          "h-field w-full rounded-control border border-border bg-canvas",
+          // `pl-8` clears the icon at left-3. Anything off the closed scale
+          // here generates no padding at all and the icon overlaps the text.
+          "pl-8 pr-3 text-small text-ink placeholder:text-ink-faint",
+          "focus:border-action focus:bg-surface focus:outline-none focus:ring-2 focus:ring-focus",
+        )}
+      />
+    </form>
+  );
+}
+
 // -- Shared -------------------------------------------------------------------
 
 /**
@@ -311,10 +348,30 @@ function LocationButton({
  * a number that will be wrong.
  */
 function NotificationBell() {
+  const [unread, setUnread] = React.useState(0);
+
+  // Fetched once per mount. Polling for a count nobody is watching is waste;
+  // the real app will push this over the notification channel.
+  React.useEffect(() => {
+    let cancelled = false;
+    getUnreadNotificationCount()
+      .then((n) => {
+        if (!cancelled) setUnread(n);
+      })
+      .catch(() => {
+        // A failed count must not take the navigation down with it.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <Link
       href="/notifications"
-      aria-label="Notifications"
+      aria-label={
+        unread > 0 ? `Notifications, ${unread} unread` : "Notifications"
+      }
       className={cn(
         "relative flex size-8 items-center justify-center rounded-full",
         "text-ink-muted transition-colors duration-fast",
@@ -322,6 +379,14 @@ function NotificationBell() {
       )}
     >
       <Bell className="size-4" aria-hidden="true" />
+      {unread > 0 && (
+        // A dot, not a number. The exact count matters on the screen itself;
+        // here the only question is whether there is anything to look at.
+        <span
+          className="absolute right-1 top-1 size-2 rounded-full bg-critical"
+          aria-hidden="true"
+        />
+      )}
     </Link>
   );
 }

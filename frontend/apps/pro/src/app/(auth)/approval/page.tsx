@@ -50,9 +50,11 @@ export default function ProApprovalPage() {
   const proId = React.useMemo(() => currentProId(), []);
   const [state, setState] = React.useState<ApprovalState | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [failed, setFailed] = React.useState(false);
 
   const load = React.useCallback(() => {
     setLoading(true);
+    setFailed(false);
     let cancelled = false;
     void getApprovalState(proId)
       .then((s) => {
@@ -62,7 +64,14 @@ export default function ProApprovalPage() {
         }
       })
       .catch(() => {
-        if (!cancelled) setLoading(false);
+        // A failed fetch must not look like a missing record. Left unhandled,
+        // this screen rendered "No documents on file yet" — which to a pro
+        // waiting on KYC reads as their paperwork having been lost, on the one
+        // screen where they are already anxious.
+        if (!cancelled) {
+          setFailed(true);
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
@@ -172,6 +181,26 @@ export default function ProApprovalPage() {
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-line-lg" />
+            </div>
+          ) : failed ? (
+            <div className="p-4">
+              <p className="flex items-start gap-2 text-small text-clock-ink">
+                <TriangleAlert
+                  className="mt-px size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                Could not load your documents just now. They are safe — this is
+                a connection problem, not a missing record.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="mt-3"
+                onClick={load}
+              >
+                <RefreshCw />
+                Try again
+              </Button>
             </div>
           ) : state === null || state.documents.length === 0 ? (
             <p className="p-4 text-small text-on-structure-muted">

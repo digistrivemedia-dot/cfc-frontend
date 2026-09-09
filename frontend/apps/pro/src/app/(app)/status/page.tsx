@@ -43,7 +43,7 @@ export default function ProStatusPage() {
   };
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-screen-sm flex-col px-4 py-4 md:px-6">
+    <div className="mx-auto flex min-h-screen max-w-detail flex-col px-4 py-4 md:px-6">
       {/* On mobile this screen replaces the view, so it needs its own way out.
           `router.back()` rather than a link to the dashboard: a pro may have
           arrived here from the jobs list and should return there. */}

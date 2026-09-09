@@ -33,6 +33,7 @@ import {
   Skeleton,
   cn,
   formatCurrency,
+  formatSchedule,
   toast,
 } from "@cfc/ui";
 import { ProAction, ProActionLayout } from "@/components/pro-action-bar";
@@ -254,13 +255,7 @@ function JobView({
 
             <p className="mt-2 flex items-center gap-2 text-small text-ink-muted">
               <CalendarClock className="size-4 shrink-0" aria-hidden="true" />
-              {new Date(job.scheduledAt).toLocaleString("en-IN", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-                hour: "numeric",
-                minute: "2-digit",
-              })}
+              {formatSchedule(job.scheduledAt)}
             </p>
 
             {job.notes !== null && (

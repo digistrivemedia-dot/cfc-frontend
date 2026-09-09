@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { Gift, Info } from "lucide-react";
 import { cn } from "../lib/cn";
 import { formatCurrency } from "../lib/format";

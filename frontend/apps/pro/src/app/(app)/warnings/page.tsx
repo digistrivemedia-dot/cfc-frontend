@@ -81,6 +81,22 @@ export default function ProWarningsPage() {
 
   React.useEffect(() => load(), [load]);
 
+  // Above every early return. This memo previously sat below the `failed`
+  // branch, so a failed fetch changed the hook count between renders and React
+  // threw "Rendered fewer hooks than expected" — taking the screen down at
+  // exactly the moment the pro was already looking at an error.
+  const sorted = React.useMemo(
+    () =>
+      warnings === null
+        ? null
+        : [...warnings].sort(
+            (a, b) => Date.parse(b.issuedAt) - Date.parse(a.issuedAt),
+          ),
+    [warnings],
+  );
+
+  const totalPenalty = (sorted ?? []).reduce((t, w) => t + w.penaltyPaise, 0);
+
   if (failed) {
     return (
       <div className="mx-auto max-w-detail px-4 py-12 md:px-6">
@@ -94,21 +110,6 @@ export default function ProWarningsPage() {
       </div>
     );
   }
-
-  const sorted = React.useMemo(
-    () =>
-      warnings === null
-        ? null
-        : [...warnings].sort(
-            (a, b) => Date.parse(b.issuedAt) - Date.parse(a.issuedAt),
-          ),
-    [warnings],
-  );
-
-  const totalPenalty = (sorted ?? []).reduce(
-    (t, w) => t + w.penaltyPaise,
-    0,
-  );
 
   return (
     <div className="mx-auto max-w-detail px-4 py-4 pb-12 md:px-6 md:py-6">

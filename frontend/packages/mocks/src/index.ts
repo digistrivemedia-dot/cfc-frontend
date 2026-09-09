@@ -166,3 +166,17 @@ export {
   PROS_NOTIFIED_PER_JOB,
   type OfferOutcome,
 } from "./api/pro-offers";
+export {
+  submitQuotation,
+  completeJob,
+  addExtraCharge,
+  quoteTotal,
+  QUOTATION_MIN_BEFORE_PHOTOS,
+  PHONE_CONFIRM_THRESHOLD_PAISE,
+  QUOTATION_WINDOW_MINUTES,
+  type QuoteDraft,
+  type QuoteSubmission,
+  type QuoteRejection,
+  type CompletionResult,
+  type CompletionRejection,
+} from "./api/pro-work";

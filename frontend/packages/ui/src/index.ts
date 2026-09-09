@@ -175,6 +175,16 @@ export {
 // StarRating and SnapScroller.
 export { Accordion } from "./components/accordion";
 export { OtpDisplay } from "./components/otp-display";
+export { OtpInput, type OtpInputProps } from "./components/otp-input";
+export {
+  PhotoCapture,
+  type PhotoCaptureProps,
+  type CapturedPhoto,
+} from "./components/photo-capture";
+export {
+  MoneyBreakdown,
+  type MoneyBreakdownProps,
+} from "./components/money-breakdown";
 export { PhotoGrid } from "./components/photo-grid";
 export { SnapScroller } from "./components/snap-scroller";
 export {

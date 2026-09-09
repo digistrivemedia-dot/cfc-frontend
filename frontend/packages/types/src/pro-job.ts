@@ -144,3 +144,19 @@ export interface ProDayStats {
   rating: number;
   totalEarnedNetPaise: Paise;
 }
+
+/**
+ * A charge added on site, mid-job. Pro 15.
+ *
+ * Deliberately not a quotation. A quotation is a priced proposal an admin
+ * reviews and the customer accepts with a 50% advance; this is a small,
+ * explainable addition to work already under way — a part, a second visit
+ * charge. Conflating the two is how a pro ends up routing ₹4,000 of work around
+ * the approval flow, so they are separate types with separate screens.
+ */
+export interface ExtraCharge {
+  id: Id;
+  /** What the charge is for, in words the customer will read. */
+  label: string;
+  amountPaise: Paise;
+}

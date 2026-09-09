@@ -5,6 +5,7 @@ import {
   ProMobileTopBar,
   ProRail,
 } from "@/components/pro-shell";
+import { OfferListener } from "@/components/offer-listener";
 
 /**
  * The signed-in Pro app.
@@ -33,6 +34,11 @@ export default function ProAppLayout({
       </div>
 
       <ProBottomNav />
+
+      {/* Job offers, mounted once so they can interrupt any screen. Silent
+          while the pro is offline — see OfferListener. */}
+      <OfferListener />
+
       <Toaster />
     </div>
   );

@@ -177,6 +177,10 @@ export { Accordion } from "./components/accordion";
 export { OtpDisplay } from "./components/otp-display";
 export { PhotoGrid } from "./components/photo-grid";
 export { SnapScroller } from "./components/snap-scroller";
+export {
+  CountdownRing,
+  type CountdownRingProps,
+} from "./components/countdown-ring";
 export { StarRating, StarRatingInput } from "./components/star-rating";
 export { ServiceCard } from "./components/service-card";
 export {

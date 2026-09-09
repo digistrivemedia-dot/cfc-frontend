@@ -68,6 +68,21 @@ function addressFor(rand: () => number, area: string): string {
   return `${door}, ${street}, ${area}, Tiruchirappalli`;
 }
 
+/**
+ * A point near Tiruchirappalli, for the GPS proof rule.
+ *
+ * Roughly a 6 km box around the city centre (10.7905 N, 78.7047 E). Real
+ * coordinates matter here because the completion gate measures a real distance
+ * against them — a placeholder of (0, 0) would put every customer in the Gulf
+ * of Guinea and fail the check for every pro on earth.
+ */
+function scatterAround(rand: () => number): { lat: number; lng: number } {
+  return {
+    lat: 10.7905 + (rand() - 0.5) * 0.055,
+    lng: 78.7047 + (rand() - 0.5) * 0.055,
+  };
+}
+
 /** The completion code the customer reads out. Pro 18. */
 function otpFor(rand: () => number): string {
   return String(1000 + Math.floor(rand() * 9000));
@@ -153,6 +168,9 @@ function build(proId: string): Built {
           ? "Please call before arriving — the gate is locked."
           : null,
       distanceKm,
+      // Scattered around Tiruchirappalli's centre. Released with the address,
+      // and for the same reason.
+      location: accepted ? scatterAround(rand) : null,
       netEarningPaise: grossEarningPaise - cfcFeePaise,
       grossEarningPaise,
       // Only released once the pro is on site, and only the customer can read

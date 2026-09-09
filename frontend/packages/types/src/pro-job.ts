@@ -85,6 +85,14 @@ export interface ProJob {
 
   /** Straight-line distance from the pro. The figure a pro decides on. */
   distanceKm: number;
+  /**
+   * The customer's location, for the 100 m completion gate (Pro 15, 18).
+   *
+   * **Null until the job is accepted**, like the address it belongs to. A
+   * coordinate is an address by another name, so withholding the street and
+   * publishing the exact latitude would defeat the point entirely.
+   */
+  location: { lat: number; lng: number } | null;
 
   /** What the pro clears after CFC's commission. The decision figure. */
   netEarningPaise: Paise;

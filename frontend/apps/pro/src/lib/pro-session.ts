@@ -23,11 +23,17 @@ const ONLINE_KEY = "cfc_pro_online";
 /**
  * The pro this session is signed in as.
  *
- * `pro_0001` is approved in the fixtures, so the app is usable end to end.
- * Signing in as the pending pro (`pro_0010`) is how the Approval Pending screen
- * is demonstrated — see Phase 9.
+ * `pro_0002` — approved AND not blocked, which are two separate flags in the
+ * fixtures. `pro_0001` is approved but `blocked: true`, so choosing it made the
+ * whole app look broken: `nextOffer` correctly refuses a blocked pro, so no job
+ * alert ever arrived and the guard looked like a bug in the offer stream.
+ *
+ * The other fixture states are how their screens get demonstrated:
+ *   `pro_0001` blocked        → the warnings screen (Pro 34)
+ *   `pro_0010` pending KYC    → approval pending (Pro 9)
+ *   `pro_0011` rejected       → the rejection path
  */
-const DEFAULT_PRO_ID = "pro_0001";
+const DEFAULT_PRO_ID = "pro_0002";
 
 export function signIn(proId: string): void {
   try {

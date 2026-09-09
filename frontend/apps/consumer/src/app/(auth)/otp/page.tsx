@@ -130,6 +130,7 @@ function OtpInner() {
       heading={FROM_HEADING[from]}
       subheading={`We sent a 6-digit code to +91\u00a0${phone}. Auto-filling in a moment\u2026`}
       backHref={FROM_BACK[from]}
+      showAssurance={false}
       backLabel="Wrong number? Go back"
     >
       <form

@@ -18,6 +18,7 @@ export * from "./pricing";
 export * from "./pro-earnings";
 export * from "./pro-job";
 export * from "./pro-profile";
+export * from "./pro-notification";
 export * from "./finance";
 export * from "./promotion";
 export * from "./report";

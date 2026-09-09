@@ -83,8 +83,13 @@ rather than pretending.
 
 - **Dark mode.** Parked with the client for the whole platform. Pro screens use
   semantic tokens only, so it lands as a token swap rather than a rewrite.
-- **Multi-language.** Clause 4.6 names customer screens only; the pro app is
-  not in that clause. Strings kept extractable regardless.
+- **Multi-language.** Clause 4.6 names **customer** screens only — the pro app
+  is not in that clause at all, so pro-app translation is not a deferred
+  commitment but an expectation with no contractual backing. Pro 33 says the
+  app is English for now rather than offering options that do nothing. Strings
+  kept extractable regardless. **Worth raising with the client:** a pro
+  workforce in Tiruchirappalli is more likely to need Tamil than the customers
+  are, so the clause may have this backwards.
 
 ---
 
@@ -140,6 +145,22 @@ scale is no evidence at all that it exists in a sibling scale.** `width`,
 The Phase 10 sweep greps the built CSS for every spacing and sizing class the
 app uses, which is how all three were found.
 
+### 4.6 A cross-role support leak — caught in Phase 8
+`getMyTickets()` hard-filters to `fromRole === "customer"`. Calling it from the
+pro app — the obvious reuse, since the function is generically named — would
+have shown a professional **other people's support tickets, subject lines and
+all.**
+
+The customer fixture includes *"Pro did not arrive at scheduled time"*. A
+complaint about a professional, visible to professionals.
+
+Fixed with `getProTickets(proId)`, filtering to `fromRole === "pro"` and
+reusing the same `stripInternal` projection so agents' internal notes never
+reach a pro either. Verified: zero customer-raised tickets in the pro list.
+
+**The lesson:** a function named `getMy…` in a shared package has an implicit
+"my" baked into it. Reusing one across roles is how a leak ships.
+
 ---
 
 ## 5. Verified, and deliberately left alone
@@ -192,6 +213,41 @@ app uses, which is how all three were found.
 - **The rating is shown with the 2.5 auto-block threshold attached.** A pro at
   2.7 is one bad week from losing their account, and a bare number does not
   convey that. The threshold is never hidden.
+- **A pro sees only pro-raised support tickets.** Verified after fixing the
+  cross-role leak above — zero customer tickets in the pro list.
+- **The rating breakdown's bars average exactly to its headline.** Verified
+  across six pros: counts sum to the total, no negatives, and the mean derived
+  from the bars equals the number printed above them. A distribution that
+  contradicts its own average is the first thing anyone checks.
+- **The distribution is shown, not just the average.** Four 5-star jobs and one
+  1-star average to 4.2 — and so do five 4-star jobs. Only one of those pros
+  has a problem to fix, and only the breakdown shows which.
+- **Reviews are labelled as examples while `REVIEWS_ARE_PLACEHOLDER` is true.**
+  One flag, shared with the consumer side. Presenting invented reviews as a
+  pro's actual record is the exact failure that got the consumer home page
+  rebuilt.
+- **Job alerts cannot be switched off in Settings.** A pro who turned them off
+  would stop receiving work and would not connect the two — they would conclude
+  the platform had stopped sending jobs. The switch is present, locked on, and
+  points at the two correct controls: going offline, or holiday mode.
+- **Notifications are generated from the pro's real record.** A pro with no
+  warnings sees no warning notification; a blocked pro sees the notice that
+  explains it. Verified: warning rows match `warningCount`, plus the block
+  notice where applicable. A static list would contradict the profile screen
+  one tap away.
+- **Warnings are their own notification kind, never grouped.** The customer's
+  `AppNotification` union has no warning at all, and filing one under
+  "reminder" would bury the most consequential message this app delivers.
+- **The pro FAQ answers pro questions.** Twelve entries, each a rule the app
+  enforces somewhere — "why did I go offline after accepting", "is GST taken
+  out of my payment", "why can I not mark this job complete". Most of this
+  app's rules are invisible until they bite; a well-aimed FAQ is cheaper than
+  the support call it prevents.
+- **One helpline number, re-exported rather than duplicated.** A pro and a
+  customer ringing different numbers is a real operational problem, and two
+  constants is how that happens.
+- **Deactivation is a request with the active-job count shown.** A pro with
+  jobs booked cannot simply vanish — a customer is expecting them tomorrow.
 - **Offline is the default on app open.** A pro who has not said they are ready
   should not be in the dispatch pool — being alerted for a job they cannot take
   costs them a penalty, not just an annoyance.

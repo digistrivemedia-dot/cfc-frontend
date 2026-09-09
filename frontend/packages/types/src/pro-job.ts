@@ -101,6 +101,26 @@ export interface ProJob {
 
   /** The customer's completion code. Null until they are on site (Pro 18). */
   completionOtp: string | null;
+
+  /**
+   * What the service includes. Pro 21 — "service checklist".
+   *
+   * The admin defines this per service, so the pro and the customer are working
+   * from the same list. It is what stops a "deep clean" meaning one thing to
+   * the person who booked it and another to the person doing it — which is the
+   * root of most disputes a platform like this sees.
+   */
+  checklist: string[];
+
+  /**
+   * Photos taken on this job. Empty until the pro uploads any.
+   *
+   * Separated because they answer different questions in a dispute: `before`
+   * shows what the pro walked into, `after` shows what they left. A single
+   * merged array loses exactly the distinction that matters.
+   */
+  beforePhotoUrls: string[];
+  afterPhotoUrls: string[];
 }
 
 /** The four tabs on Pro 20. */

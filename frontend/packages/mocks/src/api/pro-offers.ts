@@ -2,6 +2,7 @@ import type { ProJob } from "@cfc/types";
 import { AREAS, CUSTOMER_NAMES, SERVICE_CATALOG } from "../fixtures/seed";
 import { pros } from "../fixtures/pros";
 import { commissionFor } from "./pro-earnings";
+import { checklistFor } from "./pro-jobs";
 import { latency } from "../control";
 
 /**
@@ -105,6 +106,12 @@ export async function nextOffer(proId: string): Promise<ProJob | null> {
     netEarningPaise: grossEarningPaise - cfcFeePaise,
     grossEarningPaise,
     completionOtp: null,
+    // What the job involves. Carried on the OFFER as well, because "deep home
+    // cleaning" covers a very different amount of work in different pros'
+    // heads, and 30 seconds is not long enough to guess.
+    checklist: [],
+    beforePhotoUrls: [],
+    afterPhotoUrls: [],
   };
 }
 
@@ -160,6 +167,7 @@ export async function acceptOffer(offer: ProJob): Promise<OfferOutcome> {
       },
       customerPhone: `+91 ${9_000_000_000 + Math.floor(rnd() * 999_999_999)}`,
       landmark: rnd() < 0.6 ? "Near the water tank" : null,
+      checklist: checklistFor(offer.serviceName),
     },
   };
 }

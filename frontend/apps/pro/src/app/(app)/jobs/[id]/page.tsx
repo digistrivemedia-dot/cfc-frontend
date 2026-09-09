@@ -6,7 +6,9 @@ import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CalendarClock,
+  Check,
   CheckCircle2,
+  ListChecks,
   Loader2,
   MapPin,
   MessageCircle,
@@ -16,12 +18,18 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { getProJob } from "@cfc/mocks";
-import { PRO_JOB_STATUS_LABEL, type ProJob } from "@cfc/types";
+import {
+  CFC_COMMISSION_BPS,
+  PRO_JOB_STATUS_LABEL,
+  type ProJob,
+} from "@cfc/types";
 import {
   Badge,
   Button,
   ErrorState,
   MapView,
+  MoneyBreakdown,
+  PhotoGrid,
   Skeleton,
   cn,
   formatCurrency,
@@ -36,9 +44,17 @@ import {
 } from "@/lib/use-distance-to";
 
 /**
- * Pro 13 and 14 — the accepted job, and getting to it.
+ * Pro 13, 14 and 21 — the job, at every stage of its life.
  *
- * One screen rather than two. "Navigation Screen" in the inventory is a Google
+ * One route rather than three, because they are the same job and a pro should
+ * not have to know which screen their job is "on". What changes with the status
+ * is the docked action and how much of the record is filled in:
+ *
+ *   on the way   → Navigate / Call / WhatsApp, and I'm Here      (Pro 13, 14)
+ *   in progress  → continue to the work screen
+ *   completed    → the full record: checklist, photos, settlement (Pro 21)
+ *
+ * "Navigation Screen" in the inventory is a Google
  * Maps handoff, not a screen we render — nobody should rebuild turn-by-turn
  * inside a web app, and a pro already has a maps app they know how to use. So
  * the map here is the *preview* that tells them where they are going, and
@@ -279,19 +295,99 @@ function JobView({
           </div>
         </section>
 
-        {/* What they earn. Net, as everywhere. */}
-        <section className="mt-4 rounded-card border border-border bg-surface p-4">
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="text-small text-ink-muted">You earn</span>
-            <span className="tabular text-title font-semibold text-ink">
-              {formatCurrency(job.netEarningPaise)}
-            </span>
-          </div>
-          <p className="mt-1 text-caption text-ink-muted">
-            After the CFC platform fee. Credited within 48 hours of completing
-            the job.
-          </p>
-        </section>
+        {/* Pro 21 — the service checklist. What "done" means, from the
+            admin's own definition, so the pro and the customer are working
+            from the same list. */}
+        {job.checklist.length > 0 && (
+          <section className="mt-4 overflow-hidden rounded-card border border-border bg-surface">
+            <h2 className="flex items-center gap-2 border-b border-border px-4 py-3 text-small font-semibold text-ink">
+              <ListChecks className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />
+              What this service includes
+            </h2>
+            <ul className="divide-y divide-border-soft">
+              {job.checklist.map((item) => (
+                <li key={item} className="flex items-start gap-3 px-4 py-3">
+                  <Check
+                    className={cn(
+                      "mt-px size-4 shrink-0",
+                      job.status === "completed" ? "text-live-ink" : "text-ink-faint",
+                    )}
+                    aria-hidden="true"
+                  />
+                  <span className="min-w-0 text-small text-ink">{item}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="border-t border-border bg-canvas px-4 py-2 text-caption text-ink-muted">
+              The customer sees this same list. Anything beyond it needs a
+              quotation or an agreed extra charge.
+            </p>
+          </section>
+        )}
+
+        {/* Pro 21 — the evidence. Before and after kept separate: in a dispute
+            they answer different questions, and merging them loses exactly the
+            distinction that matters. */}
+        {(job.beforePhotoUrls.length > 0 || job.afterPhotoUrls.length > 0) && (
+          <section className="mt-4 rounded-card border border-border bg-surface p-4">
+            <h2 className="text-small font-semibold text-ink">Job photos</h2>
+            {job.beforePhotoUrls.length > 0 && (
+              <div className="mt-3">
+                <p className="text-caption font-medium text-ink-muted">Before</p>
+                <PhotoGrid
+                  urls={job.beforePhotoUrls}
+                  label="Before photo"
+                  className="mt-2"
+                />
+              </div>
+            )}
+            {job.afterPhotoUrls.length > 0 && (
+              <div className="mt-3">
+                <p className="text-caption font-medium text-ink-muted">After</p>
+                <PhotoGrid
+                  urls={job.afterPhotoUrls}
+                  label="After photo"
+                  className="mt-2"
+                />
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* What they earn.
+            A finished job gets the full settlement — gross, fee, net — because
+            that is the record a pro checks against their bank. An unfinished
+            one gets the net figure alone: quoting a fee that has not been
+            charged yet reads as money already gone. */}
+        {job.status === "completed" ? (
+          <MoneyBreakdown
+            className="mt-4"
+            grossPaise={job.grossEarningPaise}
+            cfcFeePaise={job.grossEarningPaise - job.netEarningPaise}
+            netPaise={job.netEarningPaise}
+            cfcFeeBps={
+              job.grossEarningPaise === job.netEarningPaise
+                ? 0
+                : CFC_COMMISSION_BPS
+            }
+            commissionFree={job.grossEarningPaise === job.netEarningPaise}
+            payoutNote="Credited to your bank or UPI within 48 hours of completing."
+            gstNote
+          />
+        ) : (
+          <section className="mt-4 rounded-card border border-border bg-surface p-4">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-small text-ink-muted">You earn</span>
+              <span className="tabular text-title font-semibold text-ink">
+                {formatCurrency(job.netEarningPaise)}
+              </span>
+            </div>
+            <p className="mt-1 text-caption text-ink-muted">
+              After the CFC platform fee. Credited within 48 hours of completing
+              the job.
+            </p>
+          </section>
+        )}
       </div>
     </ProActionLayout>
   );

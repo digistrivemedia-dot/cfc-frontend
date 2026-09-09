@@ -83,6 +83,96 @@ function scatterAround(rand: () => number): { lat: number; lng: number } {
   };
 }
 
+/**
+ * What each service actually involves. Pro 21 — "service checklist".
+ *
+ * Deliberately NOT the catalog's `inclusions`, which carry the same three
+ * generic lines on every service ("Doorstep service", "Verified technician").
+ * Those are right for a customer deciding whether to book; they are useless to
+ * a pro standing in a bathroom deciding what "done" means.
+ *
+ * In production the admin defines these per service, since the admin owns the
+ * catalogue. Keyed by service name so a service with no list falls back to a
+ * general one rather than rendering an empty section.
+ */
+const CHECKLISTS: Record<string, string[]> = {
+  "AC service & repair": [
+    "Check gas pressure and top up if needed",
+    "Clean the filters and the cooling coil",
+    "Clear the drainage pipe",
+    "Test cooling and note the outlet temperature",
+    "Wipe down the unit and the surrounding wall",
+  ],
+  "Deep home cleaning": [
+    "Dust and wipe all reachable surfaces",
+    "Scrub bathrooms — floor, tiles, fittings",
+    "Clean the kitchen platform, sink and cabinet fronts",
+    "Sweep and mop every floor",
+    "Remove all waste from the premises",
+  ],
+  "Bathroom cleaning": [
+    "Descale tiles, floor and grouting",
+    "Clean and disinfect the WC and cistern",
+    "Polish taps, shower and mirror",
+    "Clear the floor drain",
+  ],
+  "Plumbing — tap & pipe": [
+    "Identify the leak or blockage",
+    "Replace washers, seals or the fitting as needed",
+    "Test at full pressure for leaks",
+    "Clear and clean the work area",
+  ],
+  "Electrical repair": [
+    "Isolate the circuit before starting",
+    "Test the fault with a meter",
+    "Replace the faulty part",
+    "Test the circuit under load and restore power",
+  ],
+  "Wall painting": [
+    "Cover floors and furniture",
+    "Fill and sand the surface",
+    "Apply primer and let it cure",
+    "Apply the finish coats evenly",
+    "Clean up and remove all covering",
+  ],
+  "Pest control": [
+    "Inspect and identify the affected areas",
+    "Apply the treatment to entry points and nests",
+    "Advise the customer on the safe re-entry period",
+    "Leave written aftercare instructions",
+  ],
+  "Sofa & carpet cleaning": [
+    "Vacuum thoroughly before wet work",
+    "Spot-treat stains",
+    "Shampoo and extract",
+    "Confirm drying time with the customer",
+  ],
+  "Carpentry work": [
+    "Measure and confirm with the customer before cutting",
+    "Carry out the fitting or repair",
+    "Check alignment, hinges and movement",
+    "Clear all sawdust and offcuts",
+  ],
+};
+
+/** Used where a service has no specific list. Never rendered empty. */
+const GENERAL_CHECKLIST = [
+  "Confirm the work with the customer before starting",
+  "Complete the job to the agreed scope",
+  "Test and show the finished work to the customer",
+  "Clear the work area before leaving",
+];
+
+/**
+ * The checklist for a service, with the general fallback.
+ *
+ * Exported so the offer path uses the same source. Two lists for one service
+ * is how a pro is shown one scope on the offer and a different one on the job.
+ */
+export function checklistFor(serviceName: string): string[] {
+  return CHECKLISTS[serviceName] ?? GENERAL_CHECKLIST;
+}
+
 /** The completion code the customer reads out. Pro 18. */
 function otpFor(rand: () => number): string {
   return String(1000 + Math.floor(rand() * 9000));
@@ -176,6 +266,18 @@ function build(proId: string): Built {
       // Only released once the pro is on site, and only the customer can read
       // it out. Pro 18.
       completionOtp: opts.onSite === true ? otpFor(rand) : null,
+      checklist: checklistFor(serviceName),
+      // A completed job has its evidence; anything earlier does not yet.
+      // The paths resolve to nothing in development, which PhotoGrid already
+      // handles with a labelled placeholder rather than a broken-image icon.
+      beforePhotoUrls:
+        status === "completed"
+          ? [`/mock/jobs/${proId}-${seq}-before-1.jpg`, `/mock/jobs/${proId}-${seq}-before-2.jpg`]
+          : [],
+      afterPhotoUrls:
+        status === "completed"
+          ? [`/mock/jobs/${proId}-${seq}-after-1.jpg`]
+          : [],
     };
   };
 

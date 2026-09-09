@@ -20,6 +20,7 @@ import { SUPPORT_PHONE, getConsumerProfile } from "@cfc/mocks";
 import type { ConsumerProfile } from "@cfc/types";
 import { Avatar, AvatarFallback, cn, initials } from "@cfc/ui";
 import { Logo } from "@/components/logo";
+import { useSession } from "@/lib/session";
 
 /**
  * The navigation shell for the signed-in app.
@@ -43,16 +44,19 @@ import { Logo } from "@/components/logo";
  */
 
 const NAV_ITEMS = [
-  { href: "/home", label: "Home", icon: Home },
+  { href: "/", label: "Home", icon: Home },
   { href: "/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/wallet", label: "Wallet", icon: Wallet },
   { href: "/profile", label: "Profile", icon: User },
 ] as const;
 
-/** `/home` must match exactly; the rest own their sub-routes. */
+/**
+ * The homepage is `/`, so it must match exactly — a `startsWith` test would
+ * mark it active on every route in the app. The rest own their sub-routes.
+ */
 function useIsActive(href: string): boolean {
   const pathname = usePathname();
-  if (href === "/home") return pathname === href;
+  if (href === "/") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -80,12 +84,13 @@ function useProfile(): ConsumerProfile | null {
 
 export function ConsumerTopBar() {
   const profile = useProfile();
+  const { signedIn } = useSession();
 
   return (
     <header className="sticky top-0 z-sticky hidden border-b border-border bg-surface md:block">
       <div className="mx-auto flex h-bar-lg max-w-screen-xl items-center gap-4 px-6 lg:px-8">
         <Link
-          href="/home"
+          href="/"
           className={cn(
             "flex shrink-0 items-center gap-2 rounded-control",
             "transition-opacity duration-fast hover:opacity-80",
@@ -98,7 +103,9 @@ export function ConsumerTopBar() {
           </span>
         </Link>
 
-        <LocationButton area={profile?.area} />
+        {/* The area is where *this customer* books. A visitor has not told us
+            one, so there is nothing to show and nothing to change. */}
+        {signedIn && <LocationButton area={profile?.area} />}
 
         <HeaderSearch />
 
@@ -117,8 +124,27 @@ export function ConsumerTopBar() {
             Help
           </a>
 
-          <NotificationBell />
-          <AccountMenu profile={profile} />
+          {signedIn ? (
+            <>
+              <NotificationBell />
+              <AccountMenu profile={profile} />
+            </>
+          ) : (
+            /* A guest gets the one control that matters to them. Notifications
+               and an avatar with somebody's initials in it are meaningless
+               before there is an account. */
+            <Link
+              href="/login"
+              className={cn(
+                "flex h-field shrink-0 items-center rounded-control bg-action px-5",
+                "text-small font-semibold text-on-action",
+                "transition-colors duration-fast hover:bg-action-hover",
+                "focus-visible:outline-none focus-visible:outline-focus",
+              )}
+            >
+              Log in
+            </Link>
+          )}
         </div>
       </div>
     </header>
@@ -181,6 +207,8 @@ function HeaderSearch() {
 function AccountMenu({ profile }: { profile: ConsumerProfile | null }) {
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  const { signOut } = useSession();
 
   // Close on an outside click or Escape, the two ways a person expects to
   // dismiss a menu they opened by accident.
@@ -281,12 +309,19 @@ function AccountMenu({ profile }: { profile: ConsumerProfile | null }) {
               scanning the list above. It existed only on Profile and
               Settings before — which is not where anyone looks for it. */}
           <div className="border-t border-border pt-1">
-            <Link
-              href="/login"
+            <button
+              type="button"
               role="menuitem"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                // Clear the session, then land on the public homepage. Sending
+                // them to /login instead would be odd: signing out is not a
+                // request to sign back in, and the site is browsable either way.
+                signOut();
+                router.push("/");
+              }}
               className={cn(
-                "flex items-center gap-3 rounded-control px-3 py-2",
+                "flex w-full items-center gap-3 rounded-control px-3 py-2 text-left",
                 "text-small font-medium text-critical-ink",
                 "transition-colors duration-fast hover:bg-critical-subtle",
                 "focus-visible:outline-none focus-visible:outline-focus",
@@ -294,7 +329,7 @@ function AccountMenu({ profile }: { profile: ConsumerProfile | null }) {
             >
               <LogOut className="size-4" aria-hidden="true" />
               Sign out
-            </Link>
+            </button>
           </div>
         </div>
       )}
@@ -307,11 +342,24 @@ function AccountMenu({ profile }: { profile: ConsumerProfile | null }) {
 export function ConsumerMobileTopBar() {
   const profile = useProfile();
   const router = useRouter();
+  const { signedIn } = useSession();
 
   return (
     <header className="sticky top-0 z-sticky border-b border-border bg-surface md:hidden">
       <div className="flex h-bar items-center justify-between gap-3 px-4">
-        <LocationButton area={profile?.area} stacked />
+        {signedIn ? (
+          <LocationButton area={profile?.area} stacked />
+        ) : (
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-2 rounded-control"
+          >
+            <Logo className="size-mark shrink-0 text-action" />
+            <span className="truncate text-body font-semibold tracking-tight text-ink">
+              City Family Care
+            </span>
+          </Link>
+        )}
 
         <div className="flex shrink-0 items-center gap-1">
           <a
@@ -325,7 +373,21 @@ export function ConsumerMobileTopBar() {
           >
             <Phone className="size-4" aria-hidden="true" />
           </a>
-          <NotificationBell />
+          {signedIn ? (
+            <NotificationBell />
+          ) : (
+            <Link
+              href="/login"
+              className={cn(
+                "flex h-8 shrink-0 items-center rounded-control bg-action px-4",
+                "text-small font-semibold text-on-action",
+                "transition-colors duration-fast hover:bg-action-hover",
+                "focus-visible:outline-none focus-visible:outline-focus",
+              )}
+            >
+              Log in
+            </Link>
+          )}
         </div>
       </div>
 
@@ -352,6 +414,14 @@ export function ConsumerMobileTopBar() {
 }
 
 export function ConsumerBottomNav() {
+  const { signedIn } = useSession();
+
+  // Three of the four tabs are personal. A visitor tapping "Bookings" before
+  // they have an account reaches a screen that can only be empty, so the strip
+  // does not appear at all until there is a customer behind it — the page keeps
+  // that height instead.
+  if (!signedIn) return null;
+
   return (
     <nav
       aria-label="Main"

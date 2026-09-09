@@ -13,6 +13,7 @@ import {
 } from "@/components/consumer-nav";
 import { ConsumerFooter } from "@/components/consumer-footer";
 import { ScenarioHook } from "@/components/scenario-hook";
+import { AppMain } from "@/components/app-main";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -30,7 +31,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Main content — bottom padding on mobile leaves room for the tab bar */}
       {/* `flex-1` so a short page still pushes the footer to the bottom of
           the viewport rather than leaving it floating mid-screen. */}
-      <main className="flex-1 pb-tab-bar md:pb-0">{children}</main>
+      <AppMain>{children}</AppMain>
 
       <ConsumerFooter />
 

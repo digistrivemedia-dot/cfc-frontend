@@ -58,12 +58,35 @@ const profile: ConsumerProfile = {
   addresses: [],
 };
 
-/** The logged-in customer's own profile — used by My Profile and the app shell. */
+/**
+ * The logged-in customer's own profile — used by My Profile and the app shell.
+ *
+ * The `empty` scenario returns a **brand-new customer** rather than throwing.
+ * Without an empty value `applyScenario` raises a 404, and because the home
+ * screen fetches the profile alongside the catalogue in one `Promise.all`, that
+ * rejection took the categories, services and banners down with it — the whole
+ * page rendered blank under `__cfc.empty()`. Whatever "empty" means for this
+ * platform, it is not "the signed-in customer has no account": it means they
+ * have no history yet, which is exactly the first-time visitor the home screen
+ * needs to be reviewable against.
+ */
 export async function getConsumerProfile(): Promise<ConsumerProfile> {
   await latency();
   // Addresses are read from their own module so the two never disagree.
   const addresses = await getAddresses();
-  return applyScenario({ ...profile, addresses });
+  return applyScenario(
+    { ...profile, addresses },
+    {
+      ...profile,
+      // A new customer has booked nothing, spent nothing, and has not told us
+      // where they live yet — the shell shows "Set your area" for this.
+      area: "",
+      addresses: [],
+      walletPaise: 0,
+      totalBookings: 0,
+      joinedAt: new Date().toISOString(),
+    },
+  );
 }
 
 /**

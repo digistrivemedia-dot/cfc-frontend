@@ -44,19 +44,44 @@ function build(): ProDetail[] {
     const services = pick(SERVICE_SKILLS) as unknown as string[];
     const experienceYears = Math.floor(2 + rand() * 8);
 
-    const documents = DOC_TYPES.map((type) => ({
-      type,
-      imageUrl: `/mock/docs/${name.split(" ")[0]?.toLowerCase()}-${type}.jpg`,
-      status:
-        approvalStatus === "rejected" && rand() < 0.4
-          ? ("rejected" as const)
-          : approvalStatus === "pending"
-            ? ("pending" as const)
-            : ("approved" as const),
-      ...(approvalStatus === "rejected" && rand() < 0.4
-        ? { rejectionReason: "Document image is blurred — reupload needed." }
-        : {}),
-    }));
+    // A rejection ALWAYS carries its reason, and an approval never does.
+    //
+    // This previously drew two independent `rand()` values — one deciding the
+    // status, another deciding whether a reason attached — so the two
+    // disagreed about half the time. That produced documents rejected with no
+    // reason at all, which on the pro's approval screen is a demoralising dead
+    // end, and documents marked approved that carried a rejection reason,
+    // which is simply nonsense.
+    //
+    // One draw per document, and the reason is derived from the status.
+    const documents = DOC_TYPES.map((type) => {
+      const failed = approvalStatus === "rejected" && rand() < 0.5;
+      const status = failed
+        ? ("rejected" as const)
+        : approvalStatus === "pending"
+          ? ("pending" as const)
+          : ("approved" as const);
+
+      // Reasons vary by document, because "blurred" is unhelpful for a PAN
+      // card whose number could not be read, and a pro re-uploading needs to
+      // know what specifically to do differently.
+      const reasons: Record<DocumentType, string> = {
+        aadhaar_front:
+          "The Aadhaar number is not readable. Photograph it in better light with all four corners in frame.",
+        aadhaar_back:
+          "The address side is cut off. Include the whole card in the photo.",
+        pan: "The PAN number could not be read. Photograph the card flat, without glare.",
+        selfie:
+          "Your face is not clearly visible. Take the photo facing a window, without a cap or sunglasses.",
+      };
+
+      return {
+        type,
+        imageUrl: `/mock/docs/${name.split(" ")[0]?.toLowerCase()}-${type}.jpg`,
+        status,
+        ...(status === "rejected" ? { rejectionReason: reasons[type] } : {}),
+      };
+    });
 
     return {
       id: `pro_${(i + 1).toString().padStart(4, "0")}`,

@@ -216,3 +216,32 @@ export {
   type ProNotificationFilter,
 } from "./api/pro-notifications";
 export { getProFaqs, getProTickets } from "./api/pro-support";
+export {
+  sendProOtp,
+  verifyProOtp,
+  registerPro,
+  saveProfileSetup,
+  uploadDocument,
+  saveBankDetails,
+  acceptTerms,
+  getApprovalState,
+  getRegisterableServices,
+  isValidIfsc,
+  isValidAccountNumber,
+  isValidUpi,
+  REQUIRED_DOCUMENTS,
+  PRO_OTP_LENGTH,
+  OTP_RESEND_SECONDS,
+  type ProRegistration,
+  type ProProfileSetup,
+  type BankDetails,
+  type ApprovalState,
+} from "./api/pro-onboarding";
+export {
+  getGoldenRules,
+  getPenaltyStructure,
+  acceptConduct,
+  PENALTY_AMOUNTS_NOT_SET,
+  type GoldenRule,
+  type PenaltyStep,
+} from "./api/pro-conduct";

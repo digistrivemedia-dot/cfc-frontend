@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { archivo } from "@/lib/fonts";
 import { SURFACE } from "@cfc/tokens";
 import { Toaster } from "@cfc/ui";
+import { SessionProvider } from "@/lib/session";
 import "@cfc/ui/styles.css";
 
 export const metadata: Metadata = {
@@ -35,7 +36,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={archivo.variable}>
       <body suppressHydrationWarning className="bg-canvas font-sans text-ink antialiased">
-        {children}
+        {/* Signed-in state wraps everything: the header, the homepage and every
+            screen need it, and a visitor who has not signed in must never be
+            shown another customer's bookings. */}
+        <SessionProvider>{children}</SessionProvider>
         <Toaster />
       </body>
     </html>

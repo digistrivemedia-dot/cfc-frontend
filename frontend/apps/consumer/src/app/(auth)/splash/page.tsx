@@ -30,7 +30,7 @@ export default function SplashPage() {
     const timer = setTimeout(() => {
       try {
         const seen = localStorage.getItem(STORAGE_KEY) === "true";
-        router.replace(seen ? "/home" : "/onboarding");
+        router.replace(seen ? "/" : "/onboarding");
       } catch {
         // localStorage unavailable (private mode) — always go to onboarding.
         router.replace("/onboarding");

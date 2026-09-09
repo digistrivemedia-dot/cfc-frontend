@@ -11,15 +11,37 @@
 
 ## 1. Client decisions — the app cannot make these up
 
-### 1.1 The CFC 3 Golden Rules (Pro 35) — **blocking that screen's content**
+### 1.1 The CFC 3 Golden Rules (Pro 35) — **built, awaiting the client's wording**
 The inventory asks for "CFC 3 Golden Rules, penalty structure, sign-off
 confirmation". **The agreement names neither the three rules nor any penalty
 amount.** `PLATFORM-FACTS.md` has the penalty *mechanism* (warnings, deductions,
 auto-block below 2.5 rating) but no schedule of offences and rupee figures.
 
-Built as a complete screen with the penalty column reading "Set by admin" and
-sourced from the warnings data. **Needed from the client:** the three rules as
-they should be worded, and the penalty schedule.
+**What was built instead of inventing them.** The three rules are derived from
+what the platform already enforces in code, and each cites the mechanism behind
+it:
+
+1. **Turn up, on time, every time** — the 30-second accept window, the
+   auto-reject on timeout.
+2. **Prove the work** — the 100 m GPS gate, the customer's completion OTP, the
+   before/after photos, the minimum-2 rule on quotations.
+3. **Behave as a guest in someone's home** — the rating that gates dispatch and
+   auto-blocks below 2.5.
+
+The three existing warning reasons in the fixture — lateness, missing GPS proof,
+unprofessional conduct — map onto exactly these three, which is reasonable
+evidence the derivation is right rather than arbitrary.
+
+**No rupee figures anywhere.** Each rule's consequence says the office sets the
+deduction per incident, which is true. `PENALTY_AMOUNTS_NOT_SET` is a flag in
+`pro-conduct.ts`; clearing it and adding a table is a one-file change.
+
+One component renders both Pro 8 (accepting) and Pro 35 (reading), word for
+word — a professional who signed one wording and later read another would have
+a legitimate grievance.
+
+**Still needed from the client:** the three rules as they want them worded, and
+the penalty schedule if one exists.
 
 ### 1.2 Payout minimum threshold (Pro 24) — **built, awaiting the figure**
 The inventory says "minimum threshold". No figure exists anywhere in the
@@ -161,6 +183,24 @@ reach a pro either. Verified: zero customer-raised tickets in the pro list.
 **The lesson:** a function named `getMy…` in a shared package has an implicit
 "my" baked into it. Reusing one across roles is how a leak ships.
 
+### 4.7 A document could be rejected with no reason — caught in Phase 9
+The pro fixture drew **two independent `rand()` values** per document: one
+deciding the status, another deciding whether a rejection reason attached. They
+disagreed about half the time, producing:
+
+- documents **rejected with no reason at all** — on the approval screen that is
+  a demoralising dead end, and the pro has no idea what to re-upload
+- documents marked **approved that carried a rejection reason** — nonsense
+
+Fixed to one draw per document with the reason derived from the status, and the
+reasons made document-specific ("the PAN number could not be read", "the address
+side is cut off") because "blurred" tells a pro nothing about what to do
+differently. Verified: every rejection now carries a reason and no approval
+does.
+
+**The lesson:** two random draws deciding two halves of one fact will disagree.
+Derive the second from the first.
+
 ---
 
 ## 5. Verified, and deliberately left alone
@@ -248,6 +288,46 @@ reach a pro either. Verified: zero customer-raised tickets in the pro list.
   constants is how that happens.
 - **Deactivation is a request with the active-job count shown.** A pro with
   jobs booked cannot simply vanish — a customer is expecting them tomorrow.
+- **Bank details are validated before they can cost anyone anything.** IFSC
+  shape, account-number length, and the account number entered **twice** with
+  paste blocked on the confirmation — a banking convention that exists because
+  a single field silently accepts a plausible wrong answer. A wrong IFSC does
+  not fail now, it fails when the first payout is attempted days later, with
+  the pro chasing it. All three validators verified against 17 cases.
+- **The onboarding intro states no earnings figure.** Nothing in the agreement
+  supports "earn ₹40,000 a month", and a platform that opens with an invented
+  number has set the tone for everything after it. The commission-free first
+  jobs and the 48-hour payout are real documented terms.
+- **Pro 6 tells the pro why each document is wanted, next to the box that
+  wants it.** This is the most invasive screen in the app; a vague reason gets
+  it abandoned more slowly than no reason.
+- **`uploadDocument` always returns `pending`.** A screen that ticked a
+  document green on upload would teach the pro the review is automatic, then
+  contradict itself on the approval screen. A person reviews these.
+- **Pro 9 promises no KYC turnaround time.** The agreement gives none, so the
+  screen says what happens rather than when, and offers the helpline with its
+  hours. "Within 24 hours" against no documented commitment would be a
+  developer inventing an SLA.
+- **Pro 9 shows per-document status, not one global spinner.** A pro whose
+  Aadhaar passed and whose selfie failed needs to know that, or they re-do all
+  four.
+- **"Auto-read OTP" is honest.** `autoComplete="one-time-code"` plus WebOTP
+  behind an `"OTPCredential" in window` guard, with an abort controller so an
+  abandoned listener does not block the next request. No fake auto-fill
+  animation: a pro who watches an app pretend to read their SMS and then types
+  it anyway has learnt the app lies about small things.
+- **Pro 8 asks for two acknowledgements, not one "I agree".** They are the two
+  things that most surprise a new pro — that proof is required, and that
+  warnings are real — so a pro has to read far enough to know what the second
+  refers to. A deliberate friction.
+- **Registration picks services from the catalogue, never free text.** A pro
+  typing "AC repair" against a catalogue entry named "AC service & repair"
+  would be matched to zero jobs, and nobody would find out for a week.
+- **Pro 34 shows a ₹0 penalty as ₹0.** Rendering nothing would leave a pro
+  unsure whether money was taken.
+- **A clean disciplinary record is stated out loud.** "No warnings on your
+  account" rather than an empty list — a pro who has done nothing wrong should
+  be told so.
 - **Offline is the default on app open.** A pro who has not said they are ready
   should not be in the dispatch pool — being alerted for a job they cannot take
   costs them a penalty, not just an annoyance.

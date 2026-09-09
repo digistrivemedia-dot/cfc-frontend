@@ -6,6 +6,7 @@ import { RefreshCw } from "lucide-react";
 import { Button, toast } from "@cfc/ui";
 import { verifyOtp, sendOtp } from "@cfc/mocks";
 import { AuthShell } from "@/components/auth-shell";
+import { useSession } from "@/lib/session";
 
 /**
  * Consumer Screen 5 — OTP Verification.
@@ -39,6 +40,7 @@ const FROM_HEADING: Record<OtpFrom, string> = {
 
 function OtpInner() {
   const router = useRouter();
+  const { signIn } = useSession();
   const params = useSearchParams();
   const rawFrom = params.get("from");
   const from: OtpFrom = isValidFrom(rawFrom) ? rawFrom : "login";
@@ -96,13 +98,17 @@ function OtpInner() {
     setLoading(true);
     try {
       await verifyOtp(`+91${phone}`, code);
+      try { localStorage.setItem("cfc_onboarding_seen", "true"); } catch { /**/ }
+
+      // Every branch signs the customer in. Verifying a code from the
+      // forgot-password flow used to send them back to /login to start over —
+      // they proved who they were and got nothing for it. There is no password
+      // on this platform, so a verified number *is* the sign-in.
+      signIn();
       if (from === "forgot-password") {
-        toast.success("Verified. Please log in.");
-        router.replace("/login");
-      } else {
-        try { localStorage.setItem("cfc_onboarding_seen", "true"); } catch { /**/ }
-        router.replace("/home");
+        toast.success("Verified — you're signed in.");
       }
+      router.replace("/");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Invalid OTP. Please try again.");
       setLoading(false);

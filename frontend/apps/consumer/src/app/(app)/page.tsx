@@ -39,9 +39,17 @@ import { ActiveBookingCard } from "@/components/active-booking-card";
 import { BannerCarousel } from "@/components/banner-carousel";
 import { HomeHero } from "@/components/home-hero";
 import { SubCategoryTile } from "@/components/subcategory-tile";
+import { useSession } from "@/lib/session";
 
 /**
- * Customer 7 — Home.
+ * Customer 7 — Home. Served at `/`, the site's actual front door.
+ *
+ * It used to live at `/home`, with `/` redirecting there. That redirect was
+ * wrong twice over: a visitor typing the domain watched the URL change under
+ * them, and the homepage — the most important page on a marketplace, and the
+ * one search engines index — was not at the root. It is now the index of the
+ * `(app)` group, so it renders directly with the header, footer and mobile tab
+ * bar, and the address bar stays on the domain the visitor typed.
  *
  * Design C: utility dashboard.
  *
@@ -136,29 +144,51 @@ export default function HomePage() {
   const [active, setActive] = React.useState<ConsumerBooking | null>(null);
   const [rebookable, setRebookable] = React.useState<Rebookable[] | null>(null);
   const [error, setError] = React.useState(false);
+  const { signedIn } = useSession();
 
   const load = React.useCallback(() => {
+    // Wait until the stored session has been read. Fetching a guest's view and
+    // then a customer's would flash the wrong homepage on every load.
+    if (signedIn === null) return;
+
     setError(false);
-    Promise.all([
+
+    // The catalogue is public — it is the whole point of the page, and a
+    // visitor arriving from a search result must see it without an account.
+    const publicData = Promise.all([
       getCategories(),
       getSubCategories(),
       getServices(),
       getBanners(),
-      getConsumerProfile(),
-      getActiveBooking(),
-      getRebookable(),
-    ])
-      .then(([c, sub, s, b, p, act, re]) => {
+    ]);
+
+    // Anything that names a person is fetched only when there is a person to
+    // name. A signed-out visitor must never be shown another customer's live
+    // booking, their past services, or their area.
+    const personalData = signedIn
+      ? Promise.all([getConsumerProfile(), getActiveBooking(), getRebookable()])
+      : Promise.resolve(null);
+
+    Promise.all([publicData, personalData])
+      .then(([[c, sub, s, b], personal]) => {
         setCategories(c);
         setSubCategories(sub);
         setServices(s);
         setBanners(b.filter((x) => x.active));
-        setProfile(p);
-        setActive(act);
-        setRebookable(re);
+
+        if (personal) {
+          const [p, act, re] = personal;
+          setProfile(p);
+          setActive(act);
+          setRebookable(re);
+        } else {
+          setProfile(null);
+          setActive(null);
+          setRebookable(null);
+        }
       })
       .catch(() => setError(true));
-  }, []);
+  }, [signedIn]);
 
   React.useEffect(() => load(), [load]);
 
@@ -221,19 +251,24 @@ export default function HomePage() {
     );
   }
 
-  const hasActive = active !== null;
+  // Only a signed-in customer can have a live job. A guest seeing one would be
+  // seeing somebody else's.
+  const hasActive = signedIn === true && active !== null;
 
   /**
-   * A customer with no history at all.
+   * Someone who needs to be told how this works.
    *
-   * They need the one thing a returning customer does not: an explanation of
-   * what happens after they press the button. `rebookable` is null while
-   * loading, so this stays false until the answer is actually known — showing
-   * a first-timer walkthrough for a second and then removing it is worse than
-   * never showing it.
+   * That is a visitor who has never signed in, and a signed-in customer with no
+   * history yet — both are about to make a first booking and neither knows what
+   * happens after they press the button. A customer with past bookings does,
+   * and repeating it to them is filler.
+   *
+   * `rebookable` is null while loading, so a signed-in customer does not see
+   * the walkthrough flash before their history arrives.
    */
   const isNewCustomer =
-    !hasActive && rebookable !== null && rebookable.length === 0;
+    signedIn === false ||
+    (!hasActive && rebookable !== null && rebookable.length === 0);
 
   return (
     <div>

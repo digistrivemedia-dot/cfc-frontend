@@ -44,7 +44,7 @@ export function ConsumerFooter() {
         <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_1fr_1fr_1fr]">
           {/* Who we are, and how to reach a person. */}
           <div className="min-w-0">
-            <Link href="/home" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
               <Logo className="size-mark text-action" />
               <span className="text-heading font-semibold tracking-tight text-ink">
                 City Family Care

@@ -21,9 +21,16 @@ Built as a complete screen with the penalty column reading "Set by admin" and
 sourced from the warnings data. **Needed from the client:** the three rules as
 they should be worded, and the penalty schedule.
 
-### 1.2 Payout minimum threshold (Pro 24)
+### 1.2 Payout minimum threshold (Pro 24) — **built, awaiting the figure**
 The inventory says "minimum threshold". No figure exists anywhere in the
-agreement. The screen reads it from mock config rather than hardcoding ₹500.
+agreement.
+
+Built as `PAYOUT_MINIMUM_PAISE` in `pro-earnings.ts`, currently **0**, and the
+screen renders no threshold line at all while it is zero. Setting it to a real
+value makes the line appear and gates the button, with no code change. A screen
+stating "minimum ₹500" that the client never agreed to is a commitment made by
+a developer.
+
 **Needed:** the actual minimum, or confirmation there isn't one.
 
 ### 1.3 Commission on Associate / Major Partners
@@ -94,6 +101,20 @@ All verified present in the built CSS bundle, not assumed:
 56px and `text-heading`. `lg` is 48px, which is right for a desktop form and
 too small for a one-handed press in daylight where the wrong button costs money.
 
+### 4.4 The earnings chart and its headline disagreed — caught in Phase 6
+`getEarningsSummary` counted from the **start of the calendar week/month**;
+`getEarningsSeries` walked back a **fixed 7 or 30 days**. Both are defensible
+windows, and that was exactly the problem: on a Wednesday the chart summed nine
+days against a headline covering three, so the same screen showed ₹4,192 in the
+chart and ₹2,987 as the total — a ₹1,205 disagreement about the pro's own
+income.
+
+Fixed by making the series use the summary's own cutoff. Verified: net and job
+count now agree exactly across today, week and month.
+
+**The general lesson:** two functions that each independently decide what "this
+week" means will eventually disagree. One of them has to own the window.
+
 ---
 
 ## 5. Verified, and deliberately left alone
@@ -111,6 +132,19 @@ too small for a one-handed press in daylight where the wrong button costs money.
   offer carries area and distance, which is what the decision actually needs.
 - **Customer names are shortened to a first name plus an initial** on jobs, for
   the same reason.
+- **Available to withdraw is kept separate from earned.** Money inside the
+  48-hour settlement window has not cleared, and one merged "balance" would
+  offer a pro an amount they cannot actually take. Verified: the pending figure
+  on the balance equals the pending list's own total.
+- **"Payout requested", never "paid".** A screen claiming a bank transfer is
+  complete when it has only been initiated produces a support call the moment
+  the pro checks their account.
+- **A ₹0 CFC fee renders as ₹0 with its reason, never as a blank cell.** A blank
+  is indistinguishable from data that failed to load, and the one thing a pro
+  must never wonder about their settlement is whether part of it is missing.
+- **An overdue settlement is treated as the platform's failure, not a rounding
+  error.** Past 48 hours the pro is owed money against a stated commitment, so
+  those rows sort to the top, colour `critical`, and carry the support route.
 - **Offline is the default on app open.** A pro who has not said they are ready
   should not be in the dispatch pool — being alerted for a job they cannot take
   costs them a penalty, not just an annoyance.

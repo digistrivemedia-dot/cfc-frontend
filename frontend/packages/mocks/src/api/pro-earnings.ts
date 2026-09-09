@@ -221,3 +221,241 @@ export async function getCommissionFreeRemaining(
   const done = pro?.jobsCompleted ?? 0;
   return applyScenario(Math.max(0, COMMISSION_FREE_JOBS - done), 0);
 }
+
+/**
+ * Pro 22 - a daily series for the chart.
+ *
+ * Built from the same settled rows the summary sums, so the chart and the
+ * headline figure cannot disagree. Days with no work are included as zero
+ * rather than skipped: a gap in a line chart reads as missing data, while a
+ * zero reads as a day off, and only one of those is true.
+ */
+export interface EarningsPoint {
+  /** "Mon 8", for the axis. */
+  day: string;
+  netPaise: Paise;
+  jobs: number;
+}
+
+export async function getEarningsSeries(
+  proId: string,
+  period: EarningsPeriod,
+): Promise<EarningsPoint[]> {
+  await latency();
+
+  // The SAME cutoff the summary uses.
+  //
+  // This previously walked back a fixed 7 or 30 days while the summary counted
+  // from the start of the calendar week or month. Both are defensible windows
+  // and that was exactly the problem: on a Wednesday the chart summed nine
+  // days against a headline covering three, so the two disagreed by
+  // Rs1,200 on the same screen. A chart that does not add up to the figure
+  // above it destroys trust in both.
+  const cutoff = cutoffFor(period);
+
+  // One bucket per calendar day from the cutoff to today, inclusive. Days with
+  // no work are kept as zero rather than skipped: a gap in a line reads as
+  // missing data, a zero reads as a day off, and only one of those is true.
+  const buckets = new Map<string, { netPaise: Paise; jobs: number }>();
+  const cursor = new Date(cutoff);
+  const end = new Date();
+  while (cursor <= end) {
+    buckets.set(cursor.toDateString(), { netPaise: 0, jobs: 0 });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  for (const row of historyFor(proId)) {
+    if (new Date(row.completedAt).getTime() < cutoff) continue;
+    const bucket = buckets.get(new Date(row.completedAt).toDateString());
+    if (bucket !== undefined) {
+      bucket.netPaise += row.netPaise;
+      bucket.jobs += 1;
+    }
+  }
+
+  // Weekday labels while the window is short enough for them to be unique;
+  // a date once it is not. "Mon" appearing five times down a month's axis is
+  // worse than no label.
+  const short = buckets.size <= 7;
+
+  const points: EarningsPoint[] = [...buckets.entries()].map(([key, v]) => {
+    const d = new Date(key);
+    return {
+      day: d.toLocaleDateString("en-IN", {
+        ...(short ? { weekday: "short" as const } : {}),
+        day: "numeric",
+        ...(short ? {} : { month: "short" as const }),
+      }),
+      netPaise: v.netPaise,
+      jobs: v.jobs,
+    };
+  });
+
+  return applyScenario(points, []);
+}
+
+/**
+ * Pro 25 - jobs completed where the money has not arrived yet.
+ *
+ * "Pending" here means inside the 48-hour settlement window, which is the only
+ * reason a completed job's money is not in the pro's account. Saying so is the
+ * whole point of the screen: a pro looking at a completed job with no payment
+ * needs to know whether to wait or to raise a ticket.
+ */
+export interface PendingSettlement {
+  earning: ProEarning;
+  /** Hours until the 48-hour window closes. Negative means it is overdue. */
+  hoursRemaining: number;
+}
+
+/** The agreement's settlement window. */
+export const PAYOUT_WINDOW_HOURS = 48;
+
+export async function getPendingSettlements(
+  proId: string,
+): Promise<PendingSettlement[]> {
+  await latency();
+
+  const cutoff = Date.now() - PAYOUT_WINDOW_HOURS * 3_600_000;
+  const rows = historyFor(proId)
+    .filter((r) => new Date(r.completedAt).getTime() >= cutoff)
+    .map((r) => ({
+      earning: r,
+      hoursRemaining:
+        (new Date(r.completedAt).getTime() +
+          PAYOUT_WINDOW_HOURS * 3_600_000 -
+          Date.now()) /
+        3_600_000,
+    }));
+
+  return applyScenario(rows, []);
+}
+
+/**
+ * Pro 24 - what is available to withdraw.
+ *
+ * The withdrawable balance is NOT the same as everything earned: money inside
+ * the 48-hour window has not settled yet. Conflating the two would show a pro a
+ * balance they cannot actually take, which is worse than showing a smaller
+ * honest number.
+ *
+ * `minimumPaise` has **no source in the agreement.** The inventory asks for a
+ * "minimum threshold" and never states one, so it is configured here rather
+ * than hardcoded into a screen, and it is on the client-decisions list
+ * (PRO-OPEN-ITEMS 1.2). Zero means no minimum applies.
+ */
+export interface PayoutBalance {
+  /** Settled and available now. */
+  availablePaise: Paise;
+  /** Completed but still inside the 48-hour window. */
+  pendingPaise: Paise;
+  /** From config, not from the agreement. See above. */
+  minimumPaise: Paise;
+  /** Whether a payout can be requested right now. */
+  canWithdraw: boolean;
+}
+
+/**
+ * Awaiting a client answer. Set to 0 so the UI shows no threshold rather than
+ * inventing one - a screen stating "minimum Rs500" that the client never agreed
+ * to is a commitment made by a developer.
+ */
+const PAYOUT_MINIMUM_PAISE = 0;
+
+export async function getPayoutBalance(proId: string): Promise<PayoutBalance> {
+  await latency();
+
+  const cutoffMs = Date.now() - PAYOUT_WINDOW_HOURS * 3_600_000;
+  const rows = historyFor(proId);
+
+  const pendingPaise = rows
+    .filter((r) => new Date(r.completedAt).getTime() >= cutoffMs)
+    .reduce((t, r) => t + r.netPaise, 0);
+
+  // Settled earnings, less what the pro has already been paid. The fixture
+  // carries a pending payout balance on the pro record, which is the figure
+  // the admin panel settles against - so it is the source of truth here too.
+  const pro = pros.find((p) => p.id === proId);
+  const availablePaise = pro?.pendingPayoutPaise ?? 0;
+
+  const balance: PayoutBalance = {
+    availablePaise,
+    pendingPaise,
+    minimumPaise: PAYOUT_MINIMUM_PAISE,
+    canWithdraw: availablePaise > 0 && availablePaise >= PAYOUT_MINIMUM_PAISE,
+  };
+
+  return applyScenario(balance, {
+    availablePaise: 0,
+    pendingPaise: 0,
+    minimumPaise: PAYOUT_MINIMUM_PAISE,
+    canWithdraw: false,
+  });
+}
+
+/** Where a payout goes. Pro 7 collects these; Pro 24 chooses between them. */
+export interface PayoutDestination {
+  kind: "bank" | "upi";
+  label: string;
+  /** Last four of the account, or the UPI handle. */
+  detail: string;
+}
+
+export async function getPayoutDestinations(
+  proId: string,
+): Promise<PayoutDestination[]> {
+  await latency();
+
+  const pro = pros.find((p) => p.id === proId);
+  if (!pro) return applyScenario([], []);
+
+  const out: PayoutDestination[] = [
+    {
+      kind: "bank",
+      label: "Bank account",
+      detail: "•••• " + pro.bankAccountLast4 + " · " + pro.ifsc,
+    },
+  ];
+  if (pro.upiId !== null) {
+    out.push({ kind: "upi", label: "UPI", detail: pro.upiId });
+  }
+  return applyScenario(out, []);
+}
+
+export type PayoutRequest =
+  | {
+      ok: true;
+      amountPaise: Paise;
+      destination: PayoutDestination;
+      expectedBy: string;
+    }
+  | { ok: false; reason: "below-minimum" | "nothing-available" };
+
+/**
+ * Pro 24 - request the daily payout.
+ *
+ * The agreement offers a daily payout with auto-transfer within 48 hours, so
+ * this is a request against a settled balance rather than an instant transfer.
+ * Saying "requested" and giving a date is honest; saying "paid" would not be.
+ */
+export async function requestPayout(
+  proId: string,
+  destination: PayoutDestination,
+): Promise<PayoutRequest> {
+  await latency();
+
+  const balance = await getPayoutBalance(proId);
+  if (balance.availablePaise <= 0) {
+    return { ok: false, reason: "nothing-available" };
+  }
+  if (balance.availablePaise < balance.minimumPaise) {
+    return { ok: false, reason: "below-minimum" };
+  }
+
+  return {
+    ok: true,
+    amountPaise: balance.availablePaise,
+    destination,
+    expectedBy: new Date(Date.now() + 24 * 3_600_000).toISOString(),
+  };
+}

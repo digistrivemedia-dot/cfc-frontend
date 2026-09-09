@@ -54,7 +54,7 @@ export function SubCategoryTile({
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(to top, rgba(23,26,60,0.92) 0%, rgba(23,26,60,0.55) 45%, rgba(23,26,60,0.05) 100%)",
+            "linear-gradient(to top, rgba(23,26,60,0.88) 0%, rgba(23,26,60,0.35) 40%, rgba(23,26,60,0) 72%)",
         }}
       />
 

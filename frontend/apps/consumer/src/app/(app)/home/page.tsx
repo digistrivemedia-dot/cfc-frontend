@@ -29,7 +29,6 @@ import {
   Skeleton,
   SnapScroller,
   cn,
-  formatCurrency,
 } from "@cfc/ui";
 import { BannerCarousel } from "@/components/banner-carousel";
 import { HomeHero } from "@/components/home-hero";
@@ -38,48 +37,37 @@ import { SubCategoryTile } from "@/components/subcategory-tile";
 /**
  * Customer 7 — Home.
  *
- * Design A: search-first marketplace.
+ * Design B: editorial storefront.
  *
- * The screen a customer lands on, rebuilt around one question: what does this
- * person want to do in the first five seconds? They want to find a service and
- * see what it costs. Everything that does not serve that is either demoted or
- * gone.
+ * Where Design A answered "what can I search for", this answers "what does
+ * this business do, and is it any good" — then gets out of the way. The
+ * difference is not decoration; it is the order of the page and the size of
+ * the things on it.
  *
- * What changed, and why:
+ * The organising idea is **curated rows grouped by intent**. A customer does
+ * not think in the platform's taxonomy — they think "something in my house is
+ * broken" or "I want to look good on Saturday". So the rows are named for
+ * those moments (Home essentials, Personal care, Deep cleaning) rather than
+ * for the database's category table, and each row is a horizontal band of real
+ * photographs at a size where the photograph actually reads.
  *
- *  - **Sub-categories replace categories.** The five categories are
- *    admin-shaped buckets — "Home & Maintenance" holds twelve of the fifteen
- *    services, "Event & Function" and "Business & Others" hold none, so the
- *    old grid rendered three tiles, one of which was almost everything.
- *    Nobody needs *home and maintenance*; they need the AC fixed. The nine
- *    sub-categories (Electrical & AC, Cleaning, Plumbing, Beauty, Nursing…)
- *    are what a customer is actually shopping for, and they were not shown
- *    anywhere on the previous home screen.
+ * What that fixes from the original screen:
  *
- *  - **Real photographs.** Fifteen service images and seven category images
- *    already sit in /public. The previous version used none of them — the
- *    category cards were gradient boxes with a 10%-opacity icon, which is the
- *    single biggest reason the page read as unfinished.
- *
- *  - **A working search field.** The old hero's "Search" button navigated to
- *    another screen to do what the hero could have done itself.
- *
- *  - **Placeholder testimonials removed.** They were flagged
- *    REVIEWS_ARE_PLACEHOLDER and rendered the words "Sample content" on the
- *    landing page. Invented social proof on the first screen a customer sees
- *    is worse than no social proof.
- *
- *  - **Nine sections down to six.** The old page stacked nine full-width rows
- *    of equal visual weight, so nothing led.
+ *  - Nine equal-weight stacked sections became a hero plus four bands, so the
+ *    eye has somewhere to land first.
+ *  - The five admin categories ("Business & Others", holding nothing) no
+ *    longer drive the primary browse. The nine sub-categories do, because
+ *    those are the jobs people actually book.
+ *  - Every photograph in /public is now used. The old page shipped gradient
+ *    boxes with 10%-opacity icons while 22 real images sat unused.
+ *  - The placeholder testimonials — which rendered the words "Sample content"
+ *    on the landing page — are gone.
  */
 
 /**
- * Sub-category imagery.
- *
- * Four have a dedicated category image; the rest borrow the photograph of
- * their most representative service, which is a real photograph of that work
- * rather than a placeholder. Keyed by the sub-category names in
- * SERVICE_CATALOG.
+ * Sub-category imagery. Four have a dedicated category image; the rest borrow
+ * the photograph of their most representative service, which is still a real
+ * photograph of that work.
  */
 const SUBCATEGORY_IMAGE: Record<string, string> = {
   "Electrical & AC": "/images/cat-electrical.png",
@@ -95,6 +83,46 @@ const SUBCATEGORY_IMAGE: Record<string, string> = {
 };
 
 const FALLBACK_IMAGE = "/images/cat-home-maintenance.png";
+
+/**
+ * The editorial rows.
+ *
+ * Each is a human moment rather than a taxonomy node, mapped to the
+ * sub-categories that serve it. A sub-category may appear in more than one row
+ * — "Cleaning" is both an essential and the heart of a deep clean — because a
+ * customer's intent is not a partition.
+ */
+const ROWS: readonly {
+  id: string;
+  title: string;
+  description: string;
+  subCategories: readonly string[];
+}[] = [
+  {
+    id: "essentials",
+    title: "Home essentials",
+    description: "The jobs that cannot wait — power, water, appliances.",
+    subCategories: ["Electrical & AC", "Plumbing", "Appliance", "Water"],
+  },
+  {
+    id: "clean",
+    title: "A cleaner home",
+    description: "Deep cleans, pest control and everything after a long week.",
+    subCategories: ["Cleaning", "Pest control"],
+  },
+  {
+    id: "improve",
+    title: "Make it yours",
+    description: "Carpentry and painting, done by people who finish properly.",
+    subCategories: ["Carpentry", "Painting"],
+  },
+  {
+    id: "care",
+    title: "Personal care",
+    description: "Salon and nursing, at home, on your schedule.",
+    subCategories: ["Beauty", "Nursing"],
+  },
+];
 
 export default function HomePage() {
   const [categories, setCategories] = React.useState<Category[] | null>(null);
@@ -127,14 +155,26 @@ export default function HomePage() {
 
   React.useEffect(() => load(), [load]);
 
-  /**
-   * Sub-categories that actually have services behind them, each carrying its
-   * own service count. A tile leading to an empty list is a dead end, and the
-   * old category grid had two of them.
-   */
+  const live = React.useMemo(
+    () => (services ? services.filter((s) => s.active) : null),
+    [services],
+  );
+
+  /** Services grouped by their sub-category, for the editorial rows. */
+  const bySubCategory = React.useMemo(() => {
+    if (!live) return null;
+    const map = new Map<string, ServiceDetail[]>();
+    for (const s of live) {
+      const existing = map.get(s.subCategoryName);
+      if (existing) existing.push(s);
+      else map.set(s.subCategoryName, [s]);
+    }
+    return map;
+  }, [live]);
+
+  /** Sub-categories that actually have services, for the browse strip. */
   const browsable = React.useMemo(() => {
-    if (!subCategories || !services) return null;
-    const live = services.filter((s) => s.active);
+    if (!subCategories || !live) return null;
     return subCategories
       .filter((sub) => sub.active)
       .map((sub) => ({
@@ -143,26 +183,20 @@ export default function HomePage() {
       }))
       .filter((x) => x.count > 0)
       .sort((a, b) => b.count - a.count);
-  }, [subCategories, services]);
+  }, [subCategories, live]);
 
   const mostBooked = React.useMemo(
     () =>
-      services
-        ? [...services]
-            .filter((s) => s.active)
-            .sort((a, b) => b.bookingCount - a.bookingCount)
-            .slice(0, 8)
+      live
+        ? [...live].sort((a, b) => b.bookingCount - a.bookingCount).slice(0, 8)
         : null,
-    [services],
+    [live],
   );
 
-  /** The cheapest live service, so the price claim below is a real one. */
   const startingPrice = React.useMemo(() => {
-    if (!services) return null;
-    const live = services.filter((s) => s.active);
-    if (live.length === 0) return null;
+    if (!live || live.length === 0) return null;
     return Math.min(...live.map((s) => s.basePricePaise));
-  }, [services]);
+  }, [live]);
 
   if (error) {
     return (
@@ -178,30 +212,29 @@ export default function HomePage() {
 
   return (
     <div>
-      <HomeHero area={profile?.area} />
+      <HomeHero area={profile?.area} startingPricePaise={startingPrice} />
 
-      <div className="mx-auto max-w-screen-xl px-4 pb-12 md:px-6 lg:px-8">
-        {/* ── What do you need? ──────────────────────────────────────────
-            The primary navigation of the whole app, directly under the fold.
-            A customer should reach a service list in one tap from here. */}
-        <Section
-          title="What do you need help with?"
-          description={
-            startingPrice !== null
-              ? `Fixed prices from ${formatCurrency(startingPrice)}. No call-out charge to see them.`
-              : undefined
-          }
-          href="/categories"
-          linkLabel="All services"
-        >
+      {/* ── Browse strip ────────────────────────────────────────────────
+          Every kind of work, in one glance, immediately under the hero. A
+          customer who already knows what they want should not have to read
+          four editorial rows to find it. */}
+      <section className="border-b border-border bg-surface">
+        <div className="mx-auto max-w-screen-xl px-4 py-6 md:px-6 lg:px-8">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-heading font-semibold text-ink">
+              Browse every service
+            </h2>
+            <SeeAll href="/categories" label="All services" />
+          </div>
+
           {browsable === null ? (
-            <TileGrid>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {Array.from({ length: 10 }, (_, i) => (
                 <Skeleton key={i} className="aspect-card rounded-card" />
               ))}
-            </TileGrid>
+            </div>
           ) : (
-            <TileGrid>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               {browsable.map(({ sub, count }) => (
                 <SubCategoryTile
                   key={sub.id}
@@ -211,16 +244,17 @@ export default function HomePage() {
                   href={`/categories?sub=${encodeURIComponent(sub.name)}`}
                 />
               ))}
-            </TileGrid>
+            </div>
           )}
-        </Section>
+        </div>
+      </section>
 
-        {/* ── Most booked ───────────────────────────────────────────────── */}
-        <Section
-          title="Most booked"
-          description="What people book most often."
+      <div className="mx-auto max-w-screen-xl px-4 pb-12 md:px-6 lg:px-8">
+        {/* ── Most booked ─────────────────────────────────────────────── */}
+        <Band
+          title="Most booked this month"
+          description="What people in your area book most often."
           href="/categories"
-          linkLabel="See all"
         >
           {mostBooked === null ? (
             <SnapScroller columns={4} aria-label="Loading services">
@@ -230,43 +264,44 @@ export default function HomePage() {
             </SnapScroller>
           ) : (
             <SnapScroller columns={4} aria-label="Most booked services">
-              {mostBooked.map((service) => (
-                <ServiceCard
-                  key={service.id}
-                  name={service.name}
-                  categoryName={service.subCategoryName}
-                  fromPricePaise={service.basePricePaise}
-                  rating={service.rating}
-                  reviewCount={service.reviewCount}
-                  bookingCount={service.bookingCount}
-                  imageUrl={service.imageUrls[0]}
-                  href={`/service/${service.id}`}
-                />
+              {mostBooked.map((s) => (
+                <HomeServiceCard key={s.id} service={s} />
               ))}
             </SnapScroller>
           )}
-        </Section>
+        </Band>
 
-        {/* ── Offers ────────────────────────────────────────────────────── */}
+        {/* ── Offers ──────────────────────────────────────────────────── */}
         {banners !== null && banners.length > 0 && (
-          <Section title="Offers for you">
+          <Band title="Offers for you">
             <BannerCarousel banners={banners} />
-          </Section>
+          </Band>
         )}
 
-        {/* ── Browse by category ────────────────────────────────────────
-            Kept, but demoted below the sub-category grid and the services —
-            it is the broad-browse path for someone who does not yet know what
-            they want, not the primary one. */}
+        {/* ── The catalogue, filtered in place ────────────────────────────
+            One shelf with tabs rather than four stacked shelves. With fifteen
+            services the four-band version repeated the same cards under
+            different headings — "Salon at home" appeared in both Most booked
+            and Personal care — and left ragged half-empty rows where a group
+            held two services. Filtering one grid keeps every grouping reachable
+            without paying four screens of height for it. */}
+        <CatalogueShelf services={live} bySubCategory={bySubCategory} />
+
+        <WhyCfc />
+
+        {/* ── Categories, demoted to a quiet strip ────────────────────── */}
         {categories !== null && (
-          <Section title="Browse by category">
-            <div className="flex flex-wrap gap-2">
+          <section className="mt-8">
+            <h2 className="text-small font-semibold text-ink-muted">
+              Browse by category
+            </h2>
+            <div className="mt-3 flex flex-wrap gap-2">
               {categories
                 .filter((c) => c.active && c.serviceCount > 0)
-                .map((category) => (
+                .map((c) => (
                   <Link
-                    key={category.id}
-                    href={`/categories?cat=${category.id}`}
+                    key={c.id}
+                    href={`/categories?cat=${c.id}`}
                     className={cn(
                       "flex items-center gap-2 rounded-pill border border-border bg-surface px-4 py-2",
                       "text-small font-medium text-ink",
@@ -275,17 +310,16 @@ export default function HomePage() {
                       "focus-visible:outline-none focus-visible:outline-focus",
                     )}
                   >
-                    {category.name}
+                    {c.name}
                     <span className="text-caption text-ink-faint">
-                      {category.serviceCount}
+                      {c.serviceCount}
                     </span>
                   </Link>
                 ))}
             </div>
-          </Section>
+          </section>
         )}
 
-        <TrustStrip />
         <JoinAsPro />
       </div>
     </div>
@@ -295,53 +329,178 @@ export default function HomePage() {
 /* ────────────────────────────────────────────────────────────────────────── */
 
 /**
- * The sub-category grid.
+ * The catalogue, as one filterable grid.
  *
- * Two columns on a phone, scaling to five on a desktop. Dense on purpose —
- * the whole point is to show the full range of work without a scroll.
+ * The groupings are still the human ones — "Home essentials", "Personal care"
+ * — but they are tabs across a single shelf rather than four separate bands.
+ * A customer sees the whole catalogue at once and narrows it if they want to,
+ * instead of scrolling four near-identical rows of the same photographs.
+ *
+ * A grid rather than a horizontal scroller: with a dozen services the whole
+ * set fits on screen, and a scroller would hide half of it behind a gesture.
  */
-function TileGrid({ children }: { children: React.ReactNode }) {
+function CatalogueShelf({
+  services,
+  bySubCategory,
+}: {
+  services: ServiceDetail[] | null;
+  bySubCategory: Map<string, ServiceDetail[]> | null;
+}) {
+  const [active, setActive] = React.useState<string>("all");
+
+  // Only offer a filter that has something behind it.
+  const tabs = React.useMemo(() => {
+    if (!bySubCategory) return [];
+    return ROWS.filter((r) =>
+      r.subCategories.some((n) => (bySubCategory.get(n)?.length ?? 0) > 0),
+    );
+  }, [bySubCategory]);
+
+  const shown = React.useMemo(() => {
+    if (!services) return null;
+    if (active === "all") return services;
+    const row = ROWS.find((r) => r.id === active);
+    if (!row || !bySubCategory) return services;
+    return row.subCategories.flatMap((n) => bySubCategory.get(n) ?? []);
+  }, [services, active, bySubCategory]);
+
+  const current = ROWS.find((r) => r.id === active);
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {children}
-    </div>
+    <section className="mt-12">
+      <div className="mb-4">
+        <h2 className="text-title font-semibold tracking-tight text-ink">
+          Every service we offer
+        </h2>
+        <p className="mt-1 text-small text-ink-muted">
+          {current
+            ? current.description
+            : "Fixed prices, verified professionals, 30-day warranty."}
+        </p>
+      </div>
+
+      {/* Filters. Horizontally scrollable on a phone rather than wrapping to
+          three lines and pushing the grid off screen. */}
+      <div
+        role="tablist"
+        aria-label="Filter services"
+        className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 scrollbar-none md:mx-0 md:px-0"
+      >
+        <FilterChip
+          label="All services"
+          active={active === "all"}
+          onClick={() => setActive("all")}
+        />
+        {tabs.map((r) => (
+          <FilterChip
+            key={r.id}
+            label={r.title}
+            active={active === r.id}
+            onClick={() => setActive(r.id)}
+          />
+        ))}
+      </div>
+
+      {shown === null ? (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 8 }, (_, i) => (
+            <Skeleton key={i} className="h-block-md rounded-card" />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {shown.map((s) => (
+            <HomeServiceCard key={s.id} service={s} />
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
-function Section({
+function FilterChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        "shrink-0 rounded-pill border px-4 py-2 text-small font-medium",
+        "transition-colors duration-fast",
+        "focus-visible:outline-none focus-visible:outline-focus",
+        active
+          ? "border-action bg-action text-on-action"
+          : "border-border bg-surface text-ink hover:border-action-line hover:text-action",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function HomeServiceCard({ service }: { service: ServiceDetail }) {
+  return (
+    <ServiceCard
+      name={service.name}
+      categoryName={service.subCategoryName}
+      fromPricePaise={service.basePricePaise}
+      rating={service.rating}
+      reviewCount={service.reviewCount}
+      bookingCount={service.bookingCount}
+      imageUrl={service.imageUrls[0]}
+      href={`/service/${service.id}`}
+    />
+  );
+}
+
+function SeeAll({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "flex shrink-0 items-center gap-1 rounded-control text-small font-medium text-action",
+        "hover:underline focus-visible:outline-none focus-visible:outline-focus",
+      )}
+    >
+      {label}
+      <ArrowRight className="size-4" aria-hidden="true" />
+    </Link>
+  );
+}
+
+/** One editorial band: a titled shelf of services. */
+function Band({
   title,
   description,
   href,
-  linkLabel,
   children,
 }: {
   title: string;
   description?: string | undefined;
   href?: string | undefined;
-  linkLabel?: string | undefined;
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-8">
+    <section className="mt-12">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="text-title font-semibold text-ink">{title}</h2>
+          <h2 className="text-title font-semibold tracking-tight text-ink">
+            {title}
+          </h2>
           {description && (
             <p className="mt-1 text-small text-ink-muted">{description}</p>
           )}
         </div>
-        {href && linkLabel && (
-          <Link
-            href={href}
-            className={cn(
-              "flex shrink-0 items-center gap-1 rounded-control text-small font-medium text-action",
-              "hover:underline focus-visible:outline-none focus-visible:outline-focus",
-            )}
-          >
-            {linkLabel}
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
-        )}
+        {href && <SeeAll href={href} label="See all" />}
       </div>
       {children}
     </section>
@@ -349,49 +508,55 @@ function Section({
 }
 
 /**
- * The three commitments, as a quiet band rather than a full-bleed gradient.
+ * Why CFC — the reassurance band.
  *
- * These are the platform's documented promises. They earn a place on the home
- * screen because they are the reason to book here rather than call a number
- * from a poster — but they are reassurance, not the product, so they sit below
- * the services.
+ * Placed after the customer has seen the services and prices, which is when
+ * "can I trust these people with my address" actually becomes the question.
  */
-function TrustStrip() {
+function WhyCfc() {
   const ITEMS = [
     {
       icon: ShieldCheck,
       title: "30-day warranty",
-      body: "Same problem returns? We come back and fix it, free.",
+      body: "If the same problem returns within a month, we come back and fix it free.",
     },
     {
       icon: BadgeCheck,
       title: "Verified professionals",
-      body: "Every pro completes identity and document checks.",
+      body: "Every pro completes identity and document verification before their first job.",
     },
     {
       icon: Wallet,
-      title: "The price you see",
-      body: "Fixed pricing shown before you book. No surprises.",
+      title: "The price you were shown",
+      body: "Fixed pricing confirmed before the booking. No call-out fee to get a number.",
     },
     {
       icon: CalendarCheck,
       title: "Slots that suit you",
-      body: "Pick a date and time window when you book.",
+      body: "Choose the date and time window when you book, and track the pro on the way.",
     },
   ];
 
   return (
-    <section className="mt-12 rounded-card border border-border bg-surface p-6">
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <section className="mt-12 overflow-hidden rounded-card border border-border bg-surface">
+      <div className="border-b border-border px-6 py-5">
+        <h2 className="text-title font-semibold tracking-tight text-ink">
+          Why City Family Care
+        </h2>
+        <p className="mt-1 text-small text-ink-muted">
+          What every booking includes, as standard.
+        </p>
+      </div>
+      <div className="grid gap-px bg-border sm:grid-cols-2 lg:grid-cols-4">
         {ITEMS.map(({ icon: Icon, title, body }) => (
-          <div key={title} className="flex items-start gap-3">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-control bg-action-subtle text-action">
-              <Icon className="size-4" aria-hidden="true" />
+          <div key={title} className="bg-surface p-6">
+            <span className="flex size-tile items-center justify-center rounded-control bg-action-subtle text-action">
+              <Icon className="size-5" aria-hidden="true" />
             </span>
-            <div className="min-w-0">
-              <p className="text-small font-semibold text-ink">{title}</p>
-              <p className="mt-1 text-caption text-ink-muted">{body}</p>
-            </div>
+            <p className="mt-4 text-small font-semibold text-ink">{title}</p>
+            <p className="mt-2 text-caption leading-relaxed text-ink-muted">
+              {body}
+            </p>
           </div>
         ))}
       </div>
@@ -401,13 +566,21 @@ function TrustStrip() {
 
 function JoinAsPro() {
   return (
-    <section className="mt-6 overflow-hidden rounded-card bg-structure">
-      <div className="flex flex-wrap items-center justify-between gap-4 p-6">
+    <section className="relative mt-8 isolate overflow-hidden rounded-card bg-structure">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse 60% 120% at 85% 50%, rgba(37,99,235,0.35) 0%, transparent 70%)",
+        }}
+      />
+      <div className="flex flex-wrap items-center justify-between gap-4 p-6 md:p-8">
         <div className="min-w-0">
-          <h2 className="text-heading font-semibold text-on-structure">
+          <h2 className="text-title font-semibold tracking-tight text-on-structure">
             Work with City Family Care
           </h2>
-          <p className="mt-1 max-w-line-lg text-small text-on-structure-muted">
+          <p className="mt-2 max-w-screen-sm text-small text-on-structure-muted">
             Take jobs near you, get paid within 48 hours, and pay no commission
             on your first 20 jobs.
           </p>
@@ -416,7 +589,7 @@ function JoinAsPro() {
           href="/register?role=pro"
           className={cn(
             "flex h-touch shrink-0 items-center gap-2 rounded-control bg-brand px-6",
-            "text-body font-semibold text-on-action",
+            "text-body font-semibold text-on-action shadow-md",
             "transition-colors duration-fast hover:bg-brand-bright",
             "focus-visible:outline-none focus-visible:outline-focus",
           )}

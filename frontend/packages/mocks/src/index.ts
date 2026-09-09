@@ -150,6 +150,17 @@ export {
   getCommissionFreeRemaining,
   commissionFor,
   settleJob,
+  getEarningsSeries,
+  getPendingSettlements,
+  getPayoutBalance,
+  getPayoutDestinations,
+  requestPayout,
+  PAYOUT_WINDOW_HOURS,
+  type EarningsPoint,
+  type PendingSettlement,
+  type PayoutBalance,
+  type PayoutDestination,
+  type PayoutRequest,
 } from "./api/pro-earnings";
 export {
   getProDayStats,

@@ -131,6 +131,17 @@
   /* Elevation order. Every overlay previously hardcoded z-50, so sheet-over-
      dialog and tooltip-over-popover resolved by DOM order alone. ------------ */
   --z-sticky: 10;
+  /* The app header, above any page-level sticky furniture.
+
+     A `position: sticky` element with a z-index creates its own stacking
+     context, so a menu opened INSIDE the header cannot paint above a sibling
+     that outranks the header itself - the menu's own `z-popover` is resolved
+     within the header, not against the page. With the header and the consumer
+     home screen's category strip both on `--z-sticky`, the strip won on DOM
+     order and sliced through the open account menu.
+
+     One step above sticky, still far below every real overlay. */
+  --z-header: 20;
   --z-drawer-scrim: 40;
   --z-drawer: 50;
   --z-dialog-scrim: 60;

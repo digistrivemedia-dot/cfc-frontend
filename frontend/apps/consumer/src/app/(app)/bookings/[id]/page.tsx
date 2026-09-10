@@ -37,6 +37,7 @@ import {
   formatTime,
   toast,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
 
 /**
  * Customer 26 — Booking detail.
@@ -56,7 +57,7 @@ import {
  * customer work out which one applies.
  */
 
-export default function BookingDetailPage() {
+function BookingDetailPageInner() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
@@ -117,7 +118,7 @@ export default function BookingDetailPage() {
   const needsRating = booking.status === "completed" && !booking.rated;
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
       <Link
         href="/bookings"
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
@@ -424,5 +425,15 @@ function PhotoRow({ label, urls }: { label: string; urls: string[] }) {
         ))}
       </div>
     </div>
+  );
+}
+
+/** This is one customer's own record. A visitor without an account is offered
+ *  one rather than being shown somebody else's booking. */
+export default function BookingDetailPage() {
+  return (
+    <RequireAccount title="Sign in to see this booking" description="Booking details, your professional and the address are kept with your account.">
+      <BookingDetailPageInner />
+    </RequireAccount>
   );
 }

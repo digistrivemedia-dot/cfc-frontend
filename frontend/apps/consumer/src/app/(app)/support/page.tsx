@@ -37,6 +37,7 @@ import {
   formatSchedule,
   toast,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
 
 /**
  * Customer 40, 41, 42 — help, tickets, and the assistant.
@@ -64,7 +65,7 @@ function SupportInner() {
   const tab = (params.get("tab") as Tab | null) ?? "help";
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
       <h1 className="text-title font-semibold text-ink">Help and support</h1>
 
       {/* The helpline, first. */}
@@ -119,7 +120,20 @@ function SupportInner() {
       </div>
 
       {tab === "help" && <HelpTab />}
-      {tab === "tickets" && <TicketsTab />}
+
+      {/* The FAQ and the helpline stay public — a stranger with a question
+          should not need an account to get an answer, and refusing one is a
+          good way to turn a question into a lost customer. Tickets are a
+          personal thread, so only that tab asks for a sign-in. */}
+      {tab === "tickets" && (
+        <RequireAccount
+          title="Sign in to see your tickets"
+          description="Your support conversations are kept with your account. The FAQ and the helpline are open to everyone."
+        >
+          <TicketsTab />
+        </RequireAccount>
+      )}
+
       {tab === "assistant" && <AssistantTab />}
     </div>
   );

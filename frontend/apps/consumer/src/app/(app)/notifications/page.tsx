@@ -26,6 +26,7 @@ import {
   cn,
   formatSchedule,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
 
 /**
  * Customer 39 — Notifications.
@@ -105,7 +106,7 @@ function NotificationsInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-title font-semibold text-ink">Notifications</h1>
         {unread > 0 && (
@@ -262,7 +263,7 @@ function NotificationRow({
   );
 }
 
-export default function NotificationsPage() {
+function NotificationsPageInner() {
   return (
     <Suspense
       fallback={
@@ -273,5 +274,20 @@ export default function NotificationsPage() {
     >
       <NotificationsInner />
     </Suspense>
+  );
+}
+
+/**
+ * Everything on this screen is the signed-in customer's own. A visitor without
+ * an account is offered one rather than being shown somebody else's.
+ */
+export default function NotificationsPage() {
+  return (
+    <RequireAccount
+      title="Sign in to see your notifications"
+      description="Booking updates, quotations and reminders arrive here once you have an account."
+    >
+      <NotificationsPageInner />
+    </RequireAccount>
   );
 }

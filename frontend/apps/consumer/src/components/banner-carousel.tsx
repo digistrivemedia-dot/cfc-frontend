@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import type { Banner } from "@cfc/types";
+import { getServices, getSubCategories } from "@cfc/mocks";
+import type { Banner, ServiceDetail, SubCategory } from "@cfc/types";
 import { cn } from "@cfc/ui";
 
 /**
@@ -18,6 +19,25 @@ export function BannerCarousel({ banners }: { banners: Banner[] }) {
   const touchRef = React.useRef<number | null>(null);
   const count = banners.length;
 
+  /**
+   * What a banner's `linkTarget` actually resolves to.
+   *
+   * Admin's banner editor stores a service or category by NAME, not id -
+   * `linkTarget: "AC service & repair"`, not a service id. Building the href
+   * by string-concatenating that name straight into `/service/${linkTarget}`
+   * or `/categories?cat=${linkTarget}` produced a URL that always 404'd (a
+   * service route needs an id) or landed on the unfiltered catalogue (a
+   * category name is not a `?sub=` value /categories understands). Both are
+   * looked up against the real catalogue here instead.
+   */
+  const [services, setServices] = React.useState<ServiceDetail[] | null>(null);
+  const [subCategories, setSubCategories] = React.useState<SubCategory[] | null>(null);
+
+  React.useEffect(() => {
+    getServices().then(setServices).catch(() => setServices([]));
+    getSubCategories().then(setSubCategories).catch(() => setSubCategories([]));
+  }, []);
+
   // Auto-advance.
   React.useEffect(() => {
     if (paused || count <= 1) return;
@@ -31,12 +51,26 @@ export function BannerCarousel({ banners }: { banners: Banner[] }) {
   const next = () => setCurrent((c) => (c + 1) % count);
   const prev = () => setCurrent((c) => (c - 1 + count) % count);
 
-  const hrefFor = (b: Banner) =>
-    b.linkType === "category"
-      ? `/categories?cat=${b.linkTarget ?? ""}`
-      : b.linkType === "service"
-        ? `/service/${b.linkTarget ?? ""}`
-        : "/categories";
+  const hrefFor = (b: Banner): string => {
+    if (b.linkType === "service") {
+      // `linkTarget` is the service's name; find the id `/service/[id]`
+      // actually needs. Falls back to the catalogue rather than a broken
+      // link if a banner names a service that no longer exists.
+      const match = services?.find((s) => s.name === b.linkTarget);
+      return match ? `/service/${match.id}` : "/categories";
+    }
+    if (b.linkType === "category") {
+      // `linkTarget` is an ADMIN category name ("Home & Maintenance") - a
+      // pricing/commission grouping, not something /categories browses
+      // directly (see that screen's header comment: it shows the ten real
+      // sub-categories only). Resolved to that admin category's first
+      // sub-category, so the banner still lands somewhere real rather than
+      // on a `?cat=` param nothing reads any more.
+      const match = subCategories?.find((s) => s.categoryName === b.linkTarget);
+      return match ? `/categories?sub=${encodeURIComponent(match.name)}` : "/categories";
+    }
+    return "/categories";
+  };
 
   return (
     <div

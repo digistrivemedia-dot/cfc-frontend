@@ -3,7 +3,12 @@ import { archivo } from "@/lib/fonts";
 import { SURFACE } from "@cfc/tokens";
 import { Toaster } from "@cfc/ui";
 import { SessionProvider } from "@/lib/session";
+import { CartProvider } from "@/lib/cart";
+import { AreaProvider } from "@/lib/area";
 import "@cfc/ui/styles.css";
+// AFTER the shared stylesheet, so the consumer's Figma teal wins the cascade.
+// Scoped to this app; Pro and Admin keep the shared palette. See brand.css.
+import "./brand.css";
 
 export const metadata: Metadata = {
   title: "City Family Care",
@@ -39,7 +44,11 @@ export default function RootLayout({
         {/* Signed-in state wraps everything: the header, the homepage and every
             screen need it, and a visitor who has not signed in must never be
             shown another customer's bookings. */}
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          <CartProvider>
+            <AreaProvider>{children}</AreaProvider>
+          </CartProvider>
+        </SessionProvider>
         <Toaster />
       </body>
     </html>

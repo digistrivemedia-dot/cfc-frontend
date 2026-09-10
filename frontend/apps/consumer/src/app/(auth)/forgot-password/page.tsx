@@ -44,16 +44,15 @@ export default function ForgotPasswordPage() {
   return (
     <AuthShell
       heading="Reset your access"
-      subheading="Enter your registered mobile number and we\u2019ll send you a verification code."
+      subheading={"Enter your registered mobile number and we\u2019ll send you a verification code."}
       backHref="/login"
       backLabel="Back to login"
     >
       {/* Informational callout */}
       <div className="mb-6 rounded-control border border-border bg-warning-subtle px-4 py-3">
         <p className="text-small text-warning">
-          <span className="font-medium">Note\u00a0\u2014\u00a0</span>CFC uses
-          mobile OTP for login. There&apos;s no separate password. If
-          you&apos;ve changed your number, please contact support.
+          <span className="font-medium">{"Note\u00a0\u2014\u00a0"}</span>
+          {"CFC uses mobile OTP for login. There\u2019s no separate password."}
         </p>
       </div>
 
@@ -104,11 +103,6 @@ export default function ForgotPasswordPage() {
           )}
         </Button>
       </form>
-
-      <p className="mt-8 text-center text-small text-ink-muted">
-        Changed your number?{" "}
-        <span className="font-medium text-action">Contact support</span>
-      </p>
 
       <button
         id="forgot-go-login"

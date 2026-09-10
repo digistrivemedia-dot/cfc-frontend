@@ -17,6 +17,7 @@ import {
   formatDate,
   formatTime,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
 
 /**
  * Customer 31 and 32 — the customer invoice, and the tax invoice.
@@ -87,7 +88,7 @@ function InvoiceInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-sm px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-sm px-4 pt-4 md:px-6 md:pb-12">
       {/* Chrome, hidden when printing — a printed invoice with a "Back" link
           on it looks like a screenshot. */}
       <div className="print:hidden">
@@ -326,7 +327,7 @@ function TaxRow({
   );
 }
 
-export default function InvoicePage() {
+function InvoicePageInner() {
   return (
     <Suspense
       fallback={
@@ -337,5 +338,15 @@ export default function InvoicePage() {
     >
       <InvoiceInner />
     </Suspense>
+  );
+}
+
+/** This is one customer's own record. A visitor without an account is offered
+ *  one rather than being shown somebody else's booking. */
+export default function InvoicePage() {
+  return (
+    <RequireAccount title="Sign in to see this invoice" description="Invoices are kept with the account that made the booking.">
+      <InvoicePageInner />
+    </RequireAccount>
   );
 }

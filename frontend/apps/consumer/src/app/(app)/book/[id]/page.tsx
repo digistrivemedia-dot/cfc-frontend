@@ -24,6 +24,7 @@ import {
 import type { Address, Coupon, ServiceDetail, Slot } from "@cfc/types";
 import {
   CouponSheet,
+  OptionsStep,
   PaymentStep,
   SummaryStep,
   type PaymentMethod,
@@ -52,6 +53,8 @@ import {
   formatTime,
   toast,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
+import { useCart } from "@/lib/cart";
 
 /**
  * Customer 15, 16, 17 — when, and where.
@@ -66,7 +69,7 @@ import {
  * back on the picker with it selected, not to be pushed forward.
  */
 
-type Step = "slot" | "address" | "summary" | "payment" | "done";
+type Step = "options" | "slot" | "address" | "summary" | "payment" | "done";
 
 const LABEL_ICON = {
   home: House,
@@ -93,8 +96,28 @@ function BookInner() {
   const search = useSearchParams();
   const router = useRouter();
   const serviceId = params.id;
-  const step = (search.get("step") as Step | null) ?? "slot";
+  const step = (search.get("step") as Step | null) ?? "options";
   const variantId = search.get("variant");
+
+  /**
+   * Add-ons chosen on Customer 14, as a comma-separated list of ids.
+   *
+   * In the URL for the same reason the variant and quantity are: a customer who
+   * goes back to change the slot must not lose the extras they picked.
+   */
+  const addOnIds = React.useMemo(() => {
+    const raw = search.get("addons");
+    return raw === null || raw === "" ? [] : raw.split(",");
+  }, [search]);
+
+  /**
+   * Units of the service. Customer 14 asks for a quantity.
+   *
+   * Held in the URL alongside the variant so a customer who goes back a step,
+   * refreshes, or shares the link keeps what they chose — the same reason the
+   * step and the variant live there.
+   */
+  const quantity = Math.max(1, Number(search.get("qty") ?? "1") || 1);
 
   const [service, setService] = React.useState<ServiceDetail | null>(null);
   const [error, setError] = React.useState(false);
@@ -114,6 +137,25 @@ function BookInner() {
   const [walletPaise, setWalletPaise] = React.useState(0);
   const [paying, setPaying] = React.useState(false);
   const [reference, setReference] = React.useState<string | null>(null);
+
+  const {
+    lines: cartLines,
+    remove: removeFromCart,
+    has: inCart,
+  } = useCart();
+
+  /**
+   * Whether the quantity was already set in the basket.
+   *
+   * Quantity belongs to the basket — it is chosen where the service is added.
+   * Asking again on Customer 14 is the one thing genuinely duplicated between
+   * the two screens, so when the service came from the basket the stepper is
+   * replaced by a read-only line pointing back there.
+   *
+   * A customer who reached this route straight from a service page has no
+   * basket line, and no other place to say "three ACs" — so they keep it.
+   */
+  const quantityFromCart = inCart(serviceId);
 
   React.useEffect(() => {
     getConsumerProfile()
@@ -162,9 +204,61 @@ function BookInner() {
     router.push(`/book/${serviceId}?${q.toString()}`);
   };
 
-  const variant = service?.variants.find((v) => v.id === variantId) ?? null;
-  const totalPaise =
+  // Falls back to the service's own default so the picker is never blank on a
+  // customer who reached the flow without choosing a variant first.
+  const variant =
+    service?.variants.find((v) => v.id === variantId) ??
+    service?.variants.find((v) => v.isDefault && v.active) ??
+    service?.variants.find((v) => v.active) ??
+    null;
+  const unitPricePaise =
     (service?.basePricePaise ?? 0) + (variant?.priceDeltaPaise ?? 0);
+
+  const selectedAddOns = React.useMemo(
+    () => (service?.addOns ?? []).filter((a) => addOnIds.includes(a.id)),
+    [service, addOnIds],
+  );
+
+  const addOnsPaise = selectedAddOns.reduce((sum, a) => sum + a.pricePaise, 0);
+
+  // What the flow shows on Customer 14 before fees are added. Fees belong to
+  // the summary, where they are itemised — showing them here would make the
+  // subtotal disagree with every price on the screen above it.
+  const optionsSubtotalPaise = unitPricePaise * quantity + addOnsPaise;
+
+  const durationMinutes =
+    (variant?.durationMinutes ?? 60) * quantity +
+    selectedAddOns.reduce((sum, a) => sum + a.durationMinutes, 0);
+
+  /**
+   * Whether Customer 14 has anything to ask.
+   *
+   * A service with one variant and no add-ons has nothing to configure that
+   * the basket has not already collected, and a step that renders a single
+   * read-only line is a step a customer resents. Null while the service is
+   * still loading — the answer is unknown, not "no".
+   */
+  const hasOptions =
+    service === null || cartLines === null
+      ? null
+      : service.variants.filter((v) => v.active).length > 1 ||
+        service.addOns.filter((a) => a.active).length > 0 ||
+        !quantityFromCart;
+
+  /**
+   * Skip the empty step.
+   *
+   * `replace`, not `push`: the step was never shown, so it must not sit in
+   * history for the back button to land on. Going back from date & time then
+   * reaches the service page, which is where the customer actually came from.
+   */
+  React.useEffect(() => {
+    if (step === "options" && hasOptions === false) {
+      const q = new URLSearchParams(search.toString());
+      q.set("step", "slot");
+      router.replace(`/book/${serviceId}?${q.toString()}`, { scroll: false });
+    }
+  }, [step, hasOptions, search, router, serviceId]);
 
   // One breakdown, shared by the summary, the payment screen and the
   // confirmation, so the number a customer agreed to is the number charged.
@@ -173,17 +267,29 @@ function BookInner() {
       priceBooking({
         serviceId,
         variantDeltaPaise: variant?.priceDeltaPaise ?? 0,
+        addOnsPaise,
         discountPaise,
+        quantity,
       }),
-    [serviceId, variant, discountPaise],
+    [serviceId, variant, addOnsPaise, discountPaise, quantity],
   );
+
+  /** Rewrites one search param without adding a history entry. */
+  const setParam = (key: string, value: string | null) => {
+    const q = new URLSearchParams(search.toString());
+    if (value === null || value === "") q.delete(key);
+    else q.set(key, value);
+    router.replace(`/book/${serviceId}?${q.toString()}`, { scroll: false });
+  };
 
   const pay = () => {
     if (slotAt === null || addressId === null) return;
     setPaying(true);
     createBooking({
       serviceId,
-      variantId,
+      variantId: variant?.id ?? null,
+      addOnIds,
+      quantity,
       startsAt: slotAt,
       addressId,
       paymentMethod: method,
@@ -191,6 +297,10 @@ function BookInner() {
     })
       .then((result) => {
         setReference(result.reference);
+        // Booked, so it leaves the basket. Otherwise a customer who came from
+        // the cart returns to find the job they just paid for still sitting
+        // there, and books it twice.
+        removeFromCart(serviceId);
         goStep("done");
       })
       .catch(() => toast.error("We could not place that booking. Try again."))
@@ -210,7 +320,7 @@ function BookInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
       {/* The confirmation is a terminal state: there is nothing to go back
           to, and offering it invites a customer to try re-paying. */}
       {step !== "done" && (
@@ -219,7 +329,13 @@ function BookInner() {
             type="button"
             onClick={() => {
               const back: Record<Step, () => void> = {
-                slot: () => router.push(`/service/${serviceId}`),
+                options: () => router.push(`/service/${serviceId}`),
+                // With nothing to configure there is no options step to go
+                // back to — the service page is where they came from.
+                slot: () =>
+                  hasOptions === false
+                    ? router.push(`/service/${serviceId}`)
+                    : goStep("options"),
                 address: () => goStep("slot"),
                 summary: () => goStep("address"),
                 payment: () => goStep("summary"),
@@ -230,10 +346,12 @@ function BookInner() {
             className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
           >
             <ArrowLeft className="size-3" aria-hidden="true" />
-            {BACK_LABEL[step]}
+            {step === "slot" && hasOptions === false
+              ? "Back to service"
+              : BACK_LABEL[step]}
           </button>
 
-          <Steps current={step} />
+          <Steps current={step} showOptions={hasOptions !== false} />
         </>
       )}
 
@@ -246,7 +364,8 @@ function BookInner() {
             <p className="text-small font-semibold text-ink">{service.name}</p>
             <p className="tabular mt-1 text-small text-ink-muted">
               {variant ? `${variant.name} · ` : ""}
-              {formatCurrency(totalPaise)}
+              {formatCurrency(unitPricePaise)}
+              {quantity > 1 ? ` × ${quantity}` : ""}
             </p>
           </div>
 
@@ -269,7 +388,9 @@ function BookInner() {
           ) : step === "summary" ? (
             <SummaryStep
               service={service}
+              quantity={quantity}
               variant={variant}
+              addOns={selectedAddOns}
               address={addresses?.find((a) => a.id === addressId) ?? null}
               slotAt={slotAt}
               coupon={coupon}
@@ -290,7 +411,7 @@ function BookInner() {
               onSlotChange={setSlotAt}
               onContinue={() => goStep("address")}
             />
-          ) : (
+          ) : step === "address" ? (
             <AddressStep
               addresses={addresses}
               selectedId={addressId}
@@ -300,6 +421,32 @@ function BookInner() {
               slotAt={slotAt}
               onContinue={() => goStep("summary")}
             />
+          ) : hasOptions === null ? (
+            /* The basket is still loading, so whether this step has anything
+               to ask is unknown. Rendering it now would flash a screen that
+               the effect above is about to skip. */
+            <Skeleton className="mt-4 h-block-lg rounded-card" />
+          ) : (
+            <OptionsStep
+              service={service}
+              variant={variant}
+              onVariantChange={(id) => setParam("variant", id)}
+              addOnIds={addOnIds}
+              onToggleAddOn={(id) => {
+                const next = addOnIds.includes(id)
+                  ? addOnIds.filter((x) => x !== id)
+                  : [...addOnIds, id];
+                setParam("addons", next.join(","));
+              }}
+              quantity={quantity}
+              onQuantityChange={(next) =>
+                setParam("qty", next <= 1 ? null : String(next))
+              }
+              quantityFromCart={quantityFromCart}
+              runningTotalPaise={optionsSubtotalPaise}
+              durationMinutes={durationMinutes}
+              onContinue={() => goStep("slot")}
+            />
           )}
         </>
       )}
@@ -308,7 +455,7 @@ function BookInner() {
         <CouponSheet
           open={couponOpen}
           onOpenChange={setCouponOpen}
-          subtotalPaise={totalPaise}
+          subtotalPaise={optionsSubtotalPaise}
           serviceName={service.name}
           area={addresses?.find((a) => a.id === addressId)?.area ?? ""}
           onApplied={(c, amount) => {
@@ -342,15 +489,24 @@ function BookInner() {
  * Unbuilt steps are visibly ahead, not hidden.
  */
 const BACK_LABEL: Record<Step, string> = {
-  slot: "Back to service",
+  options: "Back to service",
+  slot: "Change options",
   address: "Change date and time",
   summary: "Change address",
   payment: "Back to summary",
   done: "",
 };
 
-function Steps({ current }: { current: Step }) {
+function Steps({
+  current,
+  showOptions,
+}: {
+  current: Step;
+  /** False for services with nothing to configure — the step is skipped. */
+  showOptions: boolean;
+}) {
   const steps: { key: string; label: string }[] = [
+    ...(showOptions ? [{ key: "options", label: "Options" }] : []),
     { key: "slot", label: "Date & time" },
     { key: "address", label: "Address" },
     { key: "summary", label: "Summary" },
@@ -932,7 +1088,7 @@ function AddressSheet({
   );
 }
 
-export default function BookPage() {
+function BookPageInner() {
   return (
     <Suspense
       fallback={
@@ -943,5 +1099,25 @@ export default function BookPage() {
     >
       <BookInner />
     </Suspense>
+  );
+}
+
+/**
+ * Booking needs an account.
+ *
+ * Browsing, searching and filling a basket are all public — a stranger has to
+ * be able to see what CFC sells and what it costs before committing to
+ * anything. But this flow collects a saved address, a slot and a payment, all
+ * of which belong to a person, so it asks here rather than failing later at
+ * the address step with a form it cannot fill.
+ */
+export default function BookPage() {
+  return (
+    <RequireAccount
+      title="Sign in to book"
+      description="We need an account to save your address, hold your slot and send you the pro's details."
+    >
+      <BookPageInner />
+    </RequireAccount>
   );
 }

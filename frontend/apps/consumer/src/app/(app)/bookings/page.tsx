@@ -19,6 +19,7 @@ import {
   formatDayShort,
   formatTime,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
 
 /**
  * Customer 25 — My bookings.
@@ -84,7 +85,7 @@ function BookingsInner() {
   React.useEffect(() => load(), [load]);
 
   return (
-    <div className="mx-auto max-w-screen-lg px-4 pb-tab-bar pt-4 md:px-6 md:pb-12 lg:px-8">
+    <div className="mx-auto max-w-screen-lg px-4 pt-4 md:px-6 md:pb-12 lg:px-8">
       <h1 className="text-title font-semibold text-ink">My bookings</h1>
 
       {/* Scrolls on a phone: four tabs with counts do not fit at 390px. */}
@@ -257,7 +258,7 @@ function BookingCard({ booking }: { booking: ConsumerBooking }) {
   );
 }
 
-export default function BookingsPage() {
+function BookingsPageInner() {
   return (
     <Suspense
       fallback={
@@ -268,5 +269,20 @@ export default function BookingsPage() {
     >
       <BookingsInner />
     </Suspense>
+  );
+}
+
+/**
+ * Everything on this screen is the signed-in customer's own. A visitor without
+ * an account is offered one rather than being shown somebody else's.
+ */
+export default function BookingsPage() {
+  return (
+    <RequireAccount
+      title="Sign in to see your bookings"
+      description="Your upcoming, ongoing and past jobs live here once you have an account."
+    >
+      <BookingsPageInner />
+    </RequireAccount>
   );
 }

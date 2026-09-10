@@ -51,6 +51,7 @@ import {
   initials,
   toast,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
 
 /**
  * Customer 33, 34, 35 — profile, editing it, and saved addresses.
@@ -65,7 +66,7 @@ import {
  * reclaimed": nothing computes those and nothing should imply it does.
  */
 
-export default function ProfilePage() {
+function ProfilePageInner() {
   const [profile, setProfile] = React.useState<ConsumerProfile | null>(null);
   const [error, setError] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
@@ -99,7 +100,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
       <h1 className="sr-only">My profile</h1>
 
       {/* Identity. */}
@@ -572,5 +573,20 @@ function AddressesSheet({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+/**
+ * Everything on this screen is the signed-in customer's own. A visitor without
+ * an account is offered one rather than being shown somebody else's.
+ */
+export default function ProfilePage() {
+  return (
+    <RequireAccount
+      title="Sign in to see your profile"
+      description="Your details, saved addresses and booking stats are kept with your account."
+    >
+      <ProfilePageInner />
+    </RequireAccount>
   );
 }

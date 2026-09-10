@@ -14,6 +14,7 @@ import {
 import { ConsumerFooter } from "@/components/consumer-footer";
 import { ScenarioHook } from "@/components/scenario-hook";
 import { AppMain } from "@/components/app-main";
+import { CartBar } from "@/components/cart-bar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -36,6 +37,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <ConsumerFooter />
 
       {/* Mobile bottom tab bar */}
+      {/* Appears the moment the basket has something in it, on every screen
+          except the basket and the booking flow. */}
+      <CartBar />
+
       <ConsumerBottomNav />
     </div>
   );

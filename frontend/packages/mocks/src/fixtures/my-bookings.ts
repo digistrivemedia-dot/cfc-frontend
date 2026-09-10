@@ -1,5 +1,6 @@
 import type { ConsumerBooking } from "@cfc/types";
-import { PRO_NAMES, SERVICE_CATALOG, seeded, pickFrom } from "./seed";
+import { SERVICE_CATALOG } from "./seed";
+import { pros } from "./pros";
 
 /**
  * The signed-in customer's own bookings.
@@ -17,9 +18,6 @@ import { PRO_NAMES, SERVICE_CATALOG, seeded, pickFrom } from "./seed";
  *   completed    — done, with after photos. One rated, one not.
  *   cancelled    — for the fourth tab.
  */
-
-const rand = seeded(20260909);
-const pick = <T,>(xs: readonly T[]): T => pickFrom(rand, xs);
 
 const ADDRESS = {
   id: "addr_01",
@@ -45,16 +43,38 @@ function serviceAt(index: number): { name: string; variant: string | null } {
   return { name: row?.[2] ?? "Service", variant: null };
 }
 
+/**
+ * Professionals a customer can actually open.
+ *
+ * `getPublicPro` returns null for anyone not approved, or blocked - a customer
+ * has no reason to see a rejected applicant's profile. Indexing into the full
+ * `pros` array therefore produced dead links: `(index % 12) + 1` could land on
+ * `pro_0012`, which is rejected, so tapping the professional's name on that
+ * booking hit the "profile is not available" error state every time.
+ *
+ * Narrowed to the pros the profile screen can genuinely load, so the link is
+ * resolvable by construction rather than by luck.
+ */
+const LINKABLE_PROS = pros.filter(
+  (p) => !p.blocked && p.approvalStatus === "approved",
+);
+
 function pro(index: number) {
+  // Read the real professional rather than inventing one beside them. This
+  // used to mint its own `name`, `rating` and `jobsCompleted` while pointing
+  // at a DIFFERENT pro's id, so the booking showed one person and clicking
+  // through to their profile showed another - a different name and a
+  // different rating for what is supposed to be the same professional.
+  const source = LINKABLE_PROS[index % LINKABLE_PROS.length]!;
+
   return {
-    // Points at a real pro in the pros fixture, so the profile link resolves.
-    id: `pro_${String((index % 12) + 1).padStart(4, "0")}`,
-    name: pick(PRO_NAMES),
+    id: source.id,
+    name: source.name,
     // A real-looking number that is not a real number: the 555 range is not
     // allocated in India, so nobody's phone rings if a reviewer taps it.
     phone: `+9198555${String(10_000 + index * 137).slice(0, 5)}`,
-    rating: Math.round((4.1 + rand() * 0.8) * 10) / 10,
-    jobsCompleted: Math.floor(40 + rand() * 400),
+    rating: source.rating,
+    jobsCompleted: source.jobsCompleted,
   };
 }
 

@@ -79,7 +79,12 @@ export {
   getConsumerProfile,
   updateConsumerProfile,
 } from "./api/consumer-auth";
-export { getReviews, REVIEWS_ARE_PLACEHOLDER } from "./api/reviews";
+export {
+  getReviews,
+  getServiceReviews,
+  getServiceReviewCount,
+  REVIEWS_ARE_PLACEHOLDER,
+} from "./api/reviews";
 export { getPublicPro, getProReviews } from "./api/public-pro";
 export {
   getNotifications,
@@ -95,7 +100,7 @@ export {
   NEGATIVE_CHIPS,
   type ReviewSubmitResult,
 } from "./api/reviews-submit";
-export { searchServices, getTrendingSearches } from "./api/search";
+export { searchServices, suggestServices, getTrendingSearches } from "./api/search";
 export { getServiceFaqs } from "./api/faqs";
 export {
   getSupportFaqs,

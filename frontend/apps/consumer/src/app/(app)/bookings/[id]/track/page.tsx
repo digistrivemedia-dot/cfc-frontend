@@ -21,6 +21,7 @@ import {
   formatSchedule,
   formatTime,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
 
 /**
  * Customer 27, 28, 29 — tracking, work in progress, and the completion code.
@@ -42,7 +43,7 @@ import {
  * being an estimate rather than implying a live GPS feed we do not have.
  */
 
-export default function TrackPage() {
+function TrackPageInner() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
@@ -100,7 +101,7 @@ export default function TrackPage() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
       <Link
         href={`/bookings/${booking.id}`}
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
@@ -329,5 +330,15 @@ function Eta({ minutes }: { minutes: number | null }) {
         </p>
       )}
     </div>
+  );
+}
+
+/** This is one customer's own record. A visitor without an account is offered
+ *  one rather than being shown somebody else's booking. */
+export default function TrackPage() {
+  return (
+    <RequireAccount title="Sign in to track this job" description="Live location and arrival time are shown to the customer who made the booking.">
+      <TrackPageInner />
+    </RequireAccount>
   );
 }

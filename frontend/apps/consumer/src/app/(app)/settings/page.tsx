@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight, Globe, LogOut, Moon, Star } from "lucide-react";
 import {
@@ -16,6 +17,7 @@ import {
   cn,
   toast,
 } from "@cfc/ui";
+import { useSession } from "@/lib/session";
 
 /**
  * Customer 43 and 44 — settings, and the legal pages.
@@ -85,6 +87,8 @@ const LANGUAGES = [
 const APP_VERSION = "0.1.0";
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const { signedIn, signOut } = useSession();
   const [notify, setNotify] = React.useState<NotifyPrefs>(NOTIFY_DEFAULTS);
   const [dark, setDark] = React.useState(false);
   const [langOpen, setLangOpen] = React.useState(false);
@@ -126,7 +130,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
       <h1 className="text-title font-semibold text-ink">Settings</h1>
 
       {/* Notifications — genuinely functional. */}
@@ -246,12 +250,28 @@ export default function SettingsPage() {
         </Button>
       </section>
 
-      <Button variant="ghost" className="mt-4 w-full text-critical-ink" asChild>
-        <Link href="/login">
+      {/* Sign out actually ends the session. It used to be a link to /login,
+          which navigated but left the customer signed in — the same defect the
+          header menu had. It is also hidden from a visitor who has no session
+          to end: "Sign out" offered to someone who never signed in reads as a
+          broken screen.
+
+          Settings itself stays public, because language, dark mode and
+          notification preferences are per-device and mean something before
+          there is an account. */}
+      {signedIn && (
+        <Button
+          variant="ghost"
+          className="mt-4 w-full text-critical-ink"
+          onClick={() => {
+            signOut();
+            router.push("/");
+          }}
+        >
           <LogOut />
           Sign out
-        </Link>
-      </Button>
+        </Button>
+      )}
 
       <Sheet open={langOpen} onOpenChange={setLangOpen}>
         <SheetContent>

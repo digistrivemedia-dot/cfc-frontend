@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   BadgeCheck,
   Banknote,
@@ -8,6 +9,8 @@ import {
   Check,
   CreditCard,
   MapPin,
+  Minus,
+  Plus,
   Smartphone,
   Tag,
   Wallet,
@@ -18,6 +21,7 @@ import type {
   Address,
   Coupon,
   PriceBreakdown,
+  ServiceAddOn,
   ServiceDetail,
   ServiceVariant,
 } from "@cfc/types";
@@ -47,6 +51,331 @@ import {
  * they belong together rather than in four more files.
  */
 
+// -- 14: Service options ------------------------------------------------------
+
+/**
+ * Minutes as a customer would say them. 90 → "1 hr 30 min".
+ *
+ * Durations here are estimates on site, so anything past an hour reads better
+ * in hours than as a three-digit minute count nobody converts in their head.
+ */
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  const h = `${hours} hr`;
+  return rest === 0 ? h : `${h} ${rest} min`;
+}
+
+/**
+ * Customer 14 — variant picker, add-ons, quantity.
+ *
+ * The three decisions that define *what* is being booked, before the flow moves
+ * on to when and where. They belong on one screen because they are one
+ * question — a customer choosing "2 ton window" is also deciding whether they
+ * want the outdoor unit washed, and splitting that across screens makes them
+ * navigate backwards to compare prices.
+ *
+ * A running total sits at the bottom rather than only on the summary: every
+ * control here changes the price, and a customer who cannot see the effect of
+ * ticking an add-on is being asked to commit blind.
+ */
+export function OptionsStep({
+  service,
+  variant,
+  onVariantChange,
+  addOnIds,
+  onToggleAddOn,
+  quantity,
+  onQuantityChange,
+  quantityFromCart,
+  runningTotalPaise,
+  durationMinutes,
+  onContinue,
+}: {
+  service: ServiceDetail;
+  variant: ServiceVariant | null;
+  onVariantChange: (id: string) => void;
+  addOnIds: string[];
+  onToggleAddOn: (id: string) => void;
+  quantity: number;
+  onQuantityChange: (next: number) => void;
+  /**
+   * True when the basket already set the quantity.
+   *
+   * The stepper is hidden in that case: quantity is a basket concept, and
+   * asking for it twice is the one thing this screen and the basket genuinely
+   * duplicate. A customer who came straight from a service page keeps it,
+   * because there is nowhere else for them to say "three ACs".
+   */
+  quantityFromCart: boolean;
+  runningTotalPaise: number;
+  durationMinutes: number;
+  onContinue: () => void;
+}) {
+  const variants = service.variants.filter((v) => v.active);
+  const addOns = service.addOns.filter((a) => a.active);
+
+  return (
+    <div className="mt-4 space-y-4">
+      {variants.length > 1 && (
+        <section className="rounded-card border border-border bg-surface">
+          <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
+            Choose an option
+          </h2>
+          <fieldset className="space-y-2 p-4">
+            <legend className="sr-only">Service option</legend>
+            {variants.map((v) => (
+              <VariantRow
+                key={v.id}
+                variant={v}
+                basePricePaise={service.basePricePaise}
+                selected={variant?.id === v.id}
+                onSelect={() => onVariantChange(v.id)}
+              />
+            ))}
+          </fieldset>
+        </section>
+      )}
+
+      {quantityFromCart ? (
+        quantity > 1 && (
+          <div className="flex items-baseline justify-between gap-3 rounded-card border border-border bg-surface px-4 py-3">
+            <p className="text-small text-ink">
+              <span className="tabular font-semibold">{quantity}</span> of this
+              service
+            </p>
+            <Link
+              href="/cart"
+              className="shrink-0 text-caption font-medium text-action hover:text-action-hover"
+            >
+              Change in basket
+            </Link>
+          </div>
+        )
+      ) : (
+        <QuantityPicker
+          value={quantity}
+          unitPricePaise={
+            service.basePricePaise + (variant?.priceDeltaPaise ?? 0)
+          }
+          onChange={onQuantityChange}
+        />
+      )}
+
+      {addOns.length > 0 && (
+        <section className="rounded-card border border-border bg-surface">
+          <div className="border-b border-border px-4 py-3">
+            <h2 className="text-small font-semibold text-ink">
+              Add anything else?
+            </h2>
+            <p className="mt-px text-caption text-ink-muted">
+              Optional. The same professional does these on the same visit.
+            </p>
+          </div>
+          <ul className="divide-y divide-border-soft">
+            {addOns.map((a) => (
+              <li key={a.id}>
+                <AddOnRow
+                  addOn={a}
+                  checked={addOnIds.includes(a.id)}
+                  onToggle={() => onToggleAddOn(a.id)}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* The estimate is time on site, not a promise of when the pro arrives —
+          that is the slot on the next step, and conflating the two is how a
+          customer ends up expecting a 60-minute job to be finished 60 minutes
+          after booking. */}
+      <div className="flex items-baseline justify-between gap-3 rounded-card border border-border bg-surface px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-caption text-ink-muted">
+            Estimated time on site
+          </p>
+          <p className="tabular text-small font-medium text-ink">
+            About {formatDuration(durationMinutes)}
+          </p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-caption text-ink-muted">Subtotal</p>
+          <p className="tabular text-heading font-semibold text-ink">
+            {formatCurrency(runningTotalPaise)}
+          </p>
+        </div>
+      </div>
+
+      <Button variant="primary" className="w-full" onClick={onContinue}>
+        Continue to date and time
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * One variant.
+ *
+ * Priced absolutely rather than as "+₹200": a customer comparing options wants
+ * to know what each one costs, not to do arithmetic against a base price shown
+ * somewhere else on the screen.
+ */
+function VariantRow({
+  variant,
+  basePricePaise,
+  selected,
+  onSelect,
+}: {
+  variant: ServiceVariant;
+  basePricePaise: number;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex cursor-pointer items-center gap-3 rounded-control border p-3",
+        "transition-colors duration-fast",
+        selected ? "border-action bg-action-subtle" : "border-border",
+      )}
+    >
+      <input
+        type="radio"
+        name="variant"
+        value={variant.id}
+        checked={selected}
+        onChange={onSelect}
+        className="size-4 shrink-0 accent-action"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block text-small font-medium text-ink">
+          {variant.name}
+        </span>
+        <span className="tabular block text-caption text-ink-muted">
+          About {formatDuration(variant.durationMinutes)}
+        </span>
+      </span>
+      <span className="tabular shrink-0 text-small font-semibold text-ink">
+        {formatCurrency(basePricePaise + variant.priceDeltaPaise)}
+      </span>
+    </label>
+  );
+}
+
+/** One optional extra. */
+function AddOnRow({
+  addOn,
+  checked,
+  onToggle,
+}: {
+  addOn: ServiceAddOn;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex cursor-pointer items-start gap-3 p-4 transition-colors duration-fast",
+        checked && "bg-action-subtle",
+      )}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        className="mt-px size-4 shrink-0 accent-action"
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block text-small font-medium text-ink">
+          {addOn.name}
+        </span>
+        <span className="mt-px block text-caption text-ink-muted">
+          {addOn.description}
+        </span>
+        <span className="tabular mt-px block text-caption text-ink-faint">
+          Adds about {formatDuration(addOn.durationMinutes)}
+        </span>
+      </span>
+      <span className="tabular shrink-0 text-small font-semibold text-ink">
+        {formatCurrency(addOn.pricePaise)}
+      </span>
+    </label>
+  );
+}
+
+/**
+ * How many of this service. Customer 14.
+ *
+ * Capped at a number a single visit can plausibly cover. Someone who needs
+ * fifteen ACs serviced is not making a consumer booking — they want the
+ * business enquiry, and letting them type 15 here would promise a slot no pro
+ * can honour.
+ *
+ * The unit price is restated beside the stepper because the total multiplies
+ * it, and a customer who cannot see the arithmetic assumes the larger number
+ * is a mistake.
+ */
+const MAX_UNITS = 6;
+
+function QuantityPicker({
+  value,
+  unitPricePaise,
+  onChange,
+}: {
+  value: number;
+  unitPricePaise: number;
+  onChange: (next: number) => void;
+}) {
+  return (
+    <section className="rounded-card border border-border bg-surface p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="text-small font-semibold text-ink">How many?</h2>
+          <p className="mt-1 text-caption text-ink-muted">
+            <span className="tabular">{formatCurrency(unitPricePaise)}</span>{" "}
+            each. One visit covers all of them.
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1 rounded-control border border-border">
+          <Button
+            variant="ghost"
+            size="icon-md"
+            onClick={() => onChange(value - 1)}
+            disabled={value <= 1}
+            aria-label="One fewer"
+          >
+            <Minus />
+          </Button>
+          <span
+            className="tabular w-6 text-center text-body font-semibold text-ink"
+            aria-live="polite"
+          >
+            {value}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon-md"
+            onClick={() => onChange(value + 1)}
+            disabled={value >= MAX_UNITS}
+            aria-label="One more"
+          >
+            <Plus />
+          </Button>
+        </div>
+      </div>
+
+      {value >= MAX_UNITS && (
+        <p className="mt-3 text-caption text-ink-muted">
+          Need more than {MAX_UNITS}? Call us and we will arrange a team.
+        </p>
+      )}
+    </section>
+  );
+}
+
 // -- 18: Booking summary ------------------------------------------------------
 
 /**
@@ -60,7 +389,9 @@ import {
  */
 export function SummaryStep({
   service,
+  quantity,
   variant,
+  addOns,
   address,
   slotAt,
   coupon,
@@ -70,7 +401,11 @@ export function SummaryStep({
   onContinue,
 }: {
   service: ServiceDetail;
+  /** Units booked. Shown on the service line when it is more than one. */
+  quantity: number;
   variant: ServiceVariant | null;
+  /** The extras chosen on Customer 14. Named here, not just totalled. */
+  addOns: ServiceAddOn[];
   address: Address | null;
   slotAt: string | null;
   coupon: Coupon | null;
@@ -92,6 +427,14 @@ export function SummaryStep({
             value={
               <>
                 {service.name}
+                {/* Quantity rides on the service line rather than getting a
+                    row of its own: it is a property of what was booked, and
+                    a "Quantity: 1" row on every single-unit booking is noise.
+                    Shown only when it is not one — which is when it explains
+                    a total that would otherwise look wrong. */}
+                {quantity > 1 && (
+                  <span className="tabular"> × {quantity}</span>
+                )}
                 {variant ? (
                   <span className="block text-caption text-ink-muted">
                     {variant.name}
@@ -100,6 +443,24 @@ export function SummaryStep({
               </>
             }
           />
+          {addOns.length > 0 && (
+            <SummaryRow
+              icon={<Plus />}
+              label="Add-ons"
+              value={
+                <ul className="space-y-px">
+                  {addOns.map((a) => (
+                    <li key={a.id} className="flex justify-between gap-3">
+                      <span className="min-w-0">{a.name}</span>
+                      <span className="tabular shrink-0 text-ink-muted">
+                        {formatCurrency(a.pricePaise)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              }
+            />
+          )}
           {slotAt !== null && (
             <SummaryRow
               icon={<CalendarIcon />}
@@ -221,6 +582,9 @@ export function PriceBreakdownCard({
       </h2>
       <dl className="space-y-2 p-4">
         <Line label="Service" value={breakdown.servicePaise} />
+        {breakdown.addOnsPaise > 0 && (
+          <Line label="Add-ons" value={breakdown.addOnsPaise} />
+        )}
         {breakdown.discountPaise > 0 && (
           <Line label="Coupon discount" value={-breakdown.discountPaise} good />
         )}

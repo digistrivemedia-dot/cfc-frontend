@@ -41,35 +41,64 @@ export interface CouponResult {
 export function priceBooking({
   serviceId,
   variantDeltaPaise = 0,
+  addOnsPaise = 0,
   discountPaise = 0,
+  quantity = 1,
 }: {
   serviceId: string;
   variantDeltaPaise?: number;
+  /**
+   * Every selected add-on, summed. Customer 14.
+   *
+   * Charged once per booking rather than per unit: an add-on is a discrete
+   * extra the pro does on the visit, not a property of each unit being
+   * serviced. Someone booking three ACs and one deep-clean add-on wants one
+   * deep clean, and multiplying it would bill them for three.
+   */
+  addOnsPaise?: number;
   discountPaise?: number;
+  /**
+   * How many of this service, for jobs that come in units — two bathrooms,
+   * three ACs. Customer 14 asks for it.
+   *
+   * Only the work multiplies. The visit charge covers getting a pro to the
+   * door and the platform fee covers taking the booking, and neither happens
+   * twice because the customer asked for two bathrooms cleaned in one visit.
+   * Charging them per unit would be double-billing for one trip.
+   */
+  quantity?: number;
 }): PriceBreakdown {
   const rule = pricingRules.find((r) => r.serviceId === serviceId);
   const base = rule?.basePricePaise ?? 0;
   const visitChargePaise = rule?.visitChargePaise ?? 0;
   const platformFeePaise = rule?.platformFeePaise ?? 0;
 
-  const gross = base + variantDeltaPaise;
+  const units = Math.max(1, Math.floor(quantity));
+  const servicePaise = (base + variantDeltaPaise) * units;
+  const extrasPaise = Math.max(0, addOnsPaise);
+
   // A discount never exceeds the work it applies to, or the total goes
-  // negative and the customer is owed money for booking.
-  const capped = Math.min(Math.max(0, discountPaise), gross);
-  const servicePaise = gross;
+  // negative and the customer is owed money for booking. Add-ons count as
+  // work: they are the professional's labour too, so a coupon discounts them.
+  const capped = Math.min(
+    Math.max(0, discountPaise),
+    servicePaise + extrasPaise,
+  );
 
   const cgstPaise = Math.round((platformFeePaise * CGST_BPS) / 10_000);
   const sgstPaise = Math.round((platformFeePaise * SGST_BPS) / 10_000);
 
   return {
     servicePaise,
+    addOnsPaise: extrasPaise,
     visitChargePaise,
     platformFeePaise,
     discountPaise: capped,
     cgstPaise,
     sgstPaise,
     totalPaise:
-      servicePaise -
+      servicePaise +
+      extrasPaise -
       capped +
       visitChargePaise +
       platformFeePaise +
@@ -159,6 +188,10 @@ export async function getAvailableCoupons() {
 export async function createBooking(draft: {
   serviceId: string;
   variantId: string | null;
+  /** Ids of the add-ons chosen on Customer 14. Empty when none. */
+  addOnIds?: string[];
+  /** Units of the service — two bathrooms, three ACs. Defaults to one. */
+  quantity?: number;
   startsAt: string;
   addressId: string;
   paymentMethod: string;

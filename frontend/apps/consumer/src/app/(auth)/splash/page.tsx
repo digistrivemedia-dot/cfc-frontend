@@ -131,7 +131,7 @@ export default function SplashPage() {
 
       {/* Loading indicator */}
       <div
-        className="absolute bottom-16 flex items-center gap-2"
+        className="absolute bottom-12 flex items-center gap-2"
         style={{
           opacity: visible ? 1 : 0,
           transition: "opacity 0.4s ease 0.8s",

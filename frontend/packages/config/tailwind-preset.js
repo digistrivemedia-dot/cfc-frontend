@@ -256,6 +256,28 @@ module.exports = {
       body: ["15px", { lineHeight: "22px" }],
       small: ["13px", { lineHeight: "18px" }],
       caption: ["12px", { lineHeight: "16px" }],
+
+      // The desktop half of the scale.
+      //
+      // The six steps above were authored for a 390px phone and were the ONLY
+      // steps that existed, so a page title was 22px whether it sat on a phone
+      // or across a 1440px monitor. That is the single loudest tell that a
+      // layout is a phone design stretched wide: the grid gets roomier and the
+      // words do not grow with it.
+      //
+      // These are the paired large ends, used as `text-title md:text-title-lg`.
+      // They are deliberately NOT a separate scale — each one is the same role
+      // one size up, so a screen never has to invent a value, and the closed
+      // scale still holds.
+      //
+      // Ratios stay modest (~1.3x at the top, 1.0 at the bottom). A marketing
+      // page can shout; a page where somebody is choosing what to pay for
+      // should not. `body` and below do not grow at all — 15px body text is
+      // already correct at every width, and enlarging it would push content
+      // below the fold for no gain in readability.
+      "display-lg": ["44px", { lineHeight: "50px" }],
+      "title-lg": ["30px", { lineHeight: "36px" }],
+      "heading-lg": ["20px", { lineHeight: "28px" }],
     },
 
     fontWeight: {
@@ -312,6 +334,7 @@ module.exports = {
       // alone. Named steps make the intended stack explicit.
       zIndex: {
         sticky: "var(--z-sticky)",
+        header: "var(--z-header)",
         "drawer-scrim": "var(--z-drawer-scrim)",
         drawer: "var(--z-drawer)",
         "dialog-scrim": "var(--z-dialog-scrim)",
@@ -446,6 +469,13 @@ module.exports = {
         // Clears the pro app's mobile action bar — a 56px primary button plus
         // its 16px padding on both sides, plus the tab strip beneath it.
         "action-bar": "88px",
+        // Both bottom bars at once: the consumer tab strip (80) plus the
+        // checkout bar above it (88). On a phone a signed-in customer with
+        // something in the basket has both, and the page has to clear the pair
+        // — reserving only one of them leaves the end of the page underneath
+        // the other. Named because the two allowances must add up, and the
+        // closed scale has nothing near 168px.
+        bars: "168px",
       },
 
       inset: {
@@ -476,6 +506,16 @@ module.exports = {
       // content column may shrink, the action panel never does.
       gridTemplateColumns: {
         action: "minmax(0, 1fr) 320px",
+        // The consumer detail split: content that may shrink, beside a
+        // booking/summary card that must not. Service detail improvised this
+        // as `lg:grid-cols-[minmax(0,1fr)_360px]`, which is exactly the
+        // arbitrary value the closed scale exists to prevent — and it was the
+        // only one of its kind, so nothing else could match it.
+        detail: "minmax(0, 1fr) 360px",
+        // The mirror image: a filter rail beside a results grid. Browse
+        // screens put sort and narrowing controls in the content column on a
+        // phone and in this rail from `lg`.
+        browse: "240px minmax(0, 1fr)",
       },
 
       // Named so a progress bar or meter can animate its fill without an
@@ -487,6 +527,27 @@ module.exports = {
       // Switch thumb travel: track width, less the thumb and both insets.
       translate: {
         switch: "18px",
+      },
+
+      /**
+       * Entrance animations.
+       *
+       * `animate-in` was used by the consumer booking confirmation — the tick
+       * that appears once a booking succeeds — but was never defined here, so
+       * the class generated no CSS and the tick simply appeared. The calling
+       * screen already guards it behind `usePrefersReducedMotion`, so the
+       * animation is only ever applied to someone who has not asked their
+       * system to stop moving things.
+       */
+      keyframes: {
+        "cfc-pop-in": {
+          "0%": { opacity: "0", transform: "scale(0.8)" },
+          "60%": { opacity: "1", transform: "scale(1.05)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+      },
+      animation: {
+        in: "cfc-pop-in var(--duration-base) var(--ease-out) both",
       },
 
       transitionDuration: {

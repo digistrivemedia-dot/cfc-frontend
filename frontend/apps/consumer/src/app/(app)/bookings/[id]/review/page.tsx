@@ -16,6 +16,7 @@ import {
   cn,
   toast,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
 
 /**
  * Customer 30 — Rate and review.
@@ -33,7 +34,7 @@ import {
  * what went wrong, and offering "Very professional" there is tone deaf.
  */
 
-export default function ReviewPage() {
+function ReviewPageInner() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
@@ -140,7 +141,7 @@ export default function ReviewPage() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-sm px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-sm px-4 pt-4 md:px-6 md:pb-12">
       <Link
         href={`/bookings/${booking.id}`}
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
@@ -248,5 +249,15 @@ export default function ReviewPage() {
         </>
       )}
     </div>
+  );
+}
+
+/** This is one customer's own record. A visitor without an account is offered
+ *  one rather than being shown somebody else's booking. */
+export default function ReviewPage() {
+  return (
+    <RequireAccount title="Sign in to leave a review" description="Only the customer who booked a job can rate it.">
+      <ReviewPageInner />
+    </RequireAccount>
   );
 }

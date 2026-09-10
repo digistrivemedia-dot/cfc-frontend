@@ -22,6 +22,17 @@ export const coupons: Coupon[] = [
 ];
 
 export const banners: Banner[] = [
+  // `linkTarget` for a "service" banner used to hold the service NAME
+  // ("AC service & repair"), matching what Admin's banner editor stores -
+  // but `/service/[id]` needs an id, so tapping this banner 404'd. Kept as
+  // the admin-produced service NAME here (this is what a real admin banner
+  // will contain), and fixed the resolution instead in `banner-carousel.tsx`,
+  // which now looks the service up by name to find its real id. Same for
+  // "category" below - Admin still edits banners against the five admin
+  // category buckets (that's its own domain, pricing/commission live at that
+  // level), so `linkTarget` correctly stays an admin category NAME; the
+  // carousel resolves it to that category's best sub-category since
+  // /categories no longer browses the admin bucket layer directly.
   { id: "ban_01", imageUrl: "/mock/banners/first-booking.jpg", title: "20% off your first booking", linkType: "none", linkTarget: null, sortOrder: 1, active: true, scheduledFrom: null, scheduledTo: null },
   { id: "ban_02", imageUrl: "/mock/banners/ac-service.jpg", title: "AC service — flat 10% off", linkType: "service", linkTarget: "AC service & repair", sortOrder: 2, active: true, scheduledFrom: null, scheduledTo: "2026-09-30T18:29:59.000Z" },
   { id: "ban_03", imageUrl: "/mock/banners/deep-cleaning.jpg", title: "Deep cleaning before the festival", linkType: "category", linkTarget: "Home & Maintenance", sortOrder: 3, active: false, scheduledFrom: "2026-10-01T00:00:00.000Z", scheduledTo: "2026-10-20T18:29:59.000Z" },

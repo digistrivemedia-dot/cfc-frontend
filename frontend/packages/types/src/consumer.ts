@@ -56,6 +56,17 @@ export interface Review {
   rating: number;
   body: string;
   serviceName: string;
+  /**
+   * The professional who did the job.
+   *
+   * Customer 13 lists a pro's own reviews, and without this there was nothing
+   * to filter on: the profile drew from the global pool instead, so a plumber
+   * displayed reviews of washing-machine and salon jobs with the mismatched
+   * service name printed on each one, directly under their own skill tags.
+   *
+   * Null where the review is not attributable to a pro on the platform.
+   */
+  proId: Id | null;
   createdAt: Timestamp;
   /** True once CFC has matched the review to a completed, OTP-closed booking. */
   verified: boolean;

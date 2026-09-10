@@ -17,6 +17,7 @@ import {
   formatCurrency,
   toast,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
 
 /**
  * Customer 38 — Refer and earn.
@@ -30,7 +31,7 @@ import {
  * notice once the client sets real terms.
  */
 
-export default function ReferPage() {
+function ReferPageInner() {
   const [programme, setProgramme] = React.useState<ReferralProgramme | null>(
     null,
   );
@@ -108,7 +109,7 @@ export default function ReferPage() {
   const pending = programme.invited - programme.converted;
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
       <h1 className="text-title font-semibold text-ink">Refer and earn</h1>
       <p className="text-small text-ink-muted">
         Share your code. When a friend completes their first booking, you both
@@ -283,5 +284,20 @@ function Tracker({
       <dd className="tabular text-small font-semibold text-ink">{value}</dd>
       <dt className="text-caption leading-tight text-ink-muted">{label}</dt>
     </div>
+  );
+}
+
+/**
+ * Everything on this screen is the signed-in customer's own. A visitor without
+ * an account is offered one rather than being shown somebody else's.
+ */
+export default function ReferPage() {
+  return (
+    <RequireAccount
+      title="Sign in to refer a friend"
+      description="Your referral code and rewards are tied to your account."
+    >
+      <ReferPageInner />
+    </RequireAccount>
   );
 }

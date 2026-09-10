@@ -25,6 +25,49 @@ const DOC_TYPES: DocumentType[] = [
   "selfie",
 ];
 
+/**
+ * Per-professional bios.
+ *
+ * Every pro used to share one generated sentence - "{N} years of experience in
+ * {service}. Trained and verified by City Family Care." - so two pros with the
+ * same skill group and the same years had byte-identical bios. On a profile
+ * screen whose whole job is to answer "who is coming to my house?", that is
+ * not a bio, it is a field that happens to contain words.
+ *
+ * These are written per person and say only what the fixture already asserts
+ * elsewhere: the trade they work in and roughly how they work. They invent no
+ * certifications, employers, awards or specialisms the platform cannot stand
+ * behind, and they deliberately do NOT repeat "verified by City Family Care" -
+ * the Verified badge above the bio already makes that claim, and the old
+ * template asserted it even for pros whose KYC had not cleared.
+ */
+const PRO_BIOS: Record<string, string> = {
+  "Murugan Velayudham":
+    "Air-conditioning specialist. Handles servicing, gas top-ups and cooling faults across split and window units, and prefers to diagnose before quoting.",
+  "Senthil Kumar":
+    "Plumber working on taps, pipes and cisterns. Carries the common washers and fittings on every visit, so most jobs are finished without a second trip.",
+  "Ravi Shankar":
+    "Carpenter. Door and drawer repairs, hinges, shelving and flat-pack assembly - the small fixes that make a house work properly again.",
+  "Prabhakaran Natarajan":
+    "AC technician. Comfortable with older units other technicians turn down, and explains what failed rather than only that it failed.",
+  "Dinesh Arumugam":
+    "Air-conditioning and cooling work. Checks drainage and airflow as a matter of course, not only the fault that was reported.",
+  "Vijayakumar Rathinam":
+    "AC servicing and repair. Works methodically through a fault list and tests cooling performance before calling a job done.",
+  "Sathish Perumal":
+    "Senior AC technician. Long experience with split-unit installation and repair, and a steady hand with diagnostics on intermittent faults.",
+  "Manikandan Duraisamy":
+    "Electrical repairs - switches, sockets, fans and tripping circuits - finished only once the circuit is safe to put back into use.",
+  "Ashokan Pandian":
+    "Home salon and grooming professional. Brings equipment to you, works to the time you have booked, and leaves the space as it was found.",
+  "Jeyaraman Kaliyappan":
+    "Pest control technician. Treats room by room and explains what to do afterwards to keep the problem from returning.",
+  "Kannan Subbiah":
+    "Painter and decorator. Prepares and covers properly before any paint is opened, which is most of what makes a finish last.",
+  "Elango Ramaswamy":
+    "Deep cleaning professional. Works through kitchens and bathrooms in a fixed order so nothing is skipped on a long job.",
+};
+
 function build(): ProDetail[] {
   const rand = seeded(20260905);
   const pick = <T,>(xs: readonly T[]): T => pickFrom(rand, xs);
@@ -98,7 +141,11 @@ function build(): ProDetail[] {
       joinedAt: new Date(
         Date.now() - Math.floor(rand() * 400) * 86_400_000,
       ).toISOString(),
-      bio: `${experienceYears} years of experience in ${services[0]?.toLowerCase()}. Trained and verified by City Family Care.`,
+      // A pro added without copy gets a plain, factual line rather than an
+      // invented description of how they work.
+      bio:
+        PRO_BIOS[name] ??
+        `${experienceYears} years of experience in ${services[0]?.toLowerCase()}.`,
       experienceYears,
       bankAccountLast4: String(1000 + Math.floor(rand() * 8999)),
       ifsc: `HDFC000${1000 + Math.floor(rand() * 8999)}`,

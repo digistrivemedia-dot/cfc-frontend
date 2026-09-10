@@ -6,9 +6,14 @@ import {
   ArrowRight,
   BadgeCheck,
   CalendarCheck,
+  ChevronRight,
+  Quote,
   RotateCcw,
   ShieldCheck,
+  Sparkles,
+  Star,
   Wallet,
+  X,
 } from "lucide-react";
 import {
   getActiveBooking,
@@ -16,20 +21,22 @@ import {
   getCategories,
   getConsumerProfile,
   getRebookable,
+  getReviews,
   getServices,
   getSubCategories,
+  REVIEWS_ARE_PLACEHOLDER,
 } from "@cfc/mocks";
 import type {
   Banner,
-  Category,
   ConsumerBooking,
   ConsumerProfile,
+  Review,
   ServiceDetail,
   SubCategory,
 } from "@cfc/types";
 import {
+  EmptyState,
   ErrorState,
-  ServiceCard,
   Skeleton,
   SnapScroller,
   cn,
@@ -37,43 +44,35 @@ import {
 } from "@cfc/ui";
 import { ActiveBookingCard } from "@/components/active-booking-card";
 import { BannerCarousel } from "@/components/banner-carousel";
+import { CategoryStrip } from "@/components/category-strip";
 import { HomeHero } from "@/components/home-hero";
+import { ShopServiceCard } from "@/components/shop-service-card";
 import { SubCategoryTile } from "@/components/subcategory-tile";
 import { useSession } from "@/lib/session";
 
 /**
- * Customer 7 — Home. Served at `/`, the site's actual front door.
+ * Customer 7 — Home. Served at `/`, the site's front door.
  *
- * It used to live at `/home`, with `/` redirecting there. That redirect was
- * wrong twice over: a visitor typing the domain watched the URL change under
- * them, and the homepage — the most important page on a marketplace, and the
- * one search engines index — was not at the root. It is now the index of the
- * `(app)` group, so it renders directly with the header, footer and mobile tab
- * bar, and the address bar stays on the domain the visitor typed.
+ * Rebuilt around hierarchy. The previous version stacked nine sections of
+ * roughly equal weight and showed the same fifteen services twice — once as
+ * "Most booked" near the top and again as "Every service we offer" below it —
+ * so the page was long, repetitive, and led nowhere in particular.
  *
- * Design C: utility dashboard.
+ * The order now follows what a stranger actually needs, in order:
  *
- * The page adapts to who is looking, because "home" means two different things
- * to two different people:
+ *   1. What is this and what does it cost      — hero
+ *   2. What kinds of work do you do            — sticky category strip
+ *   3. Show me a few                           — five categories, then View all
+ *   4. Let me shop                             — services in labelled groups
+ *   5. Anything on offer                       — promotions
+ *   6. What do others book                     — most booked, far down
+ *   7. How does this actually work             — three steps
+ *   8. Why should I trust you                  — the guarantees
+ *   9. Can I do this on my phone               — app links
  *
- *   - Someone with a professional on the way is **not shopping**. They want to
- *     know where the pro is and how to reach them. That gets the top of the
- *     screen and the hero is dropped entirely — a marketing headline above a
- *     live job is noise.
- *   - Someone with nothing in flight is browsing, and gets the hero, the
- *     catalogue and the reasons to trust the platform.
- *
- * Between those, a returning customer gets "Book again" from their own
- * history, because the second booking of a monthly clean should take one tap
- * rather than a search.
- *
- * This is the version that stays useful after the first booking. A and B are
- * both permanent front doors — identical on day one and day one hundred.
- *
- * Everything the other two directions fixed is kept: sub-categories drive
- * browsing (the five categories are admin buckets — one holds 12 of 15
- * services, two hold none), real photographs throughout, a search field that
- * searches, and no invented testimonials.
+ * The category strip is the spine: pinned under the header for the whole page,
+ * filtering in place, so whatever a customer has scrolled to, changing subject
+ * is always one click away in the same spot.
  */
 
 const SUBCATEGORY_IMAGE: Record<string, string> = {
@@ -89,40 +88,59 @@ const SUBCATEGORY_IMAGE: Record<string, string> = {
   Nursing: "/mock/services/nurse-home-care-12-hr.jpg",
 };
 
-const FALLBACK_IMAGE = "/images/cat-home-maintenance.png";
+// `cat-home-maintenance.png` was a flat icon-in-a-circle placeholder, not a
+// photograph - visibly different from every other tile on this screen, which
+// are all real service photography. All ten sub-categories in today's
+// catalogue are mapped above, so this path is not hit right now, but it is
+// the thing that renders the moment a new sub-category ships without an
+// entry in SUBCATEGORY_IMAGE - a real photo here means that day is a
+// slightly generic tile, not a visibly broken one.
+const FALLBACK_IMAGE = "/mock/services/deep-home-cleaning.jpg";
+
+/** How many category tiles before "View all". Ten at once is a wall. */
+const TILES_SHOWN = 5;
 
 /**
- * Catalogue groupings, named for the moment a customer is in rather than for
- * the database's category table.
+ * Service groups, named for the moment rather than the taxonomy.
+ *
+ * A customer thinks "something is broken" or "the house needs a clean", not
+ * "Home & Maintenance". Each group is a labelled shelf, the way a shop is laid
+ * out — which is also what makes a long catalogue scannable rather than a grid
+ * of forty identical tiles.
  */
 const GROUPS: readonly {
   id: string;
+  eyebrow: string;
   title: string;
   description: string;
   subCategories: readonly string[];
 }[] = [
   {
-    id: "essentials",
-    title: "Home essentials",
-    description: "The jobs that cannot wait — power, water, appliances.",
+    id: "repair",
+    eyebrow: "Repairs",
+    title: "Reliable fixes, done right",
+    description: "Power, water and appliances — sorted the same day where we can.",
     subCategories: ["Electrical & AC", "Plumbing", "Appliance", "Water"],
   },
   {
     id: "clean",
-    title: "A cleaner home",
-    description: "Deep cleans and pest control.",
+    eyebrow: "Cleaning",
+    title: "Spotless homes, inside out",
+    description: "Deep cleans, bathrooms, sofas — and pests shown the door.",
     subCategories: ["Cleaning", "Pest control"],
   },
   {
     id: "improve",
-    title: "Make it yours",
-    description: "Carpentry and painting, finished properly.",
+    eyebrow: "Improve",
+    title: "Make the place yours",
+    description: "Carpentry and painting by people who finish properly.",
     subCategories: ["Carpentry", "Painting"],
   },
   {
     id: "care",
-    title: "Personal care",
-    description: "Salon and nursing, at home.",
+    eyebrow: "Personal care",
+    title: "Looking after you, at home",
+    description: "Salon appointments and qualified nursing, on your schedule.",
     subCategories: ["Beauty", "Nursing"],
   },
 ];
@@ -134,7 +152,6 @@ interface Rebookable {
 }
 
 export default function HomePage() {
-  const [categories, setCategories] = React.useState<Category[] | null>(null);
   const [subCategories, setSubCategories] = React.useState<SubCategory[] | null>(
     null,
   );
@@ -143,38 +160,36 @@ export default function HomePage() {
   const [profile, setProfile] = React.useState<ConsumerProfile | null>(null);
   const [active, setActive] = React.useState<ConsumerBooking | null>(null);
   const [rebookable, setRebookable] = React.useState<Rebookable[] | null>(null);
+  const [reviews, setReviews] = React.useState<Review[] | null>(null);
   const [error, setError] = React.useState(false);
+  const [filter, setFilter] = React.useState<string | null>(null);
   const { signedIn } = useSession();
 
   const load = React.useCallback(() => {
-    // Wait until the stored session has been read. Fetching a guest's view and
-    // then a customer's would flash the wrong homepage on every load.
     if (signedIn === null) return;
-
     setError(false);
 
-    // The catalogue is public — it is the whole point of the page, and a
-    // visitor arriving from a search result must see it without an account.
     const publicData = Promise.all([
       getCategories(),
       getSubCategories(),
       getServices(),
       getBanners(),
+      // Testimonials are shown to everyone, signed in or not — social proof
+      // is exactly the thing a stranger deciding whether to trust the site
+      // needs before they have any bookings of their own.
+      getReviews(6),
     ]);
 
-    // Anything that names a person is fetched only when there is a person to
-    // name. A signed-out visitor must never be shown another customer's live
-    // booking, their past services, or their area.
     const personalData = signedIn
       ? Promise.all([getConsumerProfile(), getActiveBooking(), getRebookable()])
       : Promise.resolve(null);
 
     Promise.all([publicData, personalData])
-      .then(([[c, sub, s, b], personal]) => {
-        setCategories(c);
+      .then(([[, sub, s, b, rv], personal]) => {
         setSubCategories(sub);
         setServices(s);
         setBanners(b.filter((x) => x.active));
+        setReviews(rv);
 
         if (personal) {
           const [p, act, re] = personal;
@@ -208,32 +223,44 @@ export default function HomePage() {
     return map;
   }, [live]);
 
+  /** Sub-categories with something behind them, biggest first. */
   const browsable = React.useMemo(() => {
     if (!subCategories || !live) return null;
     return subCategories
       .filter((sub) => sub.active)
       .map((sub) => ({
-        sub,
+        name: sub.name,
+        id: sub.id,
         count: live.filter((s) => s.subCategoryName === sub.name).length,
       }))
       .filter((x) => x.count > 0)
       .sort((a, b) => b.count - a.count);
   }, [subCategories, live]);
 
-  const mostBooked = React.useMemo(
-    () =>
-      live
-        ? [...live].sort((a, b) => b.bookingCount - a.bookingCount).slice(0, 8)
-        : null,
-    [live],
-  );
+  /**
+   * Most booked.
+   *
+   * The shelves above already show every service in the catalogue, so an
+   * unfiltered "most booked" repeated four cards a customer had just scrolled
+   * past — the same Tap washer replacement, AC service and Washing machine
+   * repair appearing twice on one page.
+   *
+   * It stays, because social proof is worth showing, but as a compact ranked
+   * strip rather than four more full cards. Different shape, different job:
+   * "what is popular" rather than "here is the catalogue again".
+   */
+  const mostBooked = React.useMemo(() => {
+    if (!live) return null;
+    return [...live]
+      .sort((a, b) => b.bookingCount - a.bookingCount)
+      .slice(0, 5);
+  }, [live]);
 
   const startingPrice = React.useMemo(() => {
     if (!live || live.length === 0) return null;
     return Math.min(...live.map((s) => s.basePricePaise));
   }, [live]);
 
-  /** Match a past booking back to a live service, so "Book again" can link. */
   const findService = React.useCallback(
     (name: string) => live?.find((s) => s.name === name) ?? null,
     [live],
@@ -251,52 +278,70 @@ export default function HomePage() {
     );
   }
 
-  // Only a signed-in customer can have a live job. A guest seeing one would be
-  // seeing somebody else's.
   const hasActive = signedIn === true && active !== null;
-
-  /**
-   * Someone who needs to be told how this works.
-   *
-   * That is a visitor who has never signed in, and a signed-in customer with no
-   * history yet — both are about to make a first booking and neither knows what
-   * happens after they press the button. A customer with past bookings does,
-   * and repeating it to them is filler.
-   *
-   * `rebookable` is null while loading, so a signed-in customer does not see
-   * the walkthrough flash before their history arrives.
-   */
   const isNewCustomer =
     signedIn === false ||
     (!hasActive && rebookable !== null && rebookable.length === 0);
 
+  /** Groups that survive the strip filter, and still have services in them. */
+  const visibleGroups = GROUPS.map((group) => {
+    const subs = filter
+      ? group.subCategories.filter((n) => n === filter)
+      : group.subCategories;
+    const items = bySubCategory
+      ? subs.flatMap((n) => bySubCategory.get(n) ?? [])
+      : null;
+    return { group, items };
+  }).filter(({ items }) => items === null || items.length > 0);
+
+  /**
+   * How many services the current filter leaves.
+   *
+   * Needed because filtering used to be silent: five sections below the grid
+   * (offers, most booked, how it works, why CFC, the app band) simply vanished
+   * with no explanation, and there was no count and no way back except finding
+   * the same chip again in the strip.
+   */
+  const filteredCount = filter
+    ? visibleGroups.reduce((n, g) => n + (g.items?.length ?? 0), 0)
+    : null;
+
+  // Always capped at TILES_SHOWN. This used to expand in place when
+  // "View all" was clicked, which is not what the label promised - a button
+  // that says "View all N categories" and then just grows a grid on the same
+  // page is not viewing all categories, it is a slightly longer version of
+  // the same five. The real browsing screen already exists at /categories,
+  // with sort and the "Coming soon" handling for empty categories, so the
+  // button now takes you there instead of duplicating a worse copy of it here.
+  const tiles = browsable ? browsable.slice(0, TILES_SHOWN) : null;
+
   return (
     <div>
-      {/* The hero is for people who are shopping. Someone tracking a pro gets
-          a compact greeting instead, because a marketing headline above a
-          live job is noise. */}
       {hasActive ? (
         <div className="mx-auto max-w-screen-xl px-4 pt-6 md:px-6 lg:px-8">
           <ActiveBookingCard booking={active} />
         </div>
       ) : (
-        <HomeHero area={profile?.area} startingPricePaise={startingPrice} />
+        <HomeHero
+          area={profile?.area}
+          startingPricePaise={startingPrice}
+          topServiceId={mostBooked?.[0]?.id}
+        />
+      )}
+
+      {/* ── The spine ─────────────────────────────────────────────────── */}
+      {browsable !== null && (
+        <CategoryStrip
+          items={browsable.map(({ name, count }) => ({ name, count }))}
+          active={filter}
+          onChange={setFilter}
+        />
       )}
 
       <div className="mx-auto max-w-screen-xl px-4 pb-12 md:px-6 lg:px-8">
-        {/* ── First-timer walkthrough ────────────────────────────────────
-            Shown only to someone with no history. A customer who has booked
-            before knows how this works, and repeating it to them is filler. */}
-        {isNewCustomer && <HowItWorks />}
-
-        {/* ── Book again ─────────────────────────────────────────────────
-            A returning customer's shortcut. Only completed jobs, de-duplicated
-            by service, so a monthly clean appears once rather than six times. */}
+        {/* ── Book again — a returning customer's shortcut ─────────────── */}
         {rebookable !== null && rebookable.length > 0 && (
-          <Band
-            title="Book again"
-            description="Services you've booked before."
-          >
+          <Band title="Book again" description="Services you've booked before.">
             <SnapScroller columns={4} aria-label="Book again">
               {rebookable.map((r) => {
                 const svc = findService(r.serviceName);
@@ -314,103 +359,170 @@ export default function HomePage() {
           </Band>
         )}
 
-        {/* ── Browse every service ───────────────────────────────────── */}
+        {/* ── Categories: five, then View all ──────────────────────────── */}
         <Band
-          title="What do you need help with?"
-          description={
-            startingPrice !== null
-              ? `Fixed prices from ${formatCurrency(startingPrice)}, shown before you book.`
-              : undefined
-          }
-          href="/categories"
+          // The hero already asks "What can we help you with?" and already
+          // quotes the starting price, so this heading names the thing itself
+          // rather than repeating the question two hundred pixels below it.
+          title="Browse by category"
+          description="Every kind of work we do, and how many services sit behind each."
         >
-          {browsable === null ? (
+          {tiles === null ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {Array.from({ length: 10 }, (_, i) => (
+              {Array.from({ length: TILES_SHOWN }, (_, i) => (
                 <Skeleton key={i} className="aspect-card rounded-card" />
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {browsable.map(({ sub, count }) => (
-                <SubCategoryTile
-                  key={sub.id}
-                  name={sub.name}
-                  serviceCount={count}
-                  imageUrl={SUBCATEGORY_IMAGE[sub.name] ?? FALLBACK_IMAGE}
-                  href={`/categories?sub=${encodeURIComponent(sub.name)}`}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {tiles.map(({ id, name, count }) => (
+                  <SubCategoryTile
+                    key={id}
+                    name={name}
+                    serviceCount={count}
+                    imageUrl={SUBCATEGORY_IMAGE[name] ?? FALLBACK_IMAGE}
+                    href={`/categories?sub=${encodeURIComponent(name)}`}
+                  />
+                ))}
+              </div>
+
+              {browsable && browsable.length > TILES_SHOWN && (
+                <Link
+                  href="/categories"
+                  className={cn(
+                    "mt-4 flex items-center gap-1 rounded-control text-small font-semibold text-action",
+                    "transition-colors duration-fast hover:text-action-hover",
+                    "focus-visible:outline-none focus-visible:outline-focus",
+                  )}
+                >
+                  {`View all ${browsable.length} categories`}
+                  <ChevronRight className="size-4" aria-hidden="true" />
+                </Link>
+              )}
+            </>
           )}
         </Band>
 
-        {/* ── Most booked ─────────────────────────────────────────────── */}
-        <Band
-          title="Most booked"
-          description="What people in your area book most often."
-          href="/categories"
-        >
-          {mostBooked === null ? (
-            <SnapScroller columns={4} aria-label="Loading services">
-              {Array.from({ length: 4 }, (_, i) => (
-                <Skeleton key={i} className="h-block-md rounded-card" />
-              ))}
-            </SnapScroller>
-          ) : (
-            <SnapScroller columns={4} aria-label="Most booked services">
-              {mostBooked.map((s) => (
-                <HomeServiceCard key={s.id} service={s} />
-              ))}
-            </SnapScroller>
-          )}
-        </Band>
+        {/* ── What the filter is doing, said out loud ──────────────────── */}
+        {filter !== null && (
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-3 rounded-card border border-action-line bg-action-subtle px-4 py-3">
+            <p className="text-small text-ink">
+              Showing{" "}
+              <span className="tabular font-semibold">
+                {filteredCount ?? 0}
+              </span>{" "}
+              {filteredCount === 1 ? "service" : "services"} in{" "}
+              <span className="font-semibold">{filter}</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => setFilter(null)}
+              className={cn(
+                "inline-flex h-field shrink-0 items-center gap-1 rounded-pill",
+                "border border-action bg-surface px-3 text-small font-semibold text-action",
+                "transition-colors duration-fast hover:bg-action hover:text-on-action",
+                "focus-visible:outline-none focus-visible:outline-focus",
+              )}
+            >
+              <X className="size-3" aria-hidden="true" />
+              Clear filter
+            </button>
+          </div>
+        )}
+
+        {/* ── The catalogue, as labelled shelves ───────────────────────── */}
+        {visibleGroups.map(({ group, items }) => (
+          <section key={group.id} className="mt-12">
+            <div className="mb-4">
+              <p className="text-caption font-semibold uppercase tracking-wide text-action">
+                {group.eyebrow}
+              </p>
+              <h2 className="mt-1 text-title font-semibold tracking-tight text-ink md:text-title-lg">
+                {group.title}
+              </h2>
+              <p className="mt-1 text-small text-ink-muted">
+                {group.description}
+              </p>
+            </div>
+
+            {items === null ? (
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <Skeleton key={i} className="h-block-lg rounded-card" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {items.map((s) => (
+                  <ShopServiceCard
+                    key={s.id}
+                    id={s.id}
+                    name={s.name}
+                    subCategoryName={s.subCategoryName}
+                    fromPricePaise={s.basePricePaise}
+                    rating={s.rating}
+                    reviewCount={s.reviewCount}
+                    imageUrl={s.imageUrls[0]}
+                    description={s.description}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        ))}
 
         {/* ── Offers ──────────────────────────────────────────────────── */}
-        {banners !== null && banners.length > 0 && (
+        {banners !== null && banners.length > 0 && filter === null && (
           <Band title="Offers for you">
             <BannerCarousel banners={banners} />
           </Band>
         )}
 
-        {/* ── The catalogue, filtered in place ────────────────────────── */}
-        <CatalogueShelf services={live} bySubCategory={bySubCategory} />
-
-        {/* Trust matters less to someone mid-job — they already trusted us —
-            so it is only shown to a customer who is still deciding. */}
-        {!hasActive && <WhyCfc />}
-
-        {categories !== null && (
-          <section className="mt-8">
-            <h2 className="text-small font-semibold text-ink-muted">
-              Browse by category
-            </h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {categories
-                .filter((c) => c.active && c.serviceCount > 0)
-                .map((c) => (
-                  <Link
-                    key={c.id}
-                    href={`/categories?cat=${c.id}`}
-                    className={cn(
-                      "flex items-center gap-2 rounded-pill border border-border bg-surface px-4 py-2",
-                      "text-small font-medium text-ink",
-                      "transition-colors duration-fast",
-                      "hover:border-action-line hover:bg-action-subtle hover:text-action",
-                      "focus-visible:outline-none focus-visible:outline-focus",
-                    )}
-                  >
-                    {c.name}
-                    <span className="text-caption text-ink-faint">
-                      {c.serviceCount}
-                    </span>
-                  </Link>
-                ))}
-            </div>
-          </section>
+        {/* ── Most booked — moved far down. It is social proof, not the
+            way anybody navigates a catalogue they have already been shown. */}
+        {filter === null && mostBooked !== null && mostBooked.length > 0 && (
+          <Band
+            title="Most booked this month"
+            description="What people in your area choose most often."
+          >
+            <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {mostBooked.map((s, i) => (
+                <li key={s.id}>
+                  <RankedServiceRow
+                    rank={i + 1}
+                    id={s.id}
+                    name={s.name}
+                    subCategoryName={s.subCategoryName}
+                    fromPricePaise={s.basePricePaise}
+                    rating={s.rating}
+                    imageUrl={s.imageUrls[0]}
+                  />
+                </li>
+              ))}
+            </ol>
+          </Band>
         )}
 
-        <JoinAsPro />
+        {/* A filter that matches nothing must say so rather than ending the
+            page early with no explanation. */}
+        {filter !== null && filteredCount === 0 && (
+          <div className="mt-6">
+            <EmptyState
+              title={`Nothing in ${filter} right now`}
+              description="This category has no services available at the moment. Try another, or browse everything."
+              action={{ label: "Show all services", onClick: () => setFilter(null) }}
+            />
+          </div>
+        )}
+
+        {filter === null && isNewCustomer && <HowItWorks />}
+        {filter === null && <WhyCfc />}
+        {filter === null && reviews !== null && reviews.length > 0 && (
+          <Testimonials reviews={reviews} />
+        )}
+        {filter === null && <JoinAsPro />}
+        {filter === null && <GetTheApp />}
       </div>
     </div>
   );
@@ -418,12 +530,30 @@ export default function HomePage() {
 
 /* ────────────────────────────────────────────────────────────────────────── */
 
-/**
- * One past service, offered again.
- *
- * Shows the current price rather than what they paid last time — a stale
- * figure here becomes a complaint at checkout.
- */
+function Band({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string | undefined;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mt-12">
+      <div className="mb-4">
+        <h2 className="text-title font-semibold tracking-tight text-ink md:text-title-lg">
+          {title}
+        </h2>
+        {description && (
+          <p className="mt-1 text-small text-ink-muted">{description}</p>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 function RebookCard({
   serviceName,
   pricePaise,
@@ -446,7 +576,7 @@ function RebookCard({
       )}
     >
       {imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
+        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={imageUrl}
           alt=""
@@ -477,227 +607,143 @@ function RebookCard({
   );
 }
 
-function CatalogueShelf({
-  services,
-  bySubCategory,
+/**
+ * A ranked row for "most booked".
+ *
+ * Deliberately not a `ShopServiceCard`: those already fill the shelves above,
+ * and repeating the identical card in a second grid made the page look like it
+ * had run out of things to say. A numbered row reads as a chart, which is what
+ * this section actually is.
+ */
+function RankedServiceRow({
+  rank,
+  id,
+  name,
+  subCategoryName,
+  fromPricePaise,
+  rating,
+  imageUrl,
 }: {
-  services: ServiceDetail[] | null;
-  bySubCategory: Map<string, ServiceDetail[]> | null;
-}) {
-  const [active, setActive] = React.useState<string>("all");
-
-  const tabs = React.useMemo(() => {
-    if (!bySubCategory) return [];
-    return GROUPS.filter((r) =>
-      r.subCategories.some((n) => (bySubCategory.get(n)?.length ?? 0) > 0),
-    );
-  }, [bySubCategory]);
-
-  const shown = React.useMemo(() => {
-    if (!services) return null;
-    if (active === "all") return services;
-    const row = GROUPS.find((r) => r.id === active);
-    if (!row || !bySubCategory) return services;
-    return row.subCategories.flatMap((n) => bySubCategory.get(n) ?? []);
-  }, [services, active, bySubCategory]);
-
-  const current = GROUPS.find((r) => r.id === active);
-
-  return (
-    <section className="mt-12">
-      <div className="mb-4">
-        <h2 className="text-title font-semibold tracking-tight text-ink">
-          Every service we offer
-        </h2>
-        <p className="mt-1 text-small text-ink-muted">
-          {current
-            ? current.description
-            : "Fixed prices, verified professionals, 30-day warranty."}
-        </p>
-      </div>
-
-      <div
-        role="tablist"
-        aria-label="Filter services"
-        className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 scrollbar-none md:mx-0 md:px-0"
-      >
-        <FilterChip
-          label="All services"
-          active={active === "all"}
-          onClick={() => setActive("all")}
-        />
-        {tabs.map((r) => (
-          <FilterChip
-            key={r.id}
-            label={r.title}
-            active={active === r.id}
-            onClick={() => setActive(r.id)}
-          />
-        ))}
-      </div>
-
-      {shown === null ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {Array.from({ length: 8 }, (_, i) => (
-            <Skeleton key={i} className="h-block-md rounded-card" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {shown.map((s) => (
-            <HomeServiceCard key={s.id} service={s} />
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function FilterChip({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
+  rank: number;
+  id: string;
+  name: string;
+  subCategoryName: string;
+  fromPricePaise: number;
+  rating?: number | undefined;
+  imageUrl?: string | undefined;
 }) {
   return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
+    <Link
+      href={`/service/${id}`}
       className={cn(
-        "shrink-0 rounded-pill border px-4 py-2 text-small font-medium",
-        "transition-colors duration-fast",
+        "group flex items-center gap-3 rounded-card border border-border bg-surface p-2",
+        "transition-all duration-base hover:border-action-line hover:shadow-sm",
         "focus-visible:outline-none focus-visible:outline-focus",
-        active
-          ? "border-action bg-action text-on-action"
-          : "border-border bg-surface text-ink hover:border-action-line hover:text-action",
       )}
     >
-      {label}
-    </button>
-  );
-}
-
-function HomeServiceCard({ service }: { service: ServiceDetail }) {
-  return (
-    <ServiceCard
-      name={service.name}
-      categoryName={service.subCategoryName}
-      fromPricePaise={service.basePricePaise}
-      rating={service.rating}
-      reviewCount={service.reviewCount}
-      bookingCount={service.bookingCount}
-      imageUrl={service.imageUrls[0]}
-      href={`/service/${service.id}`}
-    />
-  );
-}
-
-function Band({
-  title,
-  description,
-  href,
-  children,
-}: {
-  title: string;
-  description?: string | undefined;
-  href?: string | undefined;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="mt-8">
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <div className="min-w-0">
-          <h2 className="text-title font-semibold tracking-tight text-ink">
-            {title}
-          </h2>
-          {description && (
-            <p className="mt-1 text-small text-ink-muted">{description}</p>
+      <span className="tabular w-4 shrink-0 text-center text-small font-semibold text-ink-faint">
+        {rank}
+      </span>
+      {imageUrl ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+          className="size-tile shrink-0 rounded-control object-cover"
+        />
+      ) : (
+        <span className="size-tile shrink-0 rounded-control bg-neutral-subtle" />
+      )}
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-small font-semibold text-ink transition-colors duration-fast group-hover:text-action">
+          {name}
+        </span>
+        <span className="block truncate text-caption text-ink-muted">
+          {subCategoryName}
+          {rating !== undefined && rating > 0 && (
+            <> · <span className="tabular">{rating.toFixed(1)}★</span></>
           )}
-        </div>
-        {href && (
-          <Link
-            href={href}
-            className={cn(
-              "flex shrink-0 items-center gap-1 rounded-control text-small font-medium text-action",
-              "hover:underline focus-visible:outline-none focus-visible:outline-focus",
-            )}
-          >
-            See all
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
-        )}
-      </div>
-      {children}
-    </section>
+        </span>
+      </span>
+      <span className="tabular shrink-0 text-small font-semibold text-ink">
+        {formatCurrency(fromPricePaise)}
+      </span>
+    </Link>
   );
 }
 
 /**
- * How it works — first booking only.
+ * How it works.
  *
- * The question a first-time customer actually has is not "are you good", it is
- * "what happens after I press the button — does someone call me, do I have to
- * be home, when do I pay". Three steps answer it.
- *
- * Numbered rather than iconographic: the point is that it is a short sequence
- * with an end, and a row of icons does not say that.
+ * Rebuilt as a dark band with the steps connected. The old version was three
+ * circled numbers on white with grey body text — generic enough to belong to
+ * any company, which is the opposite of what this section is for. A customer
+ * reads it once, before their first booking, to answer one question: what
+ * happens after I press the button.
  */
 function HowItWorks() {
   const STEPS = [
     {
-      n: "1",
+      n: "01",
       title: "Pick a service and a slot",
-      body: "Choose what you need and a time that suits you. The price is fixed and shown before you confirm.",
+      body: "Add what you need and choose a time. The price is fixed and shown before you confirm.",
     },
     {
-      n: "2",
-      title: "A verified professional accepts",
-      body: "We offer the job to the nearest available pros. You see who is coming, their rating, and their arrival time.",
+      n: "02",
+      title: "A verified pro accepts",
+      body: "We offer the job to the three nearest available professionals. You see who is coming, their rating, and their arrival time.",
     },
     {
-      n: "3",
-      title: "Pay after the work is done",
+      n: "03",
+      title: "Pay once it's done",
       body: "Share a code to close the job, then pay by UPI, card, wallet or cash. Every job carries a 30-day warranty.",
     },
   ];
 
   return (
-    <section className="mt-8 rounded-card border border-border bg-surface p-6 md:p-8">
-      <h2 className="text-title font-semibold tracking-tight text-ink">
-        New here? This is how it works
-      </h2>
-      <p className="mt-1 text-small text-ink-muted">
-        Three steps, no phone calls, no haggling.
-      </p>
+    <section className="relative isolate mt-12 overflow-hidden rounded-card bg-structure">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 -z-10"
+        style={{
+          background:
+            "radial-gradient(ellipse 70% 130% at 12% 0%, rgba(0,184,196,0.22) 0%, transparent 62%)",
+        }}
+      />
 
-      <ol className="mt-6 grid gap-6 md:grid-cols-3">
-        {STEPS.map(({ n, title, body }) => (
-          <li key={n} className="flex gap-4">
-            <span
-              className={cn(
-                "flex size-tile shrink-0 items-center justify-center rounded-full",
-                "bg-action text-body font-semibold text-on-action",
+      <div className="p-6 md:p-panel">
+        <p className="text-caption font-semibold uppercase tracking-wide text-brand-bright">
+          How it works
+        </p>
+        <h2 className="mt-2 max-w-screen-sm text-title font-semibold tracking-tight text-on-structure md:text-title-lg">
+          Three steps, no phone calls, no haggling.
+        </h2>
+
+        <ol className="mt-8 grid gap-6 md:grid-cols-3">
+          {STEPS.map(({ n, title, body }, i) => (
+            <li key={n} className="relative">
+              {/* A hairline joining the steps, so they read as a sequence
+                  rather than three unrelated boxes. */}
+              {i < STEPS.length - 1 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute left-0 top-6 hidden h-px w-full bg-structure-muted md:block"
+                />
               )}
-              aria-hidden="true"
-            >
-              {n}
-            </span>
-            <span className="min-w-0">
-              <span className="block text-small font-semibold text-ink">
+              <span className="relative flex size-tile items-center justify-center rounded-full bg-brand text-caption font-semibold text-structure">
+                {n}
+              </span>
+              <p className="mt-4 text-body font-semibold text-on-structure">
                 {title}
-              </span>
-              <span className="mt-1 block text-caption leading-relaxed text-ink-muted">
+              </p>
+              <p className="mt-2 text-small leading-relaxed text-on-structure-muted">
                 {body}
-              </span>
-            </span>
-          </li>
-        ))}
-      </ol>
+              </p>
+            </li>
+          ))}
+        </ol>
+      </div>
     </section>
   );
 }
@@ -712,24 +758,24 @@ function WhyCfc() {
     {
       icon: BadgeCheck,
       title: "Verified professionals",
-      body: "Every pro completes identity and document verification before their first job.",
+      body: "Every pro completes identity and document checks before their first job.",
     },
     {
       icon: Wallet,
       title: "The price you were shown",
-      body: "Fixed pricing confirmed before the booking. No call-out fee to get a number.",
+      body: "Fixed pricing confirmed before booking. No call-out fee to get a number.",
     },
     {
       icon: CalendarCheck,
       title: "Slots that suit you",
-      body: "Choose the date and time window when you book, and track the pro on the way.",
+      body: "Pick the date and window when you book, and track the pro on the way.",
     },
   ];
 
   return (
     <section className="mt-12 overflow-hidden rounded-card border border-border bg-surface">
       <div className="border-b border-border px-6 py-5">
-        <h2 className="text-title font-semibold tracking-tight text-ink">
+        <h2 className="text-title font-semibold tracking-tight text-ink md:text-title-lg">
           Why City Family Care
         </h2>
         <p className="mt-1 text-small text-ink-muted">
@@ -753,32 +799,126 @@ function WhyCfc() {
   );
 }
 
+/**
+ * Testimonials.
+ *
+ * Screen inventory for Customer 7 calls for a testimonials section, and the
+ * data for it — `getReviews`, platform-wide reviews sorted newest first — was
+ * already built and documented as feeding "the home screen", but nothing on
+ * the home screen ever called it. This is that missing wire-up.
+ *
+ * Carries the same honesty the service-detail and pro-profile screens already
+ * use: `REVIEWS_ARE_PLACEHOLDER` labels the copy as sample content until real
+ * customer reviews replace the fixture, rather than presenting written-by-us
+ * quotes as if a customer said them.
+ */
+function Testimonials({ reviews }: { reviews: Review[] }) {
+  return (
+    <section className="mt-12">
+      <div className="mb-4">
+        <h2 className="text-title font-semibold tracking-tight text-ink md:text-title-lg">
+          What customers say
+        </h2>
+        {REVIEWS_ARE_PLACEHOLDER ? (
+          <p className="mt-1 text-small text-ink-muted">
+            Sample content — real reviews appear here once jobs are completed.
+          </p>
+        ) : (
+          <p className="mt-1 text-small text-ink-muted">
+            From customers whose jobs were completed and confirmed.
+          </p>
+        )}
+      </div>
+
+      <SnapScroller columns={3} aria-label="Customer testimonials">
+        {reviews.map((r) => (
+          <TestimonialCard key={r.id} review={r} />
+        ))}
+      </SnapScroller>
+    </section>
+  );
+}
+
+function TestimonialCard({ review }: { review: Review }) {
+  return (
+    <figure className="flex h-full flex-col rounded-card border border-border bg-surface p-5">
+      <Quote
+        className="size-5 shrink-0 text-action-line"
+        aria-hidden="true"
+        fill="currentColor"
+      />
+
+      <div className="mt-3 flex items-center gap-1" aria-hidden="true">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Star
+            key={i}
+            className={cn(
+              "size-4",
+              i < review.rating ? "text-star" : "text-border-strong",
+            )}
+            fill="currentColor"
+          />
+        ))}
+      </div>
+
+      <blockquote className="mt-3 flex-1 text-small leading-relaxed text-ink">
+        “{review.body}”
+      </blockquote>
+
+      <figcaption className="mt-4 border-t border-border pt-3">
+        <p className="text-small font-semibold text-ink">{review.authorName}</p>
+        <p className="text-caption text-ink-muted">
+          {review.serviceName} · {review.area}
+        </p>
+      </figcaption>
+    </figure>
+  );
+}
+
+/**
+ * Join as a professional.
+ *
+ * In the Customer 7 screen inventory and was previously pulled off the home
+ * page on the reasoning that it was a recruitment ad interrupting a shopping
+ * trip. Restored per spec, but kept to a single, skippable band rather than
+ * the full-width interruption it used to be — a customer who is not a
+ * tradesperson loses one section's height of scrolling, not a detour.
+ */
 function JoinAsPro() {
   return (
-    <section className="relative isolate mt-8 overflow-hidden rounded-card bg-structure">
+    <section className="relative isolate mt-12 overflow-hidden rounded-card bg-structure">
       <div
         aria-hidden="true"
         className="absolute inset-0 -z-10"
         style={{
           background:
-            "radial-gradient(ellipse 60% 120% at 85% 50%, rgba(37,99,235,0.35) 0%, transparent 70%)",
+            "radial-gradient(ellipse 70% 130% at 88% 100%, rgba(0,184,196,0.22) 0%, transparent 62%)",
         }}
       />
-      <div className="flex flex-wrap items-center justify-between gap-4 p-6 md:p-8">
+
+      <div className="flex flex-col items-start gap-6 p-6 md:flex-row md:items-center md:justify-between md:p-panel">
         <div className="min-w-0">
-          <h2 className="text-title font-semibold tracking-tight text-on-structure">
-            Work with City Family Care
+          <p className="flex items-center gap-1 text-caption font-semibold uppercase tracking-wide text-brand-bright">
+            <Sparkles className="size-4" aria-hidden="true" />
+            For professionals
+          </p>
+          <h2 className="mt-2 max-w-screen-sm text-title font-semibold tracking-tight text-on-structure">
+            Good at a trade? Get matched with paying jobs near you.
           </h2>
-          <p className="mt-2 max-w-screen-sm text-small text-on-structure-muted">
-            Take jobs near you, get paid within 48 hours, and pay no commission
-            on your first 20 jobs.
+          <p className="mt-2 max-w-screen-sm text-small leading-relaxed text-on-structure-muted">
+            Set your own hours, get paid after every job, and grow with a
+            platform that verifies you once and vouches for you every time.
           </p>
         </div>
+
+        {/* Same destination as the footer's "Work with us as a
+            professional" link — one route for the one signup flow, not a
+            second guessed-at domain. */}
         <Link
           href="/register?role=pro"
           className={cn(
             "flex h-touch shrink-0 items-center gap-2 rounded-control bg-brand px-6",
-            "text-body font-semibold text-on-action shadow-md",
+            "text-small font-semibold text-structure",
             "transition-colors duration-fast hover:bg-brand-bright",
             "focus-visible:outline-none focus-visible:outline-focus",
           )}
@@ -788,5 +928,81 @@ function JoinAsPro() {
         </Link>
       </div>
     </section>
+  );
+}
+
+/**
+ * The apps.
+ *
+ * The store links are placeholders until the apps ship; they are marked as
+ * such rather than dressed up as live downloads.
+ */
+function GetTheApp() {
+  return (
+    <section className="mt-12 overflow-hidden rounded-card border border-border bg-surface">
+      <div className="grid items-center gap-6 p-6 md:grid-cols-2 md:p-8">
+        <div className="min-w-0">
+          <p className="text-caption font-semibold uppercase tracking-wide text-action">
+            Coming soon
+          </p>
+          <h2 className="mt-2 text-title font-semibold tracking-tight text-ink md:text-title-lg">
+            Book on the go
+          </h2>
+          <p className="mt-2 max-w-screen-sm text-small leading-relaxed text-ink-muted">
+            Track your professional live on a map, get arrival alerts, and keep
+            every invoice in one place. The CFC app is on its way to Android and
+            iOS.
+          </p>
+
+          <div className="mt-5 flex flex-wrap gap-3">
+            <StoreBadge store="App Store" />
+            <StoreBadge store="Google Play" />
+          </div>
+        </div>
+
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {[
+            "Live tracking with arrival time",
+            "One-tap rebooking",
+            "Every invoice, saved",
+            "Wallet and refunds",
+          ].map((line) => (
+            <li
+              key={line}
+              className="flex items-start gap-2 rounded-control bg-canvas p-3 text-caption text-ink"
+            >
+              <BadgeCheck
+                className="mt-px size-4 shrink-0 text-action"
+                aria-hidden="true"
+              />
+              {line}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * A store badge for an app that does not exist yet.
+ *
+ * These were styled as buttons and did nothing — a customer tapping one got no
+ * response at all, which reads as broken rather than as "not yet". They are now
+ * plainly labelled as pending, with no affordance suggesting otherwise.
+ */
+function StoreBadge({ store }: { store: string }) {
+  return (
+    <span
+      className={cn(
+        "flex h-touch items-center gap-2 rounded-control border border-border bg-canvas px-4",
+        "text-small font-medium text-ink-muted",
+      )}
+    >
+      {store}
+      <span className="rounded-pill bg-neutral-subtle px-2 py-px text-caption font-semibold uppercase tracking-wide text-ink-faint">
+        Soon
+      </span>
+    </span>
   );
 }

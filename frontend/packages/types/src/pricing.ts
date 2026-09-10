@@ -17,6 +17,8 @@ import type { Paise } from "./primitives";
 export interface PriceBreakdown {
   /** The service and its chosen variant. */
   servicePaise: Paise;
+  /** Every selected add-on, summed. Zero when none were chosen. */
+  addOnsPaise: Paise;
   /** Charged for the visit itself. Often zero. */
   visitChargePaise: Paise;
   /** CFC's fee, admin-editable per service. GST applies to this alone. */

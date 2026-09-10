@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { Button, FormField, Input, toast } from "@cfc/ui";
 import { sendOtp } from "@cfc/mocks";
 import { AuthShell } from "@/components/auth-shell";
+import { useSession } from "@/lib/session";
 
 /**
  * Consumer Screen 3 — Login.
@@ -22,6 +23,14 @@ function normalisePhone(raw: string): string {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { signedIn } = useSession();
+
+  // A customer who is already signed in has no business on a sign-in form.
+  // Sent home rather than shown a screen that asks them to prove who they
+  // already are.
+  React.useEffect(() => {
+    if (signedIn) router.replace("/");
+  }, [signedIn, router]);
   const [phone, setPhone] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const digits = normalisePhone(phone);
@@ -119,7 +128,7 @@ export default function LoginPage() {
           className="text-small text-ink-muted hover:text-ink"
           onClick={() => router.push("/forgot-password")}
         >
-          Forgot password / changed number?
+          Forgot password?
         </button>
       </div>
 

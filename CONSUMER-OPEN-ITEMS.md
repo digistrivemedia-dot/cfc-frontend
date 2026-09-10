@@ -136,3 +136,204 @@ Noted so nobody "fixes" these later.
 | `grid-cols-4` on the payments date segments | Labels are short — "Today", "7 days", "30 days", "All time" — and fit at ~85px each. |
 | `grid-cols-3` on the service image tiles | Three square upload tiles, ~110px each at 390px. |
 | Splash redirect | Already gates on a `localStorage` flag and sends returning users to `/home`. A plan review suggested "fixing" this; it was already right. |
+
+---
+
+## 7. Found during the phased optimisation pass (2026-09-09)
+
+A screen-by-screen sweep of all 44 consumer screens, run in phases after every
+screen existed. Everything below was found by reading the code rather than by
+trusting a comment, and each item is either fixed here or flagged for the
+client.
+
+### 7a. Fixed in this pass
+
+| # | What was wrong | Why it mattered | Fix |
+|---|---|---|---|
+| 7.1 | **`/cart` was a 404.** The header basket button linked to a route that did not exist. | Adding to the basket worked, the count went up, and clicking it produced a dead end — the whole Add-to-cart feature terminated in an error page. | Built the basket screen: line items, quantity steppers, remove, sticky summary. |
+| 7.2 | **`AuthDialog` was built but never mounted.** Only self-referenced. | The whole "browsing is public, committing needs an account" rule was unenforced — there was no gate anywhere. | Mounted at the point of commitment (cart checkout) and inside `RequireAccount`. |
+| 7.3 | **`AuthDialog` never signed anyone in.** It verified the OTP, closed, and left the session untouched. | A customer completed a sign-in and the header still said *Log in*. | Calls `signIn()` before continuing. |
+| 7.4 | **Seven screens leaked another customer's data to signed-out visitors** — `/bookings`, `/wallet`, `/profile`, `/refer`, `/notifications`, `/support` tickets, `/book/[id]`. They fetched personal data with no session check. | A stranger arriving from a search result saw a wallet balance, a booking history and a referral code that were not theirs. | One `RequireAccount` guard, with a per-screen promise ("Sign in to see your bookings" vs "…your wallet"). |
+| 7.5 | **`/support` was over-gated in the first fix.** | The FAQ and helpline are the two things a stranger with a problem most needs; requiring an account turns a question into a lost customer. | Only the personal ticket threads are gated. FAQ and helpline stay public. |
+| 7.6 | **The service detail sticky bar was offset by a hardcoded 56px** for the mobile tab bar. | The tab bar became signed-in-only when the session landed, so for a guest — most first-time visitors — the price bar floated 56px above nothing. | Offset is session-aware. |
+| 7.7 | **17 screens each added `pb-tab-bar`**, while `AppMain` also adds it session-aware. | Guests got dead space at the foot of every screen; signed-in customers got double padding. | Removed all 17. One source of truth in `AppMain`. |
+| 7.8 | **The catalogue was not shoppable.** Add buttons existed only on the home screen; `/categories`, `/search` results and `/service/[id]` had none. | The screens where a customer actually decides could not collect anything, so a multi-service basket meant bouncing through detail pages. | All three use the cart-aware card. Service detail offers **Book now** and **Add to basket** side by side. |
+| 7.9 | **No quantity anywhere.** Screen 14 asks for it. | Two bathrooms or three ACs could not be booked in one visit. | Stepper on the slot step, state in `?qty=`, capped at 6. **Only the work multiplies** — visit charge and platform fee do not, because a pro makes one trip. |
+| 7.10 | **The footer was `hidden md:block`.** | It is where a customer checks the business is real before handing over an address and a card — hidden from the ~90% of visitors who arrive on a phone, and a signed-out visitor has no tab bar either, so they had no phone number, service area or legal links anywhere. | Shows at every width, condensing rather than disappearing. |
+| 7.11 | **The area picker was signed-in only.** | *"Do you operate where I live?"* is the first question a stranger has, and they will not create an account to find out. | Area belongs to the visit, not the account. Public, persisted, on desktop and mobile. |
+| 7.12 | **A "Help" button in the header dialled a phone.** Never in the inventory. | It wore the word *Help* and opened a dialler instead of the help screen. | Removed. Support is a menu item pointing at `/support` (Customer 40); the number lives in the footer and on the support screen, labelled as a number. |
+| 7.13 | **`getConsumerProfile` threw a 404 under the `empty` scenario.** | The home screen fetches it alongside the catalogue in one `Promise.all`, so that one rejection blanked categories, services and banners — the whole page rendered empty under `__cfc.empty()`. | Returns a genuine new customer instead. "Empty" means no history, never no account. |
+| 7.14 | **A competitor's advert was on the front page.** `promo-cleaning.png` was finished ad art carrying another company's branding ("SPARKLE & SHINE", "HOME GLOW"), its own feature list and its own app-download CTA. | It would have shipped as CFC's hero image. | Replaced with a real photograph of the work. **`promo-salon.png` and `promo-ac.png` carry the same problem and are unused — they should be deleted.** |
+
+### 7b. Still open — needs the client or the backend
+
+| # | Item | Detail |
+|---|---|---|
+| 7.15 | **Add-ons (Screen 14) are not buildable.** | The inventory asks the customer app for "variant picker, add-ons, quantity". Variants and quantity now exist. But **Admin 27 defines only** *Name, description, images, variants, inclusions, warranty info* — there is no way for an admin to create an add-on, so a customer-facing picker would edit data that cannot exist. Either Admin 27 gains an add-ons editor, or the clause is dropped. **Not invented.** |
+| 7.16 | **Every service photograph is the same shoot.** | Fifteen images, one model, one polo shirt, one apartment. Any grid of more than four cards reads as one repeated picture, which is the single biggest remaining constraint on how good the catalogue can look. Needs either varied photography or a typographic card without images. |
+| 7.17 | **`promo-salon.png` and `promo-ac.png` should be deleted.** | Same competitor branding as 7.14. Currently unused but sitting in `/public` where someone will reach for them. |
+| 7.18 | **`ring-focus` generates no CSS anywhere in `@cfc/ui`.** | The preset defines `outlineColor.focus`, not a ring colour, so five focus rings in the shared library are invisible. Affects **all three apps**, not just consumer. New consumer code uses `outline-focus`; the library still needs the fix. |
+
+---
+
+## 8. Phase 6 — verification sweep (2026-09-09)
+
+The last phase of the optimisation pass: no new features, only proving the
+previous five did what they claimed.
+
+### Results
+
+| Check | Result |
+|---|---|
+| Typecheck — `@cfc/types`, `@cfc/mocks`, `@cfc/ui`, `@cfc/consumer` | **4/4 clean** |
+| Lint — `@cfc/ui`, `@cfc/consumer` | **2/2 clean** |
+| Every route returns 200 | **27/27** |
+| Runtime errors in rendered HTML | **0** |
+| Every static internal link resolves | **14/14** |
+| Unwired `<Button>` across all files | **0** |
+| Production build | **26 routes compiled** |
+
+### Found and fixed during the sweep
+
+| # | What | Why it mattered |
+|---|---|---|
+| 8.1 | **`ring-focus` on the search input** (`/search`) | Verified against compiled CSS: **0 rules**. The input's focus ring was invisible — a real keyboard-accessibility defect, not a style nit. Replaced with `outline-focus`. This is 7.18 biting in consumer code; the five occurrences in `@cfc/ui` are still open. |
+| 8.2 | **Arbitrary grid track** `lg:grid-cols-[1fr_320px]` (`/cart`) | Compiles, but the design system's scale is closed and a one-off arbitrary track quietly becomes the house style. Replaced with `lg:grid-cols-3` + `lg:col-span-2`. |
+| 8.3 | **A lint error in `@cfc/ui`** | `photo-capture.tsx` carried `eslint-disable-next-line @next/next/no-img-element` — a Next rule, in a framework-agnostic package with no Next plugin. The *comment* was the error. The `<img>` itself is correct: it renders an object URL that `next/image` cannot handle. |
+
+### Deliberately not flagged
+
+| Item | Why it is correct |
+|---|---|
+| The disabled "Change photo" button on `/profile` | Disabled **with the reason on screen** — *"Photo upload arrives with the media integration."* That is the honest pattern, not a dead button. |
+| `/settings` is public | Language, dark mode and notification preferences are per-device and mean something before there is an account. Only the sign-out button is session-gated. |
+| `/legal/*` is public | Terms and privacy must be readable without an account. |
+| `max-w-screen-md` on profile, invoice, track, wallet, refer | Reading and receipt screens, not catalogues. A 1280px-wide invoice is worse than a 768px one. |
+
+---
+
+## §9 — Screens 7–13 audit ("Home & Discovery"), 2026-09-10
+
+A screen-by-screen pass over Customer 7–13, driven by a full-page screenshot of
+the home screen. Every Tailwind class in the consumer app was compiled against
+the real preset to find utilities that silently generate no CSS, which is how
+the first two items below were found rather than guessed at.
+
+### Fixed
+
+| # | Screen | Issue | Fix |
+|---|---|---|---|
+| 9.1 | — | **RETRACTED — this was a false alarm of mine, not a bug.** I reported that `tabular` generated no CSS, based on a probe that compiled the Tailwind preset in isolation. `.tabular` is in fact a hand-authored rule in `packages/ui/src/styles.css:29` which the probe never loaded. It sets `font-variant-numeric: tabular-nums` **and** `font-feature-settings: "tnum"` — strictly more than the Tailwind utility — and the house rule is to apply it "through this class, never ad hoc". A 326-line rewrite to `tabular-nums` was made and then fully reverted. **Lesson for future audits: compile the probe against the app's real CSS entry, not the preset alone, or hand-written `@layer` rules read as dead.** |
+| 9.2 | 12 Service detail | Rendered `<div className="aspect-card bg-action-subtle" />` — a blank teal box — where the photo belongs, while passing `imageUrls[0]` to the basket on the same screen. | New `ServiceGallery`: real photo, thumbnail strip when >1 image, `onError` fallback. |
+| 9.3 | 12 Service detail | "Recent reviews" called `getReviews(4)` — the newest reviews on the **whole platform**, contradicting the service-specific star rating directly above them. | New `getServiceReviews(name)` / `getServiceReviewCount`. Reviews fixture rewritten to generate per service (66 reviews, every service covered, verified by executing the fixture). |
+| 9.4 | All service lists | All 16 services shared one description: *"Professional {name}, done right the first time…"* — repeated verbatim on every card in the grid. | Per-service copy for all 16. Claims nothing beyond the platform's existing documented promises; invents no timings, chemicals or brands. Verified: 0 boilerplate, 0 fallbacks, no two services share a description. |
+| 9.5 | 7 Home | Filter strip silently removed 5 sections with no count, no label and no way to clear. | Filter summary bar (count + "Clear filter") and a real empty state when a filter matches nothing. |
+| 9.6 | 7 Home | "Most booked" repeated four cards already shown in the shelves above — same services twice on one page. | Reshaped into a compact ranked strip (`RankedServiceRow`): social proof, not a second catalogue. |
+| 9.7 | 10 Categories | Depth-1 was a plain icon list while the home page sold the same categories with photographs. | `CategoryCard` with artwork, gradient wash and live service counts. |
+| 9.8 | 10 Categories | `category.serviceCount` (stored) disagreed with the home page's derived counts for the same category. | Both screens now count from the live catalogue. |
+| 9.9 | 10 Categories | No sort at all on a category with 8 sub-categories. | Sort added, in the URL, same vocabulary as search. |
+| 9.10 | 8/9 Search | Sort was component state — reset on every new search and dropped from shared links. | Moved to `?sort=`, carried across refinements. |
+| 9.11 | 9 Search | Search field was `md:hidden`, leaving desktop with no visible input to refine a query on the results page. | Field shown at every width; back button stays mobile-only. |
+| 9.12 | 8 Search | Empty trending rendered a bare heading with nothing under it. | Section hides when empty; a browse-the-catalogue line appears when there is nothing to suggest. |
+| 9.13 | 13 Pro profile | `photoUrl` was on `PublicPro` and never rendered — every pro showed initials. | `AvatarImage` when present, initials as fallback. |
+| 9.14 | 13 Pro profile | Skill tags were dead badges. | Linked into the catalogue. |
+| 9.15 | 7 Home | Store badges styled as buttons that did nothing. | Plainly marked "Soon", no button affordance. |
+
+### Dead-CSS findings from the full compile audit
+
+Every class token in the consumer app (1,218) was compiled against the preset.
+Beyond `tabular`, five utilities generated no CSS at all:
+
+| # | Class | Where | Consequence | Fix |
+|---|---|---|---|---|
+| 9.16 | `md:top-bar-lg` | category strip, cart, search | **The home screen's category strip was pinned at `top-0` on desktop**, sliding under the header. The preset documents this exact trap: a utility ending in a breakpoint name is ambiguous to Tailwind's parser. | `md:top-bar-tall` |
+| 9.17 | `max-h-menu` | area picker | `menu` is a `minWidth` token; there is no `maxHeight` of that name, so the dropdown had no cap and a long area list ran off the viewport. | `max-h-block-sm` (256px — the token the preset documents for dropdowns) |
+| 9.18 | `animate-in` | booking confirmation | Never defined anywhere. The success tick had no animation, and the `usePrefersReducedMotion` guard around it was guarding nothing. | Defined `cfc-pop-in` keyframe + `animation.in` in the preset. |
+| 9.19 | `font-bold` | home | The weight scale stops at `semibold`. | `font-semibold` |
+| 9.20 | `bottom-16` | splash | Off the closed spacing scale. | `bottom-12` |
+
+### Mobile responsiveness
+
+| # | Issue | Fix |
+|---|---|---|
+| 9.21 | **The mobile header is ~104px** (a 56px brand row *plus* a search-and-area row), but the category strip and the search bar both stuck at 56px or `top-0` — so on a phone **both scrolled underneath the header and vanished**. The strip is the navigation spine of the home screen. | `ConsumerMobileTopBar` measures itself with a `ResizeObserver` and publishes `--cfc-mobile-bar`; the strip and the search bar offset by it, with `md:!top-bar-tall` taking over on desktop. Measured rather than hardcoded, because the header height depends on the controls inside it. |
+| 9.22 | Loading skeletons did not match the grids they stood in for (categories: `sm:grid-cols-2` vs content `grid-cols-2 sm:grid-cols-3`; service: fixed `h-block-md` vs `aspect-card`), so the page reflowed the moment data arrived — worst on the slowest connections. | Skeletons now mirror their real grid and aspect ratio. |
+
+### Verification performed
+
+- `tsc --noEmit` clean: consumer, admin, pro, `@cfc/ui`, `@cfc/mocks`
+- `next lint --max-warnings 0` clean: consumer, admin, pro
+- `next build` succeeded: consumer (27 routes), admin, pro
+- Full Tailwind compile audit re-run after the fixes: no dead utility classes
+  remain in the consumer app. Remaining probe matches are all non-classes —
+  `.tabular` (a real hand-authored rule, see 9.1), CSS variable names, import
+  paths, `sms:`/`tel:` URLs, Button variant names, and token names quoted
+  inside explanatory comments.
+- Fixtures executed, not just read: 66 reviews across 16 services with no gaps
+  and unique ids; 16 unique descriptions with no boilerplate; every referenced
+  image confirmed present on disk
+
+### Still open (needs client/backend, unchanged from §7b)
+
+7.15 add-ons · 7.16 repetitive photography · 7.17 delete competitor-branded
+`promo-salon.png` / `promo-ac.png` · 7.18 `ring-focus` in `@cfc/ui`
+
+---
+
+## §10 — Brand teal switched to the Figma colour (2026-09-10)
+
+### What changed
+
+The consumer app's teal fills now use **`#00b8c4`**, the colour approved in the
+client's Figma, instead of the shared `#0891a0`.
+
+Implemented as a consumer-scoped override in
+`apps/consumer/src/app/brand.css`, imported from the consumer root layout. It
+redefines `--color-action` and its hover/press/subtle/line companions. **Nothing
+in `packages/tokens` was touched**, so the Pro and Admin apps keep the shared
+palette — verified: Pro still serves `--color-action: #0891a0`.
+
+88 fill usages across the consumer app resolve through this one variable, so no
+call site changed.
+
+### The trade-off, recorded deliberately
+
+**White text on `#00b8c4` measures 2.43:1.** WCAG asks 3.0:1 for large bold text
+and 4.5:1 for ordinary text, so white button labels meet neither bar and will
+look washed out in bright daylight.
+
+This was an informed decision, not an oversight. Both alternatives were built
+and compared side by side before choosing:
+
+| Option | Ratio | Verdict |
+|---|---|---|
+| `#00b8c4` + white label — **shipped** | 2.43:1 | Exact Figma colour; fails contrast |
+| `#00b8c4` + navy `#0e1f3d` label | 6.75:1 | Same exact teal, passes at every size |
+| `#009aa6` + white label | 3.40:1 | Passes; slightly darker than Figma |
+
+The client approved the Figma colour and matching it was judged to matter more
+than the contrast gap. Comparison page:
+`scratchpad/teal-compare.html`.
+
+### If this is revisited
+
+**The cheapest fix is the label, not the teal.** Changing `--color-on-action` to
+`#0e1f3d` in `brand.css` takes the identical background from 2.43:1 to 6.75:1 —
+one line, and the Figma colour is untouched.
+
+Worth knowing: this is the specific thing app-store accessibility reviews and
+public-sector procurement checks flag. Cheap now, expensive after launch.
+
+### A design-system trap found doing it
+
+The override initially used `:root` and **silently did nothing.** Next hoists CSS
+imports and bundles them in its own order, so importing `brand.css` *after*
+`@cfc/ui/styles.css` did not put it later in the output — the shared `:root`
+landed second and won on source order.
+
+Fixed with `html:root`, which is one element selector heavier and therefore wins
+on **specificity** regardless of bundler order. Verified in the served CSS.
+
+**The lesson:** import order is not cascade order once a bundler is involved. An
+override that depends on source order is an override that will eventually stop
+working without an error.

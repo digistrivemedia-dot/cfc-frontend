@@ -164,8 +164,18 @@ function OtpInner() {
               maxLength={1}
               aria-label={`Digit ${i + 1} of 6`}
               className={[
-                "h-touch flex-1 rounded-control border text-center text-heading font-semibold text-ink",
-                "transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-action",
+                // `min-w-0` is what keeps this inside the card. An <input> has
+                // an intrinsic width from its `size` attribute — about 170px —
+                // and `flex-1` grows from that floor rather than shrinking
+                // below it, so six boxes forced the row far wider than its
+                // container and pushed a horizontal scrollbar onto the page.
+                "h-touch min-w-0 flex-1 rounded-control border text-center",
+                "text-heading font-semibold text-ink",
+                // `outline-focus` rather than a ring: it is the token the rest
+                // of the app focuses with, so the focus state here matches
+                // every other field. (`ring-action` does compile — unlike
+                // `ring-focus`, which has no ring colour defined at all.)
+                "transition-all duration-150 focus:outline-none focus-visible:outline-focus",
                 digit
                   ? "border-action bg-action-subtle"
                   : "border-border bg-surface",

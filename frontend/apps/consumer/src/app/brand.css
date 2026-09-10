@@ -1,0 +1,65 @@
+/*
+  Consumer brand override — the Figma teal.
+  ---------------------------------------------------------------------------
+
+  The client approved #00b8c4 in the Figma, and that is the teal the consumer
+  app ships. This file redefines the action token to it for the consumer app
+  ONLY: it is imported after `@cfc/ui/styles.css` in the consumer's root layout,
+  so the cascade lands on top of the shared palette without editing
+  `packages/tokens`.
+
+  Scoping it this way is the whole point. `--color-action` is a shared token, and
+  changing it in `packages/tokens/src/tokens.css` would silently repaint the Pro
+  and Admin apps too — neither of which was part of this decision.
+
+  WHAT THIS AFFECTS
+
+  Every teal FILL in the consumer app resolves through `--color-action`:
+  buttons, the active category chip, and large teal blocks. 88 usages, all
+  through this one variable.
+
+  A KNOWN TRADE-OFF, RECORDED HONESTLY
+
+  White text on #00b8c4 measures 2.43:1. WCAG asks for 3.0:1 on large bold text
+  and 4.5:1 on ordinary text, so white button labels on this teal do not meet
+  either bar, and the labels will look washed out in bright daylight.
+
+  This was a deliberate, informed decision: the Figma colour is what the client
+  signed off, and matching it was judged to matter more than the contrast gap.
+  Both alternatives were built and compared before choosing — navy labels on the
+  same teal reach 6.75:1, and a slightly darker #009aa6 with white labels reaches
+  3.40:1.
+
+  If this is ever revisited, the cheapest fix is the label colour, not the teal:
+  swapping `--color-on-action` to the navy below takes the exact same background
+  from 2.43:1 to 6.75:1.
+
+  See CONSUMER-OPEN-ITEMS.md for the record.
+*/
+
+/*
+  `html:root` rather than plain `:root`.
+
+  Next hoists CSS imports and bundles them in its own order, so importing this
+  file after `@cfc/ui/styles.css` did NOT guarantee it came later in the output —
+  and it did not: the shared `:root` landed second and won on source order, so
+  the override silently did nothing while looking completely correct.
+
+  `html:root` is one element selector heavier than `:root`, so it wins on
+  specificity regardless of where the bundler puts it.
+*/
+html:root {
+  /* The Figma teal. Fills only — see the note above. */
+  --color-action: #00b8c4;
+
+  /* Hover and press, derived from the new base so the interaction still reads
+     as "pressing down". Without these the button would hover DARKER than its
+     own resting state by a large jump, which feels like a different control. */
+  --color-action-hover: #00a4b0;
+  --color-action-press: #00909b;
+
+  /* The tint used behind hovered rows and subtle chips, lifted to sit with the
+     brighter base rather than against it. */
+  --color-action-subtle: #eafafb;
+  --color-action-line: #b7e9ee;
+}

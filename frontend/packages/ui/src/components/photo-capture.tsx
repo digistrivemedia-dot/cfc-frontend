@@ -166,7 +166,11 @@ export function PhotoCapture({
       <ul className="mt-3 flex flex-wrap gap-2">
         {photos.map((photo, i) => (
           <li key={photo.id} className="relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {/* A plain <img>, deliberately: this is an object URL for a file
+                the customer just picked, which next/image cannot optimise and
+                would refuse to load. The disable comment that used to sit here
+                named a Next rule, and this package has no Next plugin — so the
+                comment itself was the lint error. */}
             <img
               src={photo.previewUrl}
               alt={`${label} ${i + 1}`}

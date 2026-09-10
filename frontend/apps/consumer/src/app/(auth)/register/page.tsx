@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { Button, FormField, Input, toast } from "@cfc/ui";
 import { sendOtp } from "@cfc/mocks";
 import { AuthShell } from "@/components/auth-shell";
+import { useSession } from "@/lib/session";
 
 /**
  * Consumer Screen 4 — Register.
@@ -19,6 +20,14 @@ function normalisePhone(raw: string): string {
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { signedIn } = useSession();
+
+  // A customer who is already signed in has no business on a sign-in form.
+  // Sent home rather than shown a screen that asks them to prove who they
+  // already are.
+  React.useEffect(() => {
+    if (signedIn) router.replace("/");
+  }, [signedIn, router]);
   const [name, setName] = React.useState("");
   const [phone, setPhone] = React.useState("");
   const [area, setArea] = React.useState("");
@@ -94,12 +103,12 @@ export default function RegisterPage() {
         <FormField
           label="Your area"
           required
-          help="We\u2019ll show you nearby professionals"
+          help={"We\u2019ll show you nearby professionals"}
         >
           <Input
             id="register-area"
             type="text"
-            placeholder="e.g. Srirangam, Thillai Nagar\u2026"
+            placeholder={"e.g. Srirangam, Thillai Nagar\u2026"}
             value={area}
             onChange={(e) => setArea(e.target.value)}
             autoComplete="address-level3"

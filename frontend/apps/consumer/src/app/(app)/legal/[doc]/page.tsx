@@ -90,7 +90,7 @@ export default function LegalPage() {
   }
 
   return (
-    <div className="mx-auto max-w-prose px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-prose px-4 pt-4 md:px-6 md:pb-12">
       <Link
         href="/settings"
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"

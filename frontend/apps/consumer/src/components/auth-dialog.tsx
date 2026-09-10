@@ -15,6 +15,7 @@ import {
   cn,
   toast,
 } from "@cfc/ui";
+import { useSession } from "@/lib/session";
 
 /**
  * Sign in, without leaving the page.
@@ -52,6 +53,7 @@ export function AuthDialog({
   onDone: () => void;
   reason?: string | undefined;
 }) {
+  const { signIn } = useSession();
   const [step, setStep] = React.useState<Step>("phone");
   const [phone, setPhone] = React.useState("");
 
@@ -89,6 +91,10 @@ export function AuthDialog({
             phone={phone}
             onBack={() => setStep("phone")}
             onVerified={() => {
+              // Persist the session before continuing. Without this the
+              // customer verified a code and stayed signed out — the modal
+              // closed, the action ran, and the header still said "Log in".
+              signIn();
               onOpenChange(false);
               onDone();
             }}

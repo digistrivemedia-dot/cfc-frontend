@@ -60,6 +60,11 @@ export const SERVICE_CATALOG: readonly [string, string, string, number, number][
   ["Home & Maintenance", "Carpentry", "Carpentry work", 39900, 199900],
   ["Home & Maintenance", "Painting", "Wall painting", 449900, 1899900],
   ["Home & Maintenance", "Water", "RO water purifier service", 39900, 119900],
+  // The cheapest thing on the platform, and the figure the home screen quotes
+  // as its "from" price. A small fixed-fee call-out exists so that number is
+  // computed from a service a customer can actually book rather than being a
+  // marketing figure with nothing behind it.
+  ["Home & Maintenance", "Plumbing", "Tap washer replacement", 4900, 14900],
   ["Lifestyle & Personal", "Beauty", "Salon at home — women", 59900, 249900],
   ["Lifestyle & Personal", "Beauty", "Men's grooming", 29900, 99900],
   ["Health & Care", "Nursing", "Nurse home care — 12 hr", 129900, 199900],

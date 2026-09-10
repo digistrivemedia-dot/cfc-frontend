@@ -64,12 +64,48 @@ export interface ServiceVariant {
   active: boolean;
 }
 
+/**
+ * An optional extra bought alongside the service. Customer 14 — "add-ons".
+ *
+ * Unlike a variant, an add-on is additive and independent: a customer picks any
+ * number of them, or none, and each one is priced absolutely rather than as a
+ * delta because it is a separate piece of work, not a different shape of the
+ * same job.
+ */
+export interface ServiceAddOn {
+  id: Id;
+  name: string;
+  /** What the customer gets. One line — this sits under the name in a list. */
+  description: string;
+  pricePaise: Paise;
+  /** Added to the visit's time on site when selected. */
+  durationMinutes: number;
+  active: boolean;
+}
+
 export interface ServiceDetail extends ServiceListItem {
   description: string;
   imageUrls: string[];
   variants: ServiceVariant[];
+  addOns: ServiceAddOn[];
   inclusions: string[];
   warrantyDays: number;
+}
+
+/**
+ * A single row in the search type-ahead dropdown.
+ *
+ * Deliberately not a `ServiceDetail` or even a `ServiceListItem`: the
+ * suggestion list is shown while a customer is still typing, before they have
+ * committed to a search, so it needs only enough to render a clickable row —
+ * a name to show, a sub-category for context, and an id so picking a
+ * suggestion can jump straight to that service instead of running a search
+ * for its own name.
+ */
+export interface ServiceSuggestion {
+  id: Id;
+  name: string;
+  subCategoryName: string;
 }
 
 /**

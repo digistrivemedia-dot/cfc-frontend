@@ -37,6 +37,7 @@ import {
   formatSchedule,
   toast,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
 
 /**
  * Customer 36 and 37 — the wallet, and its full statement.
@@ -103,7 +104,7 @@ function WalletInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
       <h1 className="text-title font-semibold text-ink">Wallet</h1>
 
       {/* Balance. The one number this screen exists for, so it gets the room. */}
@@ -392,7 +393,7 @@ function AddMoneySheet({
   );
 }
 
-export default function WalletPage() {
+function WalletPageInner() {
   return (
     <Suspense
       fallback={
@@ -403,5 +404,20 @@ export default function WalletPage() {
     >
       <WalletInner />
     </Suspense>
+  );
+}
+
+/**
+ * Everything on this screen is the signed-in customer's own. A visitor without
+ * an account is offered one rather than being shown somebody else's.
+ */
+export default function WalletPage() {
+  return (
+    <RequireAccount
+      title="Sign in to see your wallet"
+      description="Your balance, refunds and transaction history are tied to your account."
+    >
+      <WalletPageInner />
+    </RequireAccount>
   );
 }

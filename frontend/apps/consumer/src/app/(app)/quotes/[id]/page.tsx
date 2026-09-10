@@ -37,6 +37,7 @@ import {
   formatSchedule,
   toast,
 } from "@cfc/ui";
+import { RequireAccount } from "@/components/require-account";
 
 /**
  * Customer 22, 23, 24 — a quotation received, decided, and confirmed.
@@ -52,7 +53,7 @@ import {
  * than a fact.
  */
 
-export default function QuotationPage() {
+function QuotationPageInner() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const id = params.id;
@@ -125,7 +126,7 @@ export default function QuotationPage() {
   const rejectedByCfc = quote.status === "rejected";
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pb-tab-bar pt-4 md:px-6 md:pb-12">
+    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
       <Link
         href="/bookings"
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
@@ -438,5 +439,15 @@ function AskSheet({
         </SheetFooter>
       </SheetContent>
     </Sheet>
+  );
+}
+
+/** This is one customer's own record. A visitor without an account is offered
+ *  one rather than being shown somebody else's booking. */
+export default function QuotationPage() {
+  return (
+    <RequireAccount title="Sign in to see this quotation" description="Quotations, material lists and photos are sent to the customer who requested them.">
+      <QuotationPageInner />
+    </RequireAccount>
   );
 }

@@ -8,9 +8,17 @@ import {
   BadgeCheck,
   Check,
   Clock,
+  Image as ImageIcon,
+  Minus,
+  Plus,
   ShieldCheck,
 } from "lucide-react";
-import { getReviews, getService, getServiceFaqs } from "@cfc/mocks";
+import {
+  REVIEWS_ARE_PLACEHOLDER,
+  getService,
+  getServiceFaqs,
+  getServiceReviews,
+} from "@cfc/mocks";
 import type { Review, ServiceDetail, ServiceFaq, ServiceVariant } from "@cfc/types";
 import {
   Accordion,
@@ -22,7 +30,10 @@ import {
   cn,
   formatCurrency,
   formatDate,
+  toast,
 } from "@cfc/ui";
+import { useCart } from "@/lib/cart";
+import { useSession } from "@/lib/session";
 
 /**
  * Customer 12 — Service detail.
@@ -52,11 +63,12 @@ export default function ServiceDetailPage() {
   const [reviews, setReviews] = React.useState<Review[] | null>(null);
   const [error, setError] = React.useState(false);
   const [variantId, setVariantId] = React.useState<string | null>(null);
+  const { add, has, setQuantity, lines } = useCart();
 
   const load = React.useCallback(() => {
     setError(false);
-    Promise.all([getService(id), getServiceFaqs(id), getReviews(4)])
-      .then(([s, f, r]) => {
+    Promise.all([getService(id), getServiceFaqs(id)])
+      .then(async ([s, f]) => {
         // The empty scenario resolves this to null, which for a detail screen
         // means the same thing as a 404.
         if (s === null) {
@@ -65,7 +77,9 @@ export default function ServiceDetailPage() {
         }
         setService(s);
         setFaqs(f);
-        setReviews(r);
+        // Reviews are fetched second because they are keyed on the service
+        // NAME, which only exists once the service itself has resolved.
+        setReviews(await getServiceReviews(s.name));
         // The catalogue marks one variant as pre-selected; honour it rather
         // than defaulting to the first in the array.
         const preset = s.variants.find((v) => v.isDefault && v.active);
@@ -81,6 +95,8 @@ export default function ServiceDetailPage() {
     [service],
   );
   const selected = variants.find((v) => v.id === variantId) ?? null;
+  const quantity =
+    (lines ?? []).find((l) => l.serviceId === id)?.quantity ?? 0;
 
   const totalPaise =
     service && selected
@@ -102,7 +118,9 @@ export default function ServiceDetailPage() {
   if (service === null) {
     return (
       <div className="mx-auto max-w-screen-xl px-4 py-6 md:px-6 lg:px-8">
-        <Skeleton className="h-block-md rounded-card" />
+        {/* `aspect-card`, matching the gallery it stands in for: a fixed-height
+            skeleton made the page jump the moment the photograph arrived. */}
+        <Skeleton className="aspect-card w-full rounded-card" />
         <Skeleton className="mt-4 h-4 w-line-lg" />
         <Skeleton className="mt-2 h-4 w-full max-w-line-2xl" />
       </div>
@@ -110,7 +128,7 @@ export default function ServiceDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-xl px-4 pb-tab-bar pt-4 md:px-6 md:pb-12 lg:px-8">
+    <div className="mx-auto max-w-screen-xl px-4 pt-4 md:px-6 md:pb-12 lg:px-8">
       <Link
         href="/categories"
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
@@ -119,18 +137,16 @@ export default function ServiceDetailPage() {
         {service.categoryName}
       </Link>
 
-      <div className="mt-3 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-3 grid gap-6 lg:grid-cols-detail lg:items-start">
         {/* ── Left: what it is ─────────────────────────────────────────── */}
         <div className="min-w-0 space-y-6">
-          <div className="overflow-hidden rounded-card border border-border bg-canvas">
-            <div className="aspect-card bg-action-subtle" aria-hidden="true" />
-          </div>
+          <ServiceGallery images={service.imageUrls} name={service.name} />
 
           <div>
             <p className="text-caption text-ink-muted">
               {service.subCategoryName}
             </p>
-            <h1 className="mt-1 text-title font-semibold text-ink">
+            <h1 className="mt-1 text-title font-semibold tracking-tight text-ink md:text-title-lg">
               {service.name}
             </h1>
 
@@ -160,7 +176,7 @@ export default function ServiceDetailPage() {
 
           {service.inclusions.length > 0 && (
             <section>
-              <h2 className="text-heading font-semibold text-ink">
+              <h2 className="text-heading font-semibold text-ink md:text-heading-lg">
                 What is included
               </h2>
               <ul className="mt-2 space-y-2">
@@ -181,7 +197,7 @@ export default function ServiceDetailPage() {
 
           {faqs !== null && faqs.length > 0 && (
             <section>
-              <h2 className="mb-2 text-heading font-semibold text-ink">
+              <h2 className="mb-2 text-heading font-semibold text-ink md:text-heading-lg">
                 Common questions
               </h2>
               <Accordion
@@ -211,6 +227,20 @@ export default function ServiceDetailPage() {
                 `/book/${service.id}${variantId ? `?variant=${variantId}` : ""}`,
               )
             }
+            inCart={has(service.id)}
+            quantity={quantity}
+            onQuantityChange={(next) => setQuantity(service.id, next)}
+            onAdd={() => {
+              add({
+                serviceId: service.id,
+                serviceName: service.name,
+                fromPricePaise: service.basePricePaise,
+                ...(service.imageUrls[0]
+                  ? { imageUrl: service.imageUrls[0] }
+                  : {}),
+              });
+              toast.success(`${service.name} added`);
+            }}
           />
         </div>
       </div>
@@ -224,6 +254,18 @@ export default function ServiceDetailPage() {
             `/book/${service.id}${variantId ? `?variant=${variantId}` : ""}`,
           )
         }
+        inCart={has(service.id)}
+        quantity={quantity}
+        onQuantityChange={(next) => setQuantity(service.id, next)}
+        onAdd={() => {
+          add({
+            serviceId: service.id,
+            serviceName: service.name,
+            fromPricePaise: service.basePricePaise,
+            ...(service.imageUrls[0] ? { imageUrl: service.imageUrls[0] } : {}),
+          });
+          toast.success(`${service.name} added`);
+        }}
       />
     </div>
   );
@@ -244,6 +286,10 @@ function BookingCard({
   totalPaise,
   durationMinutes,
   onBook,
+  onAdd,
+  inCart,
+  quantity,
+  onQuantityChange,
 }: {
   variants: ServiceVariant[];
   selectedId: string | null;
@@ -252,6 +298,10 @@ function BookingCard({
   totalPaise: number;
   durationMinutes: number | null;
   onBook: () => void;
+  onAdd: () => void;
+  inCart: boolean;
+  quantity: number;
+  onQuantityChange: (next: number) => void;
 }) {
   return (
     <div className="rounded-card border border-border bg-surface p-4">
@@ -312,9 +362,59 @@ function BookingCard({
         </fieldset>
       )}
 
+      {/* Two intentions, kept apart. Booking now is for someone who has
+          decided; adding to the basket is for someone collecting several jobs
+          — a deep clean and a plumbing visit in one visit to the site. The
+          service cards on the home screen already offer Add, and this is the
+          screen where the decision is actually made, so it has to offer it
+          too. */}
       <Button variant="primary" className="mt-4 hidden w-full lg:flex" onClick={onBook}>
         Book this service
       </Button>
+      {/* Once it is in the basket this becomes a stepper, matching every
+          service card in the app. A disabled "In your basket" button — which
+          is what sat here — is a dead end: booking two bathroom cleans is a
+          real thing, and it forced a trip to the basket to say so. */}
+      {inCart ? (
+        <div className="mt-2 hidden items-center justify-between gap-3 rounded-control border border-action p-1 lg:flex">
+          <button
+            type="button"
+            aria-label="Remove one"
+            onClick={() => onQuantityChange(quantity - 1)}
+            className={cn(
+              "flex size-touch items-center justify-center rounded-control text-action",
+              "transition-colors duration-fast hover:bg-action-subtle",
+              "focus-visible:outline-none focus-visible:outline-focus",
+            )}
+          >
+            <Minus className="size-4" aria-hidden="true" />
+          </button>
+          <span className="text-small font-semibold text-action" aria-live="polite">
+            <span className="tabular">{quantity}</span> added
+          </span>
+          <button
+            type="button"
+            aria-label="Add another"
+            onClick={() => onQuantityChange(quantity + 1)}
+            className={cn(
+              "flex size-touch items-center justify-center rounded-control text-action",
+              "transition-colors duration-fast hover:bg-action-subtle",
+              "focus-visible:outline-none focus-visible:outline-focus",
+            )}
+          >
+            <Plus className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      ) : (
+        <Button
+          variant="secondary"
+          className="mt-2 hidden w-full lg:flex"
+          onClick={onAdd}
+        >
+          <Plus className="size-4" />
+          Add
+        </Button>
+      )}
 
       <p className="mt-3 text-caption text-ink-faint">
         You pay after the job is done. Anything extra is quoted first.
@@ -333,17 +433,36 @@ function BookingCard({
 function MobileActionBar({
   totalPaise,
   onBook,
+  onAdd,
+  inCart,
+  quantity,
+  onQuantityChange,
 }: {
   totalPaise: number;
   onBook: () => void;
+  onAdd: () => void;
+  inCart: boolean;
+  quantity: number;
+  onQuantityChange: (next: number) => void;
 }) {
+  const { signedIn } = useSession();
+
   return (
     <div
-      // Sits directly on top of the 56px tab bar, plus the iOS safe area.
-      style={{ bottom: "calc(56px + env(safe-area-inset-bottom))" }}
+      // Clears the iOS home indicator. Padding rather than an offset, so it
+      // does not compete with the `bottom-*` class that positions the bar.
+      style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
       className={cn(
-        "fixed inset-x-0 z-sticky border-t border-border bg-surface px-4 py-3 lg:hidden",
-        "flex items-center justify-between gap-4",
+        "fixed inset-x-0 z-sticky border-t border-border bg-surface px-4 pt-3 lg:hidden",
+        "flex items-center justify-between gap-3",
+        // The tab bar is 56px tall, exists only for a signed-in customer, and
+        // is `md:hidden` — so it is present only below `md`, and only with an
+        // account. This bar is `lg:hidden`, so between `md` and `lg` it is on
+        // screen while the tab bar is NOT. The old inline offset keyed on
+        // `signedIn` alone got that band wrong at every width: it floated the
+        // bar 56px above nothing for a signed-in customer on a tablet, and an
+        // inline style cannot express the breakpoint that would fix it.
+        signedIn ? "bottom-tab-bar md:bottom-0" : "bottom-0",
       )}
     >
       <div className="min-w-0">
@@ -352,9 +471,49 @@ function MobileActionBar({
           {formatCurrency(totalPaise)}
         </p>
       </div>
-      <Button variant="primary" className="shrink-0" onClick={onBook}>
-        Book now
-      </Button>
+      <div className="flex shrink-0 items-center gap-2">
+        {/* A stepper here too, for the same reason as the desktop card. The
+            icon button was disabled once in the basket, which on a phone read
+            as the app having stopped working. */}
+        {inCart ? (
+          <span className="flex items-center rounded-control border border-action">
+            <button
+              type="button"
+              aria-label="Remove one"
+              onClick={() => onQuantityChange(quantity - 1)}
+              className="flex size-touch items-center justify-center rounded-control text-action focus-visible:outline-none focus-visible:outline-focus"
+            >
+              <Minus className="size-4" aria-hidden="true" />
+            </button>
+            <span
+              className="tabular w-4 text-center text-small font-semibold text-action"
+              aria-live="polite"
+            >
+              {quantity}
+            </span>
+            <button
+              type="button"
+              aria-label="Add another"
+              onClick={() => onQuantityChange(quantity + 1)}
+              className="flex size-touch items-center justify-center rounded-control text-action focus-visible:outline-none focus-visible:outline-focus"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+            </button>
+          </span>
+        ) : (
+          <Button
+            variant="secondary"
+            size="icon-md"
+            onClick={onAdd}
+            aria-label="Add to checkout"
+          >
+            <Plus />
+          </Button>
+        )}
+        <Button variant="primary" onClick={onBook}>
+          Book now
+        </Button>
+      </div>
     </div>
   );
 }
@@ -387,14 +546,66 @@ function TrustRow({ warrantyDays }: { warrantyDays: number }) {
   );
 }
 
+/**
+ * Reviews for THIS service.
+ *
+ * Previously fed by `getReviews(4)` — the newest four reviews on the platform,
+ * regardless of service. The star rating at the top of the page is
+ * service-specific, so the two contradicted each other on the same screen.
+ *
+ * Shows four, then reveals the rest in place. A separate reviews route is not
+ * in the inventory, and sending someone away from the screen where they are
+ * deciding to book is the wrong direction to push them.
+ */
 function ReviewList({ reviews }: { reviews: Review[] | null }) {
-  if (reviews === null || reviews.length === 0) return null;
+  const [expanded, setExpanded] = React.useState(false);
+
+  if (reviews === null) {
+    return (
+      <section>
+        <h2 className="text-heading font-semibold text-ink md:text-heading-lg">Reviews</h2>
+        <div className="mt-2 space-y-2">
+          {Array.from({ length: 2 }, (_, i) => (
+            <Skeleton key={i} className="h-block-xs rounded-card" />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (reviews.length === 0) {
+    return (
+      <section>
+        <h2 className="text-heading font-semibold text-ink md:text-heading-lg">Reviews</h2>
+        <p className="mt-2 text-small text-ink-muted">
+          No reviews for this service yet. Yours would be the first.
+        </p>
+      </section>
+    );
+  }
+
+  const INITIAL = 4;
+  const shown = expanded ? reviews : reviews.slice(0, INITIAL);
 
   return (
     <section>
-      <h2 className="text-heading font-semibold text-ink">Recent reviews</h2>
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-heading font-semibold text-ink md:text-heading-lg">
+          Reviews{" "}
+          <span className="tabular text-small font-normal text-ink-muted">
+            ({reviews.length})
+          </span>
+        </h2>
+      </div>
+      {/* The same honesty the pro profile already carries. These are our words
+          until the client supplies real ones, and the screen says so. */}
+      {REVIEWS_ARE_PLACEHOLDER && (
+        <p className="mt-1 text-caption text-ink-muted">
+          Sample content — real reviews appear once jobs are completed.
+        </p>
+      )}
       <ul className="mt-2 space-y-3">
-        {reviews.map((r) => (
+        {shown.map((r) => (
           <li
             key={r.id}
             className="rounded-card border border-border bg-surface p-4"
@@ -410,7 +621,98 @@ function ReviewList({ reviews }: { reviews: Review[] | null }) {
           </li>
         ))}
       </ul>
+
+      {reviews.length > INITIAL && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className={cn(
+            "mt-3 rounded-control text-small font-semibold text-action",
+            "transition-colors duration-fast hover:text-action-hover",
+            "focus-visible:outline-none focus-visible:outline-focus",
+          )}
+        >
+          {expanded
+            ? "Show fewer reviews"
+            : `Show all ${reviews.length} reviews`}
+        </button>
+      )}
     </section>
+  );
+}
+
+/**
+ * The photography.
+ *
+ * This was a bare `bg-action-subtle` box — an empty teal rectangle where the
+ * picture should be — while `imageUrls[0]` was sitting right there and being
+ * passed to the basket two hundred lines below. Every list in the app sells a
+ * service with a photograph; opening one showed a blank.
+ *
+ * Written to take an array because the catalogue field is one. It renders a
+ * single image as a plain frame and only earns its thumbnail strip when there
+ * is genuinely more than one, rather than showing a row of one thumbnail.
+ */
+function ServiceGallery({ images, name }: { images: string[]; name: string }) {
+  const [index, setIndex] = React.useState(0);
+  // A photo can 404 — the catalogue derives filenames from service names, so a
+  // renamed service silently loses its image. A broken-image glyph is worse
+  // than the placeholder, so failures fall back deliberately.
+  const [failed, setFailed] = React.useState(false);
+
+  const shown = images[index];
+  const hasPhoto = shown !== undefined && !failed;
+
+  return (
+    <div>
+      <div className="overflow-hidden rounded-card border border-border bg-canvas">
+        {hasPhoto ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={shown}
+            alt={name}
+            /* The hero image of the screen a customer decided to open, so it
+               is the one image on the page that must not be lazy. */
+            className="aspect-card w-full object-cover"
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          <div
+            className="flex aspect-card items-center justify-center bg-action-subtle"
+            aria-hidden="true"
+          >
+            <ImageIcon className="size-8 text-action" />
+          </div>
+        )}
+      </div>
+
+      {images.length > 1 && (
+        <ul className="mt-2 flex gap-2 overflow-x-auto scrollbar-none">
+          {images.map((src, i) => (
+            <li key={src}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIndex(i);
+                  setFailed(false);
+                }}
+                aria-label={`Show photo ${i + 1} of ${images.length}`}
+                aria-current={i === index}
+                className={cn(
+                  "size-tile-lg shrink-0 overflow-hidden rounded-control border",
+                  "transition-colors duration-fast",
+                  "focus-visible:outline-none focus-visible:outline-focus",
+                  i === index ? "border-action" : "border-border hover:border-action-line",
+                )}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={src} alt="" loading="lazy" className="size-full object-cover" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

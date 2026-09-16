@@ -127,17 +127,25 @@ export function CartBar() {
           </span>
         </span>
 
-        {/* ORANGE, and this is the right place to spend it.
+        {/* Deep blue, not orange.
 
-            The bar sits on a page whose every other action is teal - the Book
-            button, the Add stepper, the selected option. A teal Checkout on a
-            teal-edged white card was one more teal thing among several, and
-            the one control that must be found instantly read as the quietest.
+            Orange was tried here and read as weak. The reason is that orange
+            is this app's BADGE colour - the HOT mark, the most-booked mark -
+            so on a control it looks like a label that happens to be
+            clickable rather than the primary action of the bar. It is also a
+            mid-value colour: against a white card it carries far less weight
+            than its saturation suggests.
 
-            Orange is the app's "this is the thing" colour (the HOT badge, the
-            most-booked mark). Nothing else on a service page is orange, so
-            this cannot be missed. */}
-        <span className="flex shrink-0 items-center gap-1.5 rounded-control bg-promo px-4 py-2.5 text-small font-bold text-white shadow-[0_6px_16px_-6px_rgba(244,123,32,.7)]">
+            `bg-clock` is the #2464D0 already used for the "Verified
+            professional" chip, so it is not a new colour. It is dark, so
+            white text on it is unambiguous, and it is the only non-teal
+            action surface in the app - which is exactly what this needs to be,
+            sitting on a page whose every other control is teal.
+
+            Size matters as much as hue: this was a small pill floating in a
+            wide bar. A real button height and generous padding is what makes
+            it read as the way forward. */}
+        <span className="flex h-11 shrink-0 items-center gap-2 rounded-control bg-clock px-5 text-small font-bold text-white shadow-[0_8px_20px_-8px_rgba(36,100,208,.65)]">
           Checkout
           <ArrowRight className="size-4" aria-hidden="true" />
         </span>

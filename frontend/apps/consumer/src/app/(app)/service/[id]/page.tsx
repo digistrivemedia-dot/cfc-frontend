@@ -741,10 +741,11 @@ function ServiceGallery({ images, name }: { images: string[]; name: string }) {
 
   return (
     <div>
-      {/* 4:3 of an 830px column is a 620px-tall photo, which is what pushed
-          the page below the fold. Capping the width at 560px makes it 420px
-          tall with the ratio untouched. */}
-      <div className="cfc-media mx-auto max-w-[560px] border border-border bg-canvas">
+      {/* Full column width at every size. The 560px cap that was here solved
+          the height problem by shrinking the whole photo, which left a band of
+          empty page down both sides on a desktop - the image looked marooned
+          rather than placed. The ratio does that job instead: see below. */}
+      <div className="cfc-media border border-border bg-canvas">
         {hasPhoto ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
@@ -762,20 +763,27 @@ function ServiceGallery({ images, name }: { images: string[]; name: string }) {
                ~830px wide, so 4:3 made the photo 620px tall and pushed the
                title below the fold. Capping the height crops the frame
                centrally instead of shrinking the whole card. */
-            /* The ratio is the catalogue's own: every source photo is
-               1200x900, a consistent 4:3, so 4:3 is what it is displayed at.
-               Cropping to 16:9 threw away a third of a frame composed for
-               4:3 - on this photo, the technician's hands and the unit.
+            /* RATIO BY DEVICE, which is what every marketplace does.
 
-               What was wrong was SIZE, not shape. Constraining the WIDTH and
-               letting height follow keeps the ratio exact at every viewport
-               while the photo stops dominating the screen. */
-            className="aspect-card w-full object-cover"
+               A phone is a tall narrow column, so a 4:3 photo fills its width
+               and stays a sensible height - that is why it looks right there,
+               and it is kept below 900px.
+
+               A desktop column is ~830px wide. At 4:3 that is a 620px-tall
+               photo that dominates the fold; capping its width instead left
+               empty page down both sides. 3:2 is the answer at that size - a
+               classic photographic ratio (35mm), wide enough to fill the
+               column at a comfortable 550px, and a gentler crop of a 4:3
+               source than 16:9, which would cut a third of the frame.
+
+               The source stays 1200x900 and is cropped by object-fit, so no
+               new artwork is needed for this to work. */
+            className="aspect-card w-full object-cover cfc-md:aspect-[3/2]"
             onError={() => setFailed(true)}
           />
         ) : (
           <div
-            className="flex aspect-card items-center justify-center bg-action-subtle"
+            className="flex aspect-card items-center justify-center bg-action-subtle cfc-md:aspect-[3/2]"
             aria-hidden="true"
           >
             <ImageIcon className="size-8 text-action" />

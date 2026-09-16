@@ -322,6 +322,14 @@
   background: var(--teal, #02BABC);
 }
 
+/* The native input inside a `.cfc-row` is `sr-only`, so its focus ring is
+   invisible. Without this, a keyboard user tabbing through a package or slot
+   picker gets no indication of where they are. */
+.cfc-row:has(input:focus-visible) {
+  outline: 2.5px solid var(--teal-deep, #01A09E);
+  outline-offset: 3px;
+}
+
 .cfc-row.is-selected .cfc-row-dot::after {
   content: "";
   width: 7px;
@@ -492,4 +500,75 @@
   color: var(--orange, #F47B20);
   font-weight: 700;
   font-size: 0.8125rem;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   11. MEDIA OVERLAY — badges ON the photograph
+   ═══════════════════════════════════════════════════════════════════════
+   A badge sitting in the text below a photo competes with the heading. The
+   same badge ON the photo reads instantly and costs no vertical space - it is
+   how every marketplace labels a listing, and it is what the home page's
+   booked rail already does with its MOST BOOKED mark.
+
+   The scrim is what makes it legible: a white or orange badge on an unknown
+   photograph can land on anything. A gradient from the top edge guarantees
+   contrast without dimming the whole image. */
+
+.cfc-media {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-lg, 20px);
+}
+
+.cfc-media-scrim::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 96px;
+  background: linear-gradient(
+    to bottom,
+    rgba(16, 41, 76, 0.42),
+    rgba(16, 41, 76, 0)
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cfc-media-badges {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* Pushed to the right edge of the badge row - ratings read as an attribute of
+   the photo, not a claim about it. */
+.cfc-media-badges .cfc-media-right {
+  margin-left: auto;
+}
+
+/* On a photograph a badge needs its own surface. Frosted white keeps the
+   image visible through it while staying legible on anything. */
+.cfc-badge-glass {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink, #0E2A47);
+  backdrop-filter: blur(6px);
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+@media (max-width: 620px) {
+  .cfc-media-badges {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    gap: 6px;
+  }
 }

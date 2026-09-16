@@ -144,7 +144,30 @@ export default function ServiceDetailPage() {
       <div className="mt-3 grid gap-6 lg:grid-cols-detail lg:items-start">
         {/* ── Left: what it is ─────────────────────────────────────────── */}
         <div className="min-w-0 space-y-6">
-          <ServiceGallery images={service.imageUrls} name={service.name} />
+          <ServiceGallery
+            images={service.imageUrls}
+            name={service.name}
+            badges={
+              <>
+                {/* ORANGE, rationed to one mark on this screen, and spent on
+                    the thing that actually persuades: that other people book
+                    this. */}
+                {service.reviewCount >= 100 && (
+                  <span className="cfc-badge cfc-badge-promo">Most booked</span>
+                )}
+                {service.warrantyDays > 0 && (
+                  <span className="cfc-badge cfc-badge-glass">
+                    {service.warrantyDays}-day warranty
+                  </span>
+                )}
+                {service.rating > 0 && (
+                  <span className="cfc-badge cfc-badge-glass cfc-media-right">
+                    <span className="cfc-star">★</span> {service.rating.toFixed(1)}
+                  </span>
+                )}
+              </>
+            }
+          />
 
           <div>
             <p className="text-caption text-ink-muted">
@@ -166,18 +189,8 @@ export default function ServiceDetailPage() {
               )}
               {/* Spec: "warranty badge". The number is real — it comes from
                   the catalogue, per service. */}
-              {service.warrantyDays > 0 && (
-                <span className="cfc-badge cfc-badge-teal">
-                  {service.warrantyDays}-day warranty
-                </span>
-              )}
-              {/* ORANGE, rationed. The one loud mark on this screen, and it
-                  marks the thing a customer is actually persuaded by: that
-                  other people book this service. Spending orange on anything
-                  else here would flatten the signal. */}
-              {service.reviewCount >= 100 && (
-                <span className="cfc-badge cfc-badge-promo">Most booked</span>
-              )}
+              {/* Warranty, rating and "most booked" now sit ON the photo
+                  above - see the ServiceGallery call. */}
             </div>
 
             <p className="mt-3 text-body leading-relaxed text-ink-muted">
@@ -341,15 +354,16 @@ function BookingCard({
               const price = basePricePaise + v.priceDeltaPaise;
               const isSelected = v.id === selectedId;
               return (
+                /* The native radio is hidden rather than styled.
+                   `accent-action` only recolours the DOT; the ring around it
+                   stays the browser's own dark grey, which is the black ring
+                   that showed on every unselected option. A drawn dot is the
+                   only way to control both. The input stays in the DOM,
+                   focusable and announced, so keyboard and screen-reader
+                   behaviour is unchanged. */
                 <label
                   key={v.id}
-                  className={cn(
-                    "flex cursor-pointer items-start gap-3 rounded-control border p-3",
-                    "transition-colors duration-fast",
-                    isSelected
-                      ? "border-action bg-action-subtle"
-                      : "border-border hover:border-action-line",
-                  )}
+                  className={cn("cfc-row", isSelected && "is-selected")}
                 >
                   <input
                     type="radio"
@@ -357,17 +371,18 @@ function BookingCard({
                     value={v.id}
                     checked={isSelected}
                     onChange={() => onSelect(v.id)}
-                    className="mt-1 size-4 shrink-0 accent-action"
+                    className="sr-only"
                   />
+                  <span className="cfc-row-dot" aria-hidden="true" />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-small font-medium text-ink">
+                    <span className="block text-small font-semibold text-ink">
                       {v.name}
                     </span>
                     <span className="tabular block text-caption text-ink-muted">
                       {formatDuration(v.durationMinutes)}
                     </span>
                   </span>
-                  <span className="tabular shrink-0 text-small font-semibold text-ink">
+                  <span className="cfc-price shrink-0">
                     {formatCurrency(price)}
                   </span>
                 </label>
@@ -679,7 +694,18 @@ function ReviewList({ reviews }: { reviews: Review[] | null }) {
  * single image as a plain frame and only earns its thumbnail strip when there
  * is genuinely more than one, rather than showing a row of one thumbnail.
  */
-function ServiceGallery({ images, name }: { images: string[]; name: string }) {
+function ServiceGallery({
+  images,
+  name,
+  badges,
+}: {
+  images: string[];
+  name: string;
+  /* Rendered OVER the photograph rather than under it. A badge in the text
+     below competes with the heading for the same glance; on the image it is
+     read before the eye has left the picture, and costs no vertical space. */
+  badges?: React.ReactNode;
+}) {
   const [index, setIndex] = React.useState(0);
   // A photo can 404 — the catalogue derives filenames from service names, so a
   // renamed service silently loses its image. A broken-image glyph is worse
@@ -691,7 +717,8 @@ function ServiceGallery({ images, name }: { images: string[]; name: string }) {
 
   return (
     <div>
-      <div className="overflow-hidden rounded-card border border-border bg-canvas">
+      <div className="cfc-media cfc-media-scrim border border-border bg-canvas">
+        {badges ? <div className="cfc-media-badges">{badges}</div> : null}
         {hasPhoto ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
@@ -699,12 +726,17 @@ function ServiceGallery({ images, name }: { images: string[]; name: string }) {
             alt={name}
             /* The hero image of the screen a customer decided to open, so it
                is the one image on the page that must not be lazy. */
-            className="aspect-card w-full object-cover"
+            /* 4:3 is right on a phone, far too tall on a monitor: at 1360px
+               it pushed the entire page below the fold and made the photo the
+               loudest thing on a screen whose job is to sell a service, not a
+               picture. Widens as the viewport does, and caps in pixels so it
+               cannot grow without limit on an ultrawide. */
+            className="aspect-card max-h-[420px] w-full object-cover cfc-sm:aspect-[16/10] cfc-md:aspect-[16/9]"
             onError={() => setFailed(true)}
           />
         ) : (
           <div
-            className="flex aspect-card items-center justify-center bg-action-subtle"
+            className="flex aspect-card max-h-[420px] items-center justify-center bg-action-subtle cfc-sm:aspect-[16/10] cfc-md:aspect-[16/9]"
             aria-hidden="true"
           >
             <ImageIcon className="size-8 text-action" />

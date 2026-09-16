@@ -144,31 +144,15 @@ export default function ServiceDetailPage() {
       <div className="mt-3 grid gap-6 lg:grid-cols-detail lg:items-start">
         {/* ── Left: what it is ─────────────────────────────────────────── */}
         <div className="min-w-0 space-y-6">
-          <ServiceGallery
-            images={service.imageUrls}
-            name={service.name}
-            badges={
-              <>
-                {/* ORANGE, rationed to one mark on this screen, and spent on
-                    the thing that actually persuades: that other people book
-                    this. */}
-                {service.reviewCount >= 100 && (
-                  <span className="cfc-badge cfc-badge-promo">Most booked</span>
-                )}
-                {service.warrantyDays > 0 && (
-                  <span className="cfc-badge cfc-badge-glass">
-                    {service.warrantyDays}-day warranty
-                  </span>
-                )}
-                {service.rating > 0 && (
-                  <span className="cfc-badge cfc-badge-glass cfc-media-right">
-                    <span className="cfc-star">★</span> {service.rating.toFixed(1)}
-                  </span>
-                )}
-              </>
-            }
-          />
+          {/* TITLE BEFORE PHOTO.
 
+              It used to be photo first, and at 1360px that meant the first
+              glance landed on a stock picture of a technician: the service
+              name, the price and the rating were all below the fold. A
+              customer who clicked "AC service & repair" already knows what an
+              AC looks like - what they came to check is what it is, what it
+              costs and whether other people rate it. The photo supports that
+              answer; it is not the answer. */}
           <div>
             <p className="text-caption text-ink-muted">
               {service.subCategoryName}
@@ -187,16 +171,26 @@ export default function ServiceDetailPage() {
               ) : (
                 <Badge tone="neutral">New service</Badge>
               )}
-              {/* Spec: "warranty badge". The number is real — it comes from
-                  the catalogue, per service. */}
-              {/* Warranty, rating and "most booked" now sit ON the photo
-                  above - see the ServiceGallery call. */}
+              {service.warrantyDays > 0 && (
+                <span className="cfc-badge cfc-badge-teal">
+                  {service.warrantyDays}-day warranty
+                </span>
+              )}
             </div>
 
             <p className="mt-3 text-body leading-relaxed text-ink-muted">
               {service.description}
             </p>
           </div>
+
+          {/* Nothing is drawn over the photograph.
+
+              Badges on the image were tried and removed: a stock photo is an
+              unknown background, so a badge on it needs a scrim to stay
+              legible, and the scrim dims the picture to carry text that reads
+              better beside the title anyway. Marketplaces that do this own
+              their photography and shoot for it. We do not. */}
+          <ServiceGallery images={service.imageUrls} name={service.name} />
 
           {service.inclusions.length > 0 && (
             /* A white card on the page's wash ground, the way the home page
@@ -694,18 +688,7 @@ function ReviewList({ reviews }: { reviews: Review[] | null }) {
  * single image as a plain frame and only earns its thumbnail strip when there
  * is genuinely more than one, rather than showing a row of one thumbnail.
  */
-function ServiceGallery({
-  images,
-  name,
-  badges,
-}: {
-  images: string[];
-  name: string;
-  /* Rendered OVER the photograph rather than under it. A badge in the text
-     below competes with the heading for the same glance; on the image it is
-     read before the eye has left the picture, and costs no vertical space. */
-  badges?: React.ReactNode;
-}) {
+function ServiceGallery({ images, name }: { images: string[]; name: string }) {
   const [index, setIndex] = React.useState(0);
   // A photo can 404 — the catalogue derives filenames from service names, so a
   // renamed service silently loses its image. A broken-image glyph is worse
@@ -717,8 +700,10 @@ function ServiceGallery({
 
   return (
     <div>
-      <div className="cfc-media cfc-media-scrim border border-border bg-canvas">
-        {badges ? <div className="cfc-media-badges">{badges}</div> : null}
+      {/* 4:3 of an 830px column is a 620px-tall photo, which is what pushed
+          the page below the fold. Capping the width at 560px makes it 420px
+          tall with the ratio untouched. */}
+      <div className="cfc-media mx-auto max-w-[560px] border border-border bg-canvas">
         {hasPhoto ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
@@ -726,17 +711,30 @@ function ServiceGallery({
             alt={name}
             /* The hero image of the screen a customer decided to open, so it
                is the one image on the page that must not be lazy. */
-            /* 4:3 is right on a phone, far too tall on a monitor: at 1360px
-               it pushed the entire page below the fold and made the photo the
-               loudest thing on a screen whose job is to sell a service, not a
-               picture. Widens as the viewport does, and caps in pixels so it
-               cannot grow without limit on an ultrawide. */
-            className="aspect-card max-h-[420px] w-full object-cover cfc-sm:aspect-[16/10] cfc-md:aspect-[16/9]"
+            /* Every source photo in the catalogue is 1200x900 - a single,
+               consistent 4:3. So 4:3 is the RATIO, and it is kept: cropping
+               to 16:9 on desktop threw away a third of a frame that was
+               composed for 4:3, and on this photo that is the technician's
+               hands and the unit he is working on.
+
+               What was actually wrong was SIZE, not shape. The column is
+               ~830px wide, so 4:3 made the photo 620px tall and pushed the
+               title below the fold. Capping the height crops the frame
+               centrally instead of shrinking the whole card. */
+            /* The ratio is the catalogue's own: every source photo is
+               1200x900, a consistent 4:3, so 4:3 is what it is displayed at.
+               Cropping to 16:9 threw away a third of a frame composed for
+               4:3 - on this photo, the technician's hands and the unit.
+
+               What was wrong was SIZE, not shape. Constraining the WIDTH and
+               letting height follow keeps the ratio exact at every viewport
+               while the photo stops dominating the screen. */
+            className="aspect-card w-full object-cover"
             onError={() => setFailed(true)}
           />
         ) : (
           <div
-            className="flex aspect-card max-h-[420px] items-center justify-center bg-action-subtle cfc-sm:aspect-[16/10] cfc-md:aspect-[16/9]"
+            className="flex aspect-card items-center justify-center bg-action-subtle"
             aria-hidden="true"
           >
             <ImageIcon className="size-8 text-action" />

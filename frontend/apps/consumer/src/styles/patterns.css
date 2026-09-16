@@ -303,23 +303,39 @@
   box-shadow: 0 0 0 1px var(--teal, #02BABC);
 }
 
+/* A ring with a dot inside it, which is what a radio has looked like since
+   radios existed. The earlier version filled the whole circle teal and
+   punched a small white hole in it - that inverts the convention and reads as
+   a heavy ring rather than a selection, which is what it looked like on
+   screen.
+
+   The ring stays hairline and neutral when unselected so a list of three
+   options is calm; it takes the brand colour only when chosen. */
 .cfc-row-dot {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 2px solid var(--line, #E3ECF4);
+  border: 1.5px solid var(--line, #E3ECF4);
+  background: var(--white, #fff);
   flex-shrink: 0;
   margin-top: 1px;
   display: grid;
   place-items: center;
   transition:
     border-color 0.18s,
-    background 0.18s;
+    box-shadow 0.18s;
+}
+
+.cfc-row:hover .cfc-row-dot {
+  border-color: var(--teal, #02BABC);
 }
 
 .cfc-row.is-selected .cfc-row-dot {
   border-color: var(--teal, #02BABC);
-  background: var(--teal, #02BABC);
+  /* 1.5px of border plus a 5px inset shadow reads as a 2px ring without the
+     border itself thickening, which would shift the dot by half a pixel and
+     make it wobble as you move between options. */
+  box-shadow: inset 0 0 0 1px var(--teal, #02BABC);
 }
 
 /* The native input inside a `.cfc-row` is `sr-only`, so its focus ring is
@@ -332,10 +348,10 @@
 
 .cfc-row.is-selected .cfc-row-dot::after {
   content: "";
-  width: 7px;
-  height: 7px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--teal, #02BABC);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

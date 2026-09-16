@@ -16,11 +16,12 @@ import {
   Home as HomeIcon,
   Scissors,
   Sparkles,
+  Star,
   WashingMachine,
 } from "lucide-react";
 import { getServices, getSubCategories } from "@cfc/mocks";
 import type { ServiceDetail, SubCategory } from "@cfc/types";
-import { EmptyState, ErrorState, Skeleton, cn } from "@cfc/ui";
+import { EmptyState, ErrorState, Skeleton, cn, formatCurrency } from "@cfc/ui";
 import { ShopServiceCard } from "@/components/shop-service-card";
 
 /**
@@ -177,23 +178,38 @@ function CategoriesInner() {
 
   React.useEffect(() => load(), [load]);
 
-  /** How many active services sit under each sub-category, counted live -
-   *  the same way Home counts them, so the two screens can never disagree
-   *  about the same sub-category in the same session. */
-  const countFor = React.useCallback(
-    (name: string) => (services ?? []).filter((s) => s.subCategoryName === name).length,
-    [services],
-  );
-
   // Sub-categories that actually have something bookable. Ten exist in the
   // catalogue today and all ten do, but a sub-category admin adds tomorrow
   // with no services yet should not appear as a clickable dead end.
+  /* The agreement asks this screen for "all services under a category with
+     pricing preview" (Customer 10). It was showing a name and a service count
+     and nothing else - a customer could not tell whether a category started at
+     299 or 2,999 without opening it.
+
+     `fromPaise` is the cheapest service in the sub-category, which is the
+     number a marketplace leads with, and `rating` is the mean over services
+     that actually have reviews - averaging in the un-reviewed ones would drag
+     every category toward zero. */
   const browsable = React.useMemo(() => {
     if (subs === null || services === null) return null;
     return subs
-      .map((s) => ({ sub: s, count: countFor(s.name) }))
+      .map((s) => {
+        const rows = services.filter((v) => v.subCategoryName === s.name);
+        const rated = rows.filter((v) => v.reviewCount > 0);
+        return {
+          sub: s,
+          count: rows.length,
+          fromPaise: rows.length
+            ? Math.min(...rows.map((v) => v.basePricePaise))
+            : 0,
+          rating: rated.length
+            ? rated.reduce((a, v) => a + v.rating, 0) / rated.length
+            : 0,
+          reviews: rated.reduce((a, v) => a + v.reviewCount, 0),
+        };
+      })
       .filter(({ count }) => count > 0);
-  }, [subs, services, countFor]);
+  }, [subs, services]);
 
   const visibleServices = React.useMemo(() => {
     if (services === null || subName === null) return null;
@@ -312,11 +328,14 @@ function CategoriesInner() {
                the thing that made it read as unfinished next to the home page,
                which never runs two identical grounds together. */
             <ul className="cfc-card mt-5 grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 md:p-6 lg:grid-cols-5">
-              {browsable.map(({ sub: s, count }, i) => (
+              {browsable.map(({ sub: s, count, fromPaise, rating, reviews }, i) => (
                 <li key={s.id}>
                   <SubCategoryCard
                     name={s.name}
                     serviceCount={count}
+                    fromPaise={fromPaise}
+                    rating={rating}
+                    reviews={reviews}
                     href={hrefFor({ sub: s.name })}
                     index={i}
                   />
@@ -549,11 +568,17 @@ function Breadcrumb({
 function SubCategoryCard({
   name,
   serviceCount,
+  fromPaise,
+  rating,
+  reviews,
   href,
   index,
 }: {
   name: string;
   serviceCount: number;
+  fromPaise: number;
+  rating: number;
+  reviews: number;
   href: string;
   index: number;
 }) {
@@ -570,12 +595,22 @@ function SubCategoryCard({
     <Link
       href={href}
       className={cn(
-        "group flex w-full flex-col items-center gap-3 rounded-card border border-border bg-canvas p-5 text-center",
+        "group relative flex h-full w-full flex-col rounded-card border border-border bg-canvas p-4",
         "transition-all duration-base",
         "hover:-translate-y-1 hover:border-action hover:bg-surface hover:shadow-md",
         "focus-visible:outline-none focus-visible:outline-focus",
       )}
     >
+      {/* POPULAR is the one orange mark in this grid, and it is earned rather
+          than decorative: a category with 200+ reviews behind it is genuinely
+          the one a new customer should look at first. Rationed to the top of
+          the grid by the threshold, not by an index. */}
+      {reviews >= 200 && (
+        <span className="cfc-badge cfc-badge-promo absolute right-3 top-3">
+          Popular
+        </span>
+      )}
+
       <span
         className={cn(
           "grid size-tile-lg place-items-center rounded-control text-on-action",
@@ -584,13 +619,33 @@ function SubCategoryCard({
       >
         <Icon className="size-6" />
       </span>
-      <span className="min-w-0">
-        <span className="block truncate text-small font-bold text-ink">
-          {name}
+
+      <span className="mt-3 block truncate text-small font-bold text-ink">
+        {name}
+      </span>
+
+      {/* Rating, where there is one. A category nobody has reviewed says
+          nothing rather than showing a hollow zero. */}
+      {rating > 0 && (
+        <span className="mt-1 flex items-center gap-1 text-caption text-ink-muted">
+          <Star className="size-3 fill-star text-star" aria-hidden="true" />
+          <span className="tabular font-semibold text-ink">
+            {rating.toFixed(1)}
+          </span>
+          <span className="tabular">({reviews})</span>
         </span>
-        <span className="tabular mt-1 block text-caption text-ink-muted">
-          {serviceCount} {serviceCount === 1 ? "service" : "services"}
-        </span>
+      )}
+
+      {/* THE PRICING PREVIEW the agreement asks for (Customer 10). Pushed to
+          the foot of the tile with mt-auto so every tile in the row shows its
+          price on the same line, whatever the length of the name above it. */}
+      <span className="mt-auto flex items-baseline gap-1 pt-3">
+        <span className="text-caption text-ink-muted">from</span>
+        <span className="cfc-price">{formatCurrency(fromPaise)}</span>
+      </span>
+
+      <span className="tabular mt-0.5 block text-caption text-ink-faint">
+        {serviceCount} {serviceCount === 1 ? "service" : "services"}
       </span>
     </Link>
   );

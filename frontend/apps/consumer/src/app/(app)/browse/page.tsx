@@ -338,7 +338,7 @@ export default function HomePage() {
         />
       )}
 
-      <div className="mx-auto max-w-screen-xl px-4 pb-12 md:px-6 lg:px-8">
+      <div className="cfc-band-wash mx-auto max-w-screen-xl px-4 pb-12 md:px-6 lg:px-8">
         {/* ── Book again — a returning customer's shortcut ─────────────── */}
         {rebookable !== null && rebookable.length > 0 && (
           <Band title="Book again" description="Services you've booked before.">

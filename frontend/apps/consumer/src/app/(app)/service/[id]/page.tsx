@@ -128,7 +128,11 @@ export default function ServiceDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-xl px-4 pt-4 md:px-6 md:pb-12 lg:px-8">
+    /* `cfc-band-wash` is the home page's pale-teal ground. White cards on a
+       tinted ground is the construction that makes a card read as PLACED on
+       the page rather than outlined on it. */
+    <div className="cfc-band cfc-band-wash min-h-screen pt-4 md:pb-12">
+      <div className="mx-auto max-w-screen-xl px-4 md:px-6 lg:px-8">
       <Link
         href="/categories"
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
@@ -146,7 +150,7 @@ export default function ServiceDetailPage() {
             <p className="text-caption text-ink-muted">
               {service.subCategoryName}
             </p>
-            <h1 className="mt-1 text-title font-semibold tracking-tight text-ink md:text-title-lg">
+            <h1 className="mt-1 text-title font-bold tracking-tight text-ink md:text-title-lg">
               {service.name}
             </h1>
 
@@ -175,15 +179,18 @@ export default function ServiceDetailPage() {
           </div>
 
           {service.inclusions.length > 0 && (
-            <section>
+            /* A white card on the page's wash ground, the way the home page
+               builds every list. Flat text on flat white was the single
+               biggest reason this screen read duller than the home page. */
+            <section className="cfc-card cfc-card-pad">
               <h2 className="text-heading font-semibold text-ink md:text-heading-lg">
                 What is included
               </h2>
-              <ul className="mt-2 space-y-2">
+              <ul className="mt-3 space-y-2">
                 {service.inclusions.map((line) => (
                   <li key={line} className="flex items-start gap-2 text-small text-ink">
                     <Check
-                      className="mt-px size-4 shrink-0 text-live-ink"
+                      className="mt-px size-4 shrink-0 text-action"
                       aria-hidden="true"
                     />
                     <span>{line}</span>
@@ -196,7 +203,7 @@ export default function ServiceDetailPage() {
           <TrustRow warrantyDays={service.warrantyDays} />
 
           {faqs !== null && faqs.length > 0 && (
-            <section>
+            <section className="cfc-card cfc-card-pad">
               <h2 className="mb-2 text-heading font-semibold text-ink md:text-heading-lg">
                 Common questions
               </h2>
@@ -267,6 +274,7 @@ export default function ServiceDetailPage() {
           toast.success(`${service.name} added`);
         }}
       />
+      </div>
     </div>
   );
 }
@@ -520,26 +528,37 @@ function MobileActionBar({
 
 /** The three promises, each one a documented rule. */
 function TrustRow({ warrantyDays }: { warrantyDays: number }) {
+  /*
+    Three trust claims, and deliberately NOT styled the same.
+
+    The client's service-detail mockup shows two outline chips and ONE solid
+    blue fill, and the solid one is the verification claim. That break is the
+    point: it makes the claim a customer most needs to believe the thing their
+    eye lands on. Flattening all three to one style - which is what this was
+    before - spends the contrast and buys nothing.
+  */
   const items = [
     {
       icon: ShieldCheck,
       label: warrantyDays > 0 ? `${warrantyDays}-day warranty` : "Warranty included",
+      solid: false,
     },
-    { icon: BadgeCheck, label: "Verified professional" },
-    { icon: Check, label: "Closed with your code" },
+    { icon: BadgeCheck, label: "Verified professional", solid: true },
+    { icon: Check, label: "Closed with your code", solid: false },
   ];
 
   return (
-    <ul className="grid grid-cols-3 gap-2">
-      {items.map(({ icon: Icon, label }) => (
+    <ul className="flex flex-wrap gap-2">
+      {items.map(({ icon: Icon, label, solid }) => (
         <li
           key={label}
-          className="flex flex-col items-center gap-1 rounded-card border border-border bg-surface p-3 text-center"
+          className={cn(
+            "cfc-chip",
+            solid ? "cfc-chip-solid" : "cfc-chip-outline",
+          )}
         >
-          <Icon className="size-4 text-action" aria-hidden="true" />
-          <span className="text-caption leading-tight text-ink-muted">
-            {label}
-          </span>
+          <Icon className="size-4 shrink-0" aria-hidden="true" />
+          <span>{label}</span>
         </li>
       ))}
     </ul>

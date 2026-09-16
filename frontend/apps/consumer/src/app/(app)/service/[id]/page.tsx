@@ -291,6 +291,7 @@ export default function ServiceDetailPage() {
           sitting above the tab bar. */}
       <MobileActionBar
         totalPaise={totalPaise}
+        selectedId={variantId}
         onBook={() =>
           router.push(
             `/book/${service.id}${variantId ? `?variant=${variantId}` : ""}`,
@@ -514,6 +515,7 @@ function BookingCard({
  */
 function MobileActionBar({
   totalPaise,
+  selectedId,
   onBook,
   onAdd,
   inCart,
@@ -521,6 +523,7 @@ function MobileActionBar({
   onQuantityChange,
 }: {
   totalPaise: number;
+  selectedId: string | null;
   onBook: () => void;
   onAdd: () => void;
   inCart: boolean;
@@ -548,7 +551,12 @@ function MobileActionBar({
       )}
     >
       <div className="min-w-0">
-        <p className="text-caption text-ink-muted">Starting at</p>
+        {/* Same fix as the desktop card: this said "Starting at" while showing
+            the SELECTED option's price, so choosing the dearest variant
+            announced it as the cheapest. */}
+        <p className="text-caption text-ink-muted">
+          {selectedId === null ? "Starting at" : "Total"}
+        </p>
         <p className="tabular text-heading font-semibold text-ink">
           {formatCurrency(totalPaise)}
         </p>
@@ -558,17 +566,17 @@ function MobileActionBar({
             icon button was disabled once in the basket, which on a phone read
             as the app having stopped working. */}
         {inCart ? (
-          <span className="flex items-center rounded-control border border-action">
+          <span className="flex h-11 items-center gap-1 rounded-control border border-action-line bg-surface px-1">
             <button
               type="button"
               aria-label="Remove one"
               onClick={() => onQuantityChange(quantity - 1)}
-              className="flex size-touch items-center justify-center rounded-control text-action focus-visible:outline-none focus-visible:outline-focus"
+              className="flex size-8 items-center justify-center rounded-control text-action transition-colors duration-fast hover:bg-action-subtle focus-visible:outline-none focus-visible:outline-focus"
             >
               <Minus className="size-4" aria-hidden="true" />
             </button>
             <span
-              className="tabular w-4 text-center text-small font-semibold text-action"
+              className="tabular w-5 text-center text-body font-bold text-ink"
               aria-live="polite"
             >
               {quantity}
@@ -577,7 +585,7 @@ function MobileActionBar({
               type="button"
               aria-label="Add another"
               onClick={() => onQuantityChange(quantity + 1)}
-              className="flex size-touch items-center justify-center rounded-control text-action focus-visible:outline-none focus-visible:outline-focus"
+              className="flex size-8 items-center justify-center rounded-control text-action transition-colors duration-fast hover:bg-action-subtle focus-visible:outline-none focus-visible:outline-focus"
             >
               <Plus className="size-4" aria-hidden="true" />
             </button>

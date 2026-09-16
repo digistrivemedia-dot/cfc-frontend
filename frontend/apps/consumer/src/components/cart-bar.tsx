@@ -95,7 +95,7 @@ export function CartBar() {
           // 768px it used before, which left the pill visibly narrower than —
           // and out of step with — the content it belongs to on any wide
           // screen. It aligns with the grid now at every width.
-          "pointer-events-auto mx-auto flex max-w-screen-xl items-center gap-3",
+          "group pointer-events-auto mx-auto flex max-w-screen-xl items-center gap-3",
           // A white card with a teal edge, not a dark navy band. The navy
           // version put a teal icon chip and teal link text directly on top
           // of `bg-structure` (#0e1f3d) — three unrelated colours stacked in
@@ -127,33 +127,32 @@ export function CartBar() {
           </span>
         </span>
 
-        {/* Deep blue, not orange.
+        {/* Teal at rest, orange on hover.
 
-            Orange was tried here and read as weak. The reason is that orange
-            is this app's BADGE colour - the HOT mark, the most-booked mark -
-            so on a control it looks like a label that happens to be
-            clickable rather than the primary action of the bar. It is also a
-            mid-value colour: against a white card it carries far less weight
-            than its saturation suggests.
+            Blue was tried here and sat awkwardly: it is the app's TINT colour
+            (every third icon plate, the verified chip), not an action colour,
+            so a blue button in a teal app reads as belonging to something
+            else. Teal is the action colour everywhere else, so the primary
+            action of this bar should be teal too.
 
-            `bg-clock` is the #2464D0 already used for the "Verified
-            professional" chip, so it is not a new colour. It is dark, so
-            white text on it is unambiguous, and it is the only non-teal
-            action surface in the app - which is exactly what this needs to be,
-            sitting on a page whose every other control is teal.
+            What makes it the loudest thing on the bar is not hue but
+            treatment - it is the only saturated fill on a white card, at full
+            button height, with a coloured glow beneath it.
 
-            Size matters as much as hue: this was a small pill floating in a
-            wide bar. A real button height and generous padding is what makes
-            it read as the way forward. */}
-        {/* `text-on-action`, NOT `text-white`.
-
-            The shared preset does not define a `white` colour key, so
-            `text-white` compiled to nothing at all - the label kept inheriting
-            the link's dark ink and the button read as unclickable navy text on
-            blue. `on-action` is the preset's own "text that sits on a filled
-            action surface" token, and it is what every other filled button in
-            the app uses. */}
-        <span className="flex h-12 shrink-0 items-center gap-2 rounded-control bg-clock px-6 text-body font-bold text-on-action shadow-[0_8px_20px_-8px_rgba(36,100,208,.65)]">
+            Hover goes to orange rather than a lighter teal. The client's spec
+            says a coloured control lightens and gains a coloured glow on
+            hover, never darkens; orange satisfies that and does something more
+            useful besides - it is the app's "this is the thing" colour, so the
+            button confirms itself under the cursor at the moment of decision. */}
+        <span
+          className={cn(
+            "flex h-12 shrink-0 items-center gap-2 rounded-control px-6",
+            "bg-action text-body font-bold text-on-action",
+            "shadow-[0_8px_20px_-8px_rgba(2,186,188,.7)]",
+            "transition-[background-color,box-shadow] duration-fast",
+            "group-hover:bg-promo group-hover:shadow-[0_10px_24px_-8px_rgba(244,123,32,.75)]",
+          )}
+        >
           Checkout
           <ArrowRight className="size-4" aria-hidden="true" />
         </span>

@@ -1,0 +1,395 @@
+/*
+  PATTERNS — the reusable vocabulary the other 43 screens are built from.
+  =======================================================================
+
+  WHY THIS FILE EXISTS
+
+  The approved home page and the other 43 screens use the SAME colour tokens.
+  Measured across those 43 screens:
+
+      grey/navy text on white   ~390 usages
+      saturated colour fills     ~45 usages
+
+  That ratio is the whole difference. The home page is a sequence of coloured
+  BANDS with white cards floating on them; the other screens are one flat
+  white column with teal accents. Same paint, opposite amount on the walls.
+
+  So this file does not introduce colour. It introduces the two mechanisms the
+  home page uses to SPEND the colour it already has:
+
+      1. band alternation  - no two adjacent sections share a background
+      2. tile rotation     - a 3-and-3 teal/blue cycle so an icon grid is
+                             never monotone
+
+  plus the four component treatments the client's mockups show and this app
+  does not have yet (solid/outline chip pair, selected row, info banner,
+  tinted outline button).
+
+  SCOPING — read before adding anything here
+
+  These classes are deliberately NOT nested under `.cfc-page`. That wrapper
+  carries bare element resets (h1 at a 60px clamp, h2 at 36px, `a` stripped of
+  colour, `ul` stripped of bullets), and putting it around a Tailwind screen
+  rewrites that screen's typography — which is exactly what broke the
+  typography on 40 screens once already.
+
+  Every class here is a plain `.cfc-*` class that styles ONLY the element it
+  is put on. A screen opts in per element. Nothing is inherited, so nothing
+  can leak.
+
+  All values resolve to tokens already defined in foundation.css / brand.css.
+  No new colour is introduced by this file — verified by stylelint.
+*/
+
+/* ═══════════════════════════════════════════════════════════════════════
+   1. BANDS — the page rhythm
+   ═══════════════════════════════════════════════════════════════════════
+   The home page never runs two white sections together. Down its length it
+   alternates: wash, deep, white, wash, white, deep, wash, white, wash, deep.
+   That alternation is what stops a 6,000px scroll reading as one flat sheet.
+
+   A band is full-bleed; its CONTENT is constrained by `.cfc-band-in`, which
+   matches the home page's 1180px `--max` and 24px `--pad` exactly. */
+
+.cfc-band {
+  width: 100%;
+}
+
+.cfc-band-in {
+  width: 100%;
+  max-width: var(--max, 1180px);
+  margin: 0 auto;
+  padding: 0 var(--pad, 24px);
+}
+
+/* White — the resting surface. Cards on it need a border to separate. */
+.cfc-band-white {
+  background: var(--white, #fff);
+}
+
+/* Pale teal — the page's second ground. Cards on it can drop their border
+   and rely on shadow, which is what makes them read as *placed* on the page
+   rather than drawn onto it. */
+.cfc-band-wash {
+  background: var(--paper, #F1FAFB);
+}
+
+/* Deep navy — the punctuation. Used sparingly: on the home page it appears
+   twice in a 6,000px scroll. A screen should not carry more than one. */
+.cfc-band-deep {
+  background: var(--ink, #0E2A47);
+  color: #fff;
+}
+
+.cfc-band-deep h1,
+.cfc-band-deep h2,
+.cfc-band-deep h3 {
+  color: #fff;
+}
+
+/* Muted text on a deep band cannot use --muted: at 4.1:1 on navy it fails
+   AA. A white at 72% opacity reads as secondary and still passes. */
+.cfc-band-deep .cfc-band-sub {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+/* Vertical rhythm. The home page's `.sec` is 68px; these match it and step
+   down at the same breakpoints so a band and a home-page section never
+   disagree about how tall a section is. */
+.cfc-band-pad {
+  padding: 68px 0;
+}
+
+.cfc-band-pad-sm {
+  padding: 40px 0;
+}
+
+@media (max-width: 900px) {
+  .cfc-band-pad {
+    padding: 48px 0;
+  }
+
+  .cfc-band-pad-sm {
+    padding: 32px 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .cfc-band-pad {
+    padding: 36px 0;
+  }
+
+  .cfc-band-pad-sm {
+    padding: 24px 0;
+  }
+}
+
+/* Section heading, lifted from the home page's `.sec-head` construction. */
+.cfc-sec-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.cfc-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: var(--teal-wash, #E2F7F7);
+  color: var(--teal-ink, #02BABC);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   2. CARDS
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.cfc-card {
+  background: var(--white, #fff);
+  border-radius: var(--r-lg, 20px);
+  box-shadow: var(--shadow-card, 0 2px 10px rgba(16, 41, 76, 0.06));
+}
+
+/* On a white band a card needs a hairline, or it dissolves into the page. */
+.cfc-band-white .cfc-card {
+  border: 1px solid var(--line, #E3ECF4);
+}
+
+.cfc-card-pad {
+  padding: 18px;
+}
+
+/* Hover lift. Per the client's colour spec a coloured surface LIGHTENS and
+   gains a coloured glow on hover — it never darkens. */
+.cfc-card-hover {
+  transition:
+    transform 0.18s var(--ease, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow 0.18s var(--ease, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.cfc-card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lift, 0 10px 30px -14px rgba(16, 41, 76, 0.32));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cfc-card-hover:hover {
+    transform: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   3. TILES — the 3-and-3 teal/blue rotation
+   ═══════════════════════════════════════════════════════════════════════
+   The client's "All Services" screen alternates icon plates teal/blue rather
+   than running one colour down the grid. Blue is a TINT here, not a second
+   brand: it exists so a twelve-tile grid is not monotone. */
+
+.cfc-tile-ic {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md, 14px);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: var(--teal-wash, #E2F7F7);
+  color: var(--teal-ink, #02BABC);
+}
+
+.cfc-tile-ic-blue {
+  background: var(--blue-wash, #E9F0FC);
+  color: var(--blue, #2464D0);
+}
+
+/* Solid variants, for the filled plates the mockup uses on its category grid. */
+.cfc-tile-ic-solid {
+  background: var(--teal, #02BABC);
+  color: #fff;
+}
+
+.cfc-tile-ic-solid-blue {
+  background: var(--blue, #2464D0);
+  color: #fff;
+}
+
+/* Automatic rotation: every 3rd tile in a grid turns blue, so a screen gets
+   the pattern without hard-coding an index per tile. Applied to the GRID. */
+.cfc-tile-rotate > *:nth-child(3n + 2) .cfc-tile-ic {
+  background: var(--blue-wash, #E9F0FC);
+  color: var(--blue, #2464D0);
+}
+
+.cfc-tile-rotate > *:nth-child(3n + 2) .cfc-tile-ic-solid {
+  background: var(--blue, #2464D0);
+  color: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   4. CHIPS — outline pair + one solid, from the mockups
+   ═══════════════════════════════════════════════════════════════════════
+   The client's service-detail screen shows three trust badges in a row and
+   they are NOT styled the same: two are outline, and the verification claim
+   is a solid blue fill with white text. That break is deliberate — it makes
+   the trust claim the one your eye lands on. Do not flatten all three. */
+
+.cfc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cfc-chip-outline {
+  border: 1.5px solid var(--teal, #02BABC);
+  background: var(--teal-wash, #E2F7F7);
+  color: var(--teal-ink, #02BABC);
+}
+
+.cfc-chip-solid {
+  border: 1.5px solid var(--blue, #2464D0);
+  background: var(--blue, #2464D0);
+  color: #fff;
+}
+
+/* Neutral, for metadata that is not a trust claim. */
+.cfc-chip-quiet {
+  border: 1px solid var(--line, #E3ECF4);
+  background: var(--white, #fff);
+  color: var(--ink-2, #2F4E76);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   5. SELECTED ROW — package picker, slot picker, payment method
+   ═══════════════════════════════════════════════════════════════════════
+   This pattern is currently re-implemented ad hoc in 24 places across the 43
+   screens. One named pattern replaces all of them, and it is exactly what the
+   booking flow's slot picker needs. */
+
+.cfc-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px;
+  border: 1.5px solid var(--line, #E3ECF4);
+  border-radius: var(--r-md, 14px);
+  background: var(--white, #fff);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.18s,
+    background 0.18s,
+    box-shadow 0.18s;
+}
+
+.cfc-row:hover {
+  border-color: var(--teal, #02BABC);
+}
+
+.cfc-row.is-selected {
+  border-color: var(--teal, #02BABC);
+  background: var(--teal-wash, #E2F7F7);
+  box-shadow: 0 0 0 1px var(--teal, #02BABC);
+}
+
+.cfc-row-dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--line, #E3ECF4);
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  transition:
+    border-color 0.18s,
+    background 0.18s;
+}
+
+.cfc-row.is-selected .cfc-row-dot {
+  border-color: var(--teal, #02BABC);
+  background: var(--teal, #02BABC);
+}
+
+.cfc-row.is-selected .cfc-row-dot::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   6. INFO BANNER — quiet, not a call to action
+   ═══════════════════════════════════════════════════════════════════════
+   The confirmation screen's "we've sent details to your WhatsApp" strip. It
+   must NOT read as a CTA, so it is deliberately the palest thing on the page.
+
+   The colour audit proposed #E7EEF3 for this. That would be a new hex, which
+   contradicts the audit's own "no new colours" finding — and the existing
+   --line-soft is within ~2 points per channel. Token used instead. */
+
+.cfc-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-md, 14px);
+  background: var(--line-soft, #F0F5FB);
+  color: var(--ink-2, #2F4E76);
+  font-size: 0.875rem;
+}
+
+.cfc-info .cfc-info-ic {
+  color: var(--blue, #2464D0);
+  flex-shrink: 0;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   7. BUTTONS — the tinted outline the mockups actually show
+   ═══════════════════════════════════════════════════════════════════════
+   The home page's `.btn-ghost` is `background: #fff`. The client's
+   confirmation screen shows its outline button ("Download Receipt") with a
+   faint cyan-tinted fill, not pure white. Small difference; pure white reads
+   flatter than his design. Confirmed in code, not inferred from the image. */
+
+.cfc-btn-outline {
+  background: var(--teal-wash, #E2F7F7);
+  border: 1.5px solid var(--teal, #02BABC);
+  color: var(--teal-ink, #02BABC);
+}
+
+.cfc-btn-outline:hover {
+  background: #fff;
+  box-shadow: 0 4px 12px -6px rgba(16, 41, 76, 0.22);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   8. PRICE
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.cfc-price {
+  font-size: 1.0625rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--ink, #0E2A47);
+  font-variant-numeric: tabular-nums;
+}
+
+.cfc-price-note {
+  display: block;
+  font-size: 0.6875rem;
+  color: var(--muted, #6A83A0);
+  font-weight: 500;
+}

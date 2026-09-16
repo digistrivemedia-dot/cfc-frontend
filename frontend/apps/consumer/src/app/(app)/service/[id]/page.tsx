@@ -90,6 +90,37 @@ export default function ServiceDetailPage() {
 
   React.useEffect(() => load(), [load]);
 
+  /* OPTION C: the sticky bar appears only once the inline booking card has
+     scrolled out of view.
+
+     On a phone there is no right column, so the booking card is rendered
+     inline below the photograph - where a customer can choose a variant and
+     read the price without scrolling past the FAQs and the reviews first,
+     which is where the grid used to push it.
+
+     Showing the bottom bar at the same time would print the price and the
+     Book button twice on one screen. An observer on the inline card solves
+     both: the card is the control while it is visible, the bar takes over the
+     moment it is not. */
+  const inlineCardRef = React.useRef<HTMLDivElement | null>(null);
+  const [inlineCardVisible, setInlineCardVisible] = React.useState(true);
+
+  React.useEffect(() => {
+    const node = inlineCardRef.current;
+    // No node until the service has loaded, and no IntersectionObserver in a
+    // server render - in both cases the bar simply stays hidden, which is the
+    // correct default while the card is at the top of the screen anyway.
+    if (node === null || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => setInlineCardVisible(entry?.isIntersecting ?? false),
+      // A little bottom margin so the bar arrives as the card leaves rather
+      // than at the exact pixel it clears, which reads as a flicker.
+      { rootMargin: "0px 0px -80px 0px" },
+    );
+    io.observe(node);
+    return () => io.disconnect();
+  }, [service]);
+
   const variants = React.useMemo(
     () => service?.variants.filter((v) => v.active) ?? [],
     [service],
@@ -200,6 +231,38 @@ export default function ServiceDetailPage() {
               their photography and shoot for it. We do not. */}
           <ServiceGallery images={service.imageUrls} name={service.name} />
 
+          {/* The booking card, inline, on phones only. The desktop renders the
+              same component in the right column below. */}
+          <div ref={inlineCardRef} className="lg:hidden">
+            <BookingCard
+              variants={variants}
+              selectedId={variantId}
+              onSelect={setVariantId}
+              basePricePaise={service.basePricePaise}
+              totalPaise={totalPaise}
+              durationMinutes={selected?.durationMinutes ?? null}
+              onBook={() =>
+                router.push(
+                  `/book/${service.id}${variantId ? `?variant=${variantId}` : ""}`,
+                )
+              }
+              inCart={has(service.id)}
+              quantity={quantity}
+              onQuantityChange={(next) => setQuantity(service.id, next)}
+              onAdd={() => {
+                add({
+                  serviceId: service.id,
+                  serviceName: service.name,
+                  fromPricePaise: service.basePricePaise,
+                  ...(service.imageUrls[0]
+                    ? { imageUrl: service.imageUrls[0] }
+                    : {}),
+                });
+                toast.success("Added to cart");
+              }}
+            />
+          </div>
+
           {service.inclusions.length > 0 && (
             /* A white card on the page's wash ground, the way the home page
                builds every list. Flat text on flat white was the single
@@ -257,7 +320,7 @@ export default function ServiceDetailPage() {
         </div>
 
         {/* ── Right: what it costs, and booking ────────────────────────── */}
-        <div className="lg:sticky lg:top-bar-tall lg:self-start">
+        <div className="hidden lg:sticky lg:top-bar-tall lg:block lg:self-start">
           <BookingCard
             variants={variants}
             selectedId={variantId}
@@ -293,6 +356,7 @@ export default function ServiceDetailPage() {
       <MobileActionBar
         totalPaise={totalPaise}
         selectedId={variantId}
+        visible={!inlineCardVisible}
         onBook={() =>
           router.push(
             `/book/${service.id}${variantId ? `?variant=${variantId}` : ""}`,
@@ -517,6 +581,7 @@ function BookingCard({
 function MobileActionBar({
   totalPaise,
   selectedId,
+  visible,
   onBook,
   onAdd,
   inCart,
@@ -525,6 +590,8 @@ function MobileActionBar({
 }: {
   totalPaise: number;
   selectedId: string | null;
+  /** False while the inline booking card is on screen - see OPTION C above. */
+  visible: boolean;
   onBook: () => void;
   onAdd: () => void;
   inCart: boolean;
@@ -539,17 +606,24 @@ function MobileActionBar({
       // does not compete with the `bottom-*` class that positions the bar.
       style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
       className={cn(
-        "fixed inset-x-0 z-sticky border-t border-border bg-surface px-4 pt-3 lg:hidden",
+        "fixed inset-x-0 z-sticky border-t border-border bg-surface lg:hidden",
+        "px-4 pt-3",
         "flex items-center justify-between gap-3",
+        // OPTION C: slides out of the way while the inline booking card is on
+        // screen, rather than unmounting. A bar that appears instantly on
+        // scroll reads as a glitch; one that slides reads as arriving.
+        "transition-transform duration-base",
+        visible ? "translate-y-0" : "translate-y-full",
         // The tab bar is 56px tall, exists only for a signed-in customer, and
         // is `md:hidden` — so it is present only below `md`, and only with an
         // account. This bar is `lg:hidden`, so between `md` and `lg` it is on
-        // screen while the tab bar is NOT. The old inline offset keyed on
-        // `signedIn` alone got that band wrong at every width: it floated the
-        // bar 56px above nothing for a signed-in customer on a tablet, and an
-        // inline style cannot express the breakpoint that would fix it.
+        // screen while the tab bar is NOT.
         signedIn ? "bottom-tab-bar md:bottom-0" : "bottom-0",
       )}
+      // Hidden from the tab order and from screen readers while it is off
+      // screen, so a keyboard user does not tab into a bar they cannot see.
+      aria-hidden={!visible}
+      inert={!visible}
     >
       <div className="min-w-0">
         {/* Same fix as the desktop card: this said "Starting at" while showing

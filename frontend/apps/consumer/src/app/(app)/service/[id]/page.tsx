@@ -447,8 +447,13 @@ function BookingCard({
           >
             <Minus className="size-4" aria-hidden="true" />
           </button>
-          <span className="text-small font-medium text-ink-muted" aria-live="polite">
-            In your cart · <span className="tabular font-semibold text-ink">{quantity}</span>
+          {/* Just the count. Saying "in your cart" here duplicated the
+              checkout bar that now appears at the foot of the page the moment
+              anything is added - the bar is where a customer is told what
+              happened and given the way on, which is the marketplace pattern
+              this stepper was standing in for. */}
+          <span className="text-small font-semibold text-ink" aria-live="polite">
+            <span className="tabular">{quantity}</span> in cart
           </span>
           <button
             type="button"

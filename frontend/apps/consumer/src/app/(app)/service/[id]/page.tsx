@@ -427,14 +427,20 @@ function BookingCard({
           the stepper takes only what it needs, Book takes the rest. */}
       <div className="mt-4 hidden items-center gap-2 lg:flex">
         {inCart && (
-          <div className="flex shrink-0 items-center gap-0.5 rounded-control border border-border bg-canvas p-0.5">
+          /* A teal edge and a teal wash, matching the selected option rows
+             directly above it. `border-border` on `bg-canvas` was a near-white
+             line on a near-white ground - invisible at this size, so the minus,
+             the number and the plus read as three loose controls floating in
+             the card rather than one stepper. It also has to hold its own
+             beside a solid teal button; a hairline could not. */
+          <div className="flex h-11 shrink-0 items-center rounded-control border-2 border-action bg-action-subtle px-0.5">
             <button
               type="button"
               aria-label="Remove one"
               onClick={() => onQuantityChange(quantity - 1)}
               className={cn(
-                "flex size-9 items-center justify-center rounded-[10px] text-action",
-                "transition-colors duration-fast hover:bg-action-subtle",
+                "flex size-9 items-center justify-center rounded-[9px] text-action",
+                "transition-colors duration-fast hover:bg-surface",
                 "focus-visible:outline-none focus-visible:outline-focus",
               )}
             >
@@ -442,7 +448,7 @@ function BookingCard({
             </button>
             {/* The number only. What it means is said by the checkout bar. */}
             <span
-              className="tabular w-6 text-center text-small font-bold text-ink"
+              className="tabular w-7 text-center text-body font-bold text-ink"
               aria-live="polite"
             >
               {quantity}
@@ -452,8 +458,8 @@ function BookingCard({
               aria-label="Add another"
               onClick={() => onQuantityChange(quantity + 1)}
               className={cn(
-                "flex size-9 items-center justify-center rounded-[10px] text-action",
-                "transition-colors duration-fast hover:bg-action-subtle",
+                "flex size-9 items-center justify-center rounded-[9px] text-action",
+                "transition-colors duration-fast hover:bg-surface",
                 "focus-visible:outline-none focus-visible:outline-focus",
               )}
             >

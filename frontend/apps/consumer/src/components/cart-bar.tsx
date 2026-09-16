@@ -145,7 +145,15 @@ export function CartBar() {
             Size matters as much as hue: this was a small pill floating in a
             wide bar. A real button height and generous padding is what makes
             it read as the way forward. */}
-        <span className="flex h-11 shrink-0 items-center gap-2 rounded-control bg-clock px-5 text-small font-bold text-white shadow-[0_8px_20px_-8px_rgba(36,100,208,.65)]">
+        {/* `text-on-action`, NOT `text-white`.
+
+            The shared preset does not define a `white` colour key, so
+            `text-white` compiled to nothing at all - the label kept inheriting
+            the link's dark ink and the button read as unclickable navy text on
+            blue. `on-action` is the preset's own "text that sits on a filled
+            action surface" token, and it is what every other filled button in
+            the app uses. */}
+        <span className="flex h-12 shrink-0 items-center gap-2 rounded-control bg-clock px-6 text-body font-bold text-on-action shadow-[0_8px_20px_-8px_rgba(36,100,208,.65)]">
           Checkout
           <ArrowRight className="size-4" aria-hidden="true" />
         </span>

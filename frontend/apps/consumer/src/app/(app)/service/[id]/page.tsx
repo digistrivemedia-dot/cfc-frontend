@@ -416,70 +416,72 @@ function BookingCard({
         </fieldset>
       )}
 
-      {/* Two intentions, kept apart. Booking now is for someone who has
-          decided; adding to the basket is for someone collecting several jobs
-          — a deep clean and a plumbing visit in one visit to the site. The
-          service cards on the home screen already offer Add, and this is the
-          screen where the decision is actually made, so it has to offer it
-          too. */}
-      <Button variant="primary" className="mt-4 hidden w-full lg:flex" onClick={onBook}>
-        Book this service
-      </Button>
-      {/* Once it is in the basket this becomes a stepper, matching every
-          service card in the app. A disabled "In your basket" button — which
-          is what sat here — is a dead end: booking two bathroom cleans is a
-          real thing, and it forced a trip to the basket to say so. */}
-      {inCart ? (
-        /* A quantity stepper, not a second call to action.
+      {/* ONE ROW: quantity on the left, the decision on the right.
 
-           Full-width with a border, directly under "Book this service", it
-           read as a rival button - two controls of equal size where only one
-           is the decision. It is now a small centred control: the customer
-           has already added, so this only exists to change how many, and the
-           checkout bar at the foot of the page carries the way forward. */
-        <div className="mx-auto mt-3 hidden w-fit items-center gap-1 rounded-pill border border-border bg-canvas p-0.5 lg:flex">
-          <button
-            type="button"
-            aria-label="Remove one"
-            onClick={() => onQuantityChange(quantity - 1)}
-            className={cn(
-              "flex size-touch items-center justify-center rounded-control text-action",
-              "transition-colors duration-fast hover:bg-action-subtle",
-              "focus-visible:outline-none focus-visible:outline-focus",
-            )}
+          These were stacked - a full-width Book button with a stepper on its
+          own line beneath. Two full-width controls one above the other read as
+          two competing decisions, and the stack cost a whole row of height in
+          a card that has to stay above the fold.
+
+          Side by side, the hierarchy is stated by width rather than by order:
+          the stepper takes only what it needs, Book takes the rest. */}
+      <div className="mt-4 hidden items-center gap-2 lg:flex">
+        {inCart && (
+          <div className="flex shrink-0 items-center gap-0.5 rounded-control border border-border bg-canvas p-0.5">
+            <button
+              type="button"
+              aria-label="Remove one"
+              onClick={() => onQuantityChange(quantity - 1)}
+              className={cn(
+                "flex size-9 items-center justify-center rounded-[10px] text-action",
+                "transition-colors duration-fast hover:bg-action-subtle",
+                "focus-visible:outline-none focus-visible:outline-focus",
+              )}
+            >
+              <Minus className="size-4" aria-hidden="true" />
+            </button>
+            {/* The number only. What it means is said by the checkout bar. */}
+            <span
+              className="tabular w-6 text-center text-small font-bold text-ink"
+              aria-live="polite"
+            >
+              {quantity}
+            </span>
+            <button
+              type="button"
+              aria-label="Add another"
+              onClick={() => onQuantityChange(quantity + 1)}
+              className={cn(
+                "flex size-9 items-center justify-center rounded-[10px] text-action",
+                "transition-colors duration-fast hover:bg-action-subtle",
+                "focus-visible:outline-none focus-visible:outline-focus",
+              )}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        )}
+
+        {/* Booking now is for someone who has decided; adding to the basket is
+            for someone collecting several jobs. Once something IS in the
+            basket the Add button has done its work and the stepper replaces
+            it, so only one of the two ever shows. */}
+        {!inCart && (
+          <Button
+            variant="secondary"
+            className="shrink-0 px-4"
+            onClick={onAdd}
+            aria-label="Add to cart"
           >
-            <Minus className="size-4" aria-hidden="true" />
-          </button>
-          {/* The number only. What it means is said by the checkout bar. */}
-          <span
-            className="tabular min-w-touch text-center text-small font-bold text-ink"
-            aria-live="polite"
-          >
-            {quantity}
-          </span>
-          <button
-            type="button"
-            aria-label="Add another"
-            onClick={() => onQuantityChange(quantity + 1)}
-            className={cn(
-              "flex size-touch items-center justify-center rounded-control text-action",
-              "transition-colors duration-fast hover:bg-action-subtle",
-              "focus-visible:outline-none focus-visible:outline-focus",
-            )}
-          >
-            <Plus className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      ) : (
-        <Button
-          variant="secondary"
-          className="mt-2 hidden w-full lg:flex"
-          onClick={onAdd}
-        >
-          <Plus className="size-4" />
-          Add
+            <Plus className="size-4" />
+            Add
+          </Button>
+        )}
+
+        <Button variant="primary" className="min-w-0 flex-1" onClick={onBook}>
+          Book this service
         </Button>
-      )}
+      </div>
 
       <p className="mt-3 text-caption text-ink-faint">
         You pay after the job is done. Anything extra is quoted first.

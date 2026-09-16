@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
+  ArrowRight,
   BadgeCheck,
   Check,
   Clock,
@@ -566,7 +567,7 @@ function MobileActionBar({
             icon button was disabled once in the basket, which on a phone read
             as the app having stopped working. */}
         {inCart ? (
-          <span className="flex h-11 items-center gap-1 rounded-control border border-action-line bg-surface px-1">
+          <span className="flex h-touch items-center gap-1 rounded-control border border-action-line bg-surface px-1">
             <button
               type="button"
               aria-label="Remove one"
@@ -600,9 +601,37 @@ function MobileActionBar({
             <Plus />
           </Button>
         )}
-        <Button variant="primary" onClick={onBook}>
-          Book now
-        </Button>
+        {/* Once something is in the cart the customer needs a way THROUGH,
+            not just a way to book this one service again. The desktop gets
+            that from the floating checkout bar, which is suppressed here
+            because this bar already owns the bottom of a phone screen - so
+            the route has to live inside this bar instead.
+
+            Book stays primary: a customer reading a service page is most
+            likely booking that service. Checkout is the secondary path out. */}
+        {inCart ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="primary" onClick={onBook}>
+              Book
+            </Button>
+            <Link
+              href="/cart"
+              className={cn(
+                "flex h-touch shrink-0 items-center gap-1 rounded-control px-3",
+                "border border-action bg-surface text-small font-bold text-action",
+                "transition-colors duration-fast hover:bg-action-subtle",
+                "focus-visible:outline-none focus-visible:outline-focus",
+              )}
+            >
+              Checkout
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Link>
+          </div>
+        ) : (
+          <Button variant="primary" onClick={onBook}>
+            Book now
+          </Button>
+        )}
       </div>
     </div>
   );

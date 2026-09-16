@@ -107,7 +107,7 @@ export default function ProProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-xl px-4 pt-4 md:px-6 md:pb-12 lg:px-8">
+    <div className="cfc-band-wash mx-auto min-h-screen max-w-screen-xl px-4 pt-4 md:px-6 md:pb-12 lg:px-8">
       <button
         type="button"
         onClick={() => router.back()}

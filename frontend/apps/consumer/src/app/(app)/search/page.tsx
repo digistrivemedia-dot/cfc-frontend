@@ -242,7 +242,7 @@ function SearchInner() {
   }, [results, sort]);
 
   return (
-    <div className="mx-auto max-w-screen-xl px-4 pb-12 md:px-6 lg:px-8">
+    <div className="cfc-band-wash mx-auto min-h-screen max-w-screen-xl px-4 pb-12 md:px-6 lg:px-8">
       {/* The search field is present at every width. It used to be
           `md:hidden` on the reasoning that the desktop header carries one —
           but on the results page that left a desktop customer with no visible

@@ -1,0 +1,232 @@
+/*
+  The two approved home pages.
+
+  PHASE 0 MOVE 1: design tokens, resets and base element rules were moved
+  out to `src/styles/foundation.css` and are imported below. The import sits
+  at the top so those rules still arrive FIRST, in their original order.
+  Nothing else in this file was touched.
+
+  Backup of the pre-split original: css-backup/phase0-original/home-pages.css
+*/
+@import "../../styles/foundation.css";
+
+@import "../../styles/primitives.css";
+
+
+@import "../../styles/chrome.css";
+@import "../../styles/home-page.css";
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+@media (max-width: 1080px) {
+  .cfc-page .cat-grid { grid-template-columns: repeat(4, 1fr); }
+  .cfc-page .hero-grid { gap: 34px; }
+  .cfc-page .nav { gap: 18px; }
+}
+
+@media (max-width: 900px) {
+  .cfc-page .sec { padding: 54px 0; }
+  .cfc-page .hero { padding: 34px 0 46px; }
+  .cfc-page .hero-grid { grid-template-columns: 1fr; gap: 44px; }
+  .cfc-page .hero h1 { max-width: 18ch; }
+  /* the rail spans the panel's full height and is the only object on it now,
+     so nothing can collide here and the original height is enough again */
+  .cfc-page .hero-art { min-height: 400px; max-width: 520px; }
+  .cfc-page .nav, .cfc-page .hdr-actions .btn { display: none; }
+  .cfc-page .burger { display: grid; margin-left: auto; }
+  .cfc-page .promo-row { grid-template-columns: 1fr; }
+  /* One column of cards. The old rules here turned .step into a 40px/1fr grid
+     so the number sat beside the copy - that was written for bare text, and
+     against a padded white card it fought the padding and squeezed the 44px
+     number into a 40px track. The connector rule went with the connector. */
+  .cfc-page .steps { grid-template-columns: 1fr; gap: 14px; }
+  .cfc-page .step { padding: 22px 20px 20px; }
+  .cfc-page .step-n { width: 40px; height: 40px; font-size: 1rem; margin-bottom: 14px; }
+  .cfc-page .why-grid { grid-template-columns: repeat(2, 1fr); }
+  /* keeps horizontal padding: .pro-in is the rounded card itself now, not a
+     full-bleed band relying on .wrap for its gutter, so `padding: 52px 0`
+     would have run the copy flush against the card's rounded edge */
+  .cfc-page .pro-in { grid-template-columns: 1fr; gap: 38px; padding: 44px 32px; }
+  /* the app panel is a fixed 1fr 1fr grid - both columns squash badly before
+     the phone breakpoint, so it stacks here rather than at 620px */
+  .cfc-page .app-panel { grid-template-columns: 1fr; gap: 34px; padding: 36px 30px; }
+  .cfc-page .foot-grid { grid-template-columns: 1fr 1fr; gap: 34px; }
+  .cfc-page .mbar { display: flex; }
+  .cfc-page { padding-bottom: 74px; }
+}
+
+@media (max-width: 620px) {
+  :root { --pad: 18px; }
+  .cfc-page .sec-head { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .cfc-page .ask-bar input { font-size: .9375rem; height: 44px; }
+  .cfc-page .chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin-left: calc(var(--pad) * -1); padding: 0 var(--pad); }
+  .cfc-page .chips::-webkit-scrollbar { display: none; }
+  .cfc-page .hdr-in { height: 64px; gap: 10px; }
+  .cfc-page .loc { padding: 7px 10px; }
+  .cfc-page .loc .loc-city { max-width: 82px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* only the tagline drops on a narrow header - this used to be
+     `.logo-text span`, which now also matches .logo-name and would have hidden
+     the entire wordmark, leaving just the icon. */
+  .cfc-page .logo-tag { display: none; }
+  .cfc-page .hero-kicker { font-size: .75rem; }
+  .cfc-page .ask-bar { padding: 6px 6px 6px 14px; }
+  .cfc-page .ask-bar > .ic-search { display: none; }
+  .cfc-page .ask-go span { display: none; }
+  .cfc-page .ask-go { width: 44px; padding: 0; }
+  .cfc-page .cat-grid { grid-template-columns: repeat(3, 1fr); gap: 9px; }
+  .cfc-page .cat { padding: 15px 8px 12px; }
+  .cfc-page .cat-ic { width: 40px; height: 40px; margin-bottom: 9px; }
+  .cfc-page .cat p { font-size: .625rem; }
+  .cfc-page .why-grid { grid-template-columns: 1fr; }
+  .cfc-page .pro-stats { gap: 10px; }
+  .cfc-page .pstat { padding: 16px; }
+  .cfc-page .pstat strong { font-size: 1.5rem; }
+  /* the floating collage does not survive a 390px screen, so it becomes a stack.
+     min-height stays a real value: the photograph is a `fill` image measured
+     against this box, so a zero-height box would hide it. Raised from 430px
+     because the rail now carries all five zones - confirmation, price, pro,
+     live eta and caption - and is far taller than the two cards it replaced. */
+  .cfc-page .hero-art { min-height: 420px; padding: 13px; display: flex; flex-direction: column; justify-content: flex-end; gap: 14px; }
+  .cfc-page .art-panel { inset: 0; border-radius: var(--r-lg); }
+  /* the crop tightens on the technician, since the panel is now portrait-ish */
+  .cfc-page .art-photo { object-position: 62% center; }
+  /* bottom-weighted here, since the card stacks over the foot of the shot. The
+     card is white, so the photograph beneath it needs real depth for it to read
+     against - but stopping short of the .92 it once carried, which flattened
+     the shot into a dark band. */
+  .cfc-page .art-scrim {
+    background: linear-gradient(to top, rgba(11, 34, 57, .74) 0%, rgba(11, 34, 57, .46) 36%, rgba(11, 34, 57, .1) 68%, rgba(11, 34, 57, 0) 88%);
+  }
+  /* One narrow column: the cards go static and full width, stacked over the
+     foot of the shot. Every card is listed, including the hidden one - a card
+     left `absolute` inside this flex column would ignore the stack and land on
+     top of its neighbours if it is ever switched back on. */
+  .cfc-page .card-price, .cfc-page .card-done { position: static; width: auto; animation: none; }
+  /* align-self keeps the card at its own width in the left corner instead of
+     stretching to fill the flex row - `width: auto` in a column flex container
+     stretches by default, which is what left the dead band down the right. */
+  .cfc-page .card-price { align-self: flex-start; max-width: 76%; }
+  /* static in the stack, no absolute positioning at this breakpoint. transform
+     must be reset too - translateY(-50%) from the desktop centering still
+     applies to a static element and would shift it upward by half its own
+     height here. */
+  .cfc-page .card-price {
+    display: block; inset: auto; width: auto; transform: none; padding: 12px 13px 11px;
+  }
+  /* The spine stays VERTICAL here. A horizontal 4-column spine gave each step
+     about 70px, which truncated "On the way to your address" mid-word and left
+     the ETA sitting under a cut-off label.
+
+     Everything is ~35% smaller than the first mobile pass: at full size the
+     card filled the stack and pushed the photograph out of view entirely, so
+     the technician - the whole point of the shot - was never seen. */
+  .cfc-page .rail-track { margin-top: 9px; }
+  .cfc-page .pro-steps i { padding: 0 0 8px 16px; }
+  .cfc-page .pro-steps i:last-child { padding-bottom: 0; }
+  .cfc-page .pro-steps i::before { left: 3px; top: 11px; }
+  .cfc-page .pro-steps i::after { width: 9px; height: 9px; top: 2px; }
+  .cfc-page .pro-steps em { font-size: .625rem; }
+  .cfc-page .pro-steps b { font-size: .8125rem; margin-top: 3px; padding: 3px 8px; }
+  .cfc-page .pro-cap { font-size: .5625rem; margin-top: 8px; padding-top: 7px; }
+  .cfc-page .rail-face { width: 28px; height: 28px; border-radius: 9px; }
+  .cfc-page .rail-pro { gap: 8px; }
+  .cfc-page .rail-pro-id h5 { font-size: .75rem; }
+  .cfc-page .rail-verified { font-size: .5625rem; }
+  .cfc-page .rail-rating { font-size: .5625rem; }
+  .cfc-page .price-lead { margin-top: 9px; padding-top: 9px; }
+  .cfc-page .card-price h4 { font-size: .625rem; }
+  /* the price leads: at 1rem it sat level with the ETA pill and nothing in the
+     card read as primary */
+  .cfc-page .price-amt b { font-size: 1.1875rem; }
+  .cfc-page .quote { width: 282px; padding: 20px; }
+  .cfc-page .foot-grid { grid-template-columns: 1fr; gap: 28px; }
+  .cfc-page .foot-bar { flex-direction: column; gap: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cfc-page, .cfc-page *, .cfc-page *::before, .cfc-page *::after {
+    animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important; scroll-behavior: auto !important;
+  }
+  .cfc-page .rv { opacity: 1; transform: none; }
+}
+
+/* ---------- new components, small screens ---------- */
+@media (max-width: 620px) {
+  .cfc-page .sug { left: 0; right: 0; }
+  .cfc-page .sug-item { padding: 9px 10px; gap: 10px; }
+  .cfc-page .sug-ic { width: 32px; height: 32px; }
+  .cfc-page .loc-pop { position: fixed; top: 70px; left: var(--pad); right: var(--pad); width: auto; transform-origin: top center; }
+  .cfc-page .faq summary { font-size: .9375rem; padding: 17px 0; }
+
+  /* ---- boxed sections: tighter insets on a phone ----
+     Every panel and card below was still carrying a desktop or tablet inset at
+     this width. Measured at 412px: --pad is 18px, so .wrap leaves 376px, and a
+     34px side padding spends 18% of the screen on empty margin before a word
+     is set. These bring each box to a 16-20px inset, which is what the rest of
+     the page's mobile rhythm already uses (.step is 20px, .pstat is 16px). */
+
+  /* was 36px 30px (the <=900px value) -> 316px of content */
+  .cfc-page .app-panel { padding: 28px 20px; gap: 28px; }
+  /* was 44px 32px (the <=900px value) -> 312px of content */
+  .cfc-page .pro-in { padding: 32px 20px; gap: 30px; }
+  /* no mobile rule at all: 20px sides plus the summary's own inset */
+  .cfc-page .faq details { padding: 2px 16px; }
+  /* .step drops to 20px at <=900px; .why-cell never did, so it kept 24px
+     sides after going single-column */
+  .cfc-page .why-cell { padding: 22px 20px 20px; }
+  /* three stacked cards, each holding a 186px floor it no longer needs */
+  .cfc-page .promo { padding: 22px 20px 20px; min-height: 0; }
+  .cfc-page .promo .ic-deco { right: 16px; top: 16px; width: 34px; height: 34px; }
+  /* 34px sides - the widest inset on the page, and it never had an override.
+     The disc is sized for a desktop strip and swamps the box at this width. */
+  .cfc-page .offer-strip-in { padding: 24px 20px; gap: 16px; }
+  .cfc-page .offer-strip-in::after { width: 180px; height: 180px; right: -60px; top: -70px; }
+  .cfc-page .offer-strip h2 { font-size: 1.375rem; }
+}
+
+@import "../../styles/app-shell.css";
+
+
+/* ============================================================
+   Loading placeholders
+   ------------------------------------------------------------
+   The category grid and the most-booked rail are rendered from
+   the catalogue, which is fetched in the browser. Without these
+   the two sections are empty boxes on first paint and the page
+   visibly jumps when the data lands.
+
+   The skeleton keeps the exact footprint of the real tile, so
+   nothing below it moves when the content arrives. `.cat-sk`
+   reuses the `.cat` box metrics rather than inventing its own.
+   ============================================================ */
+.cfc-page .sk {
+  background: linear-gradient(90deg, var(--paper) 25%, #eef3f7 37%, var(--paper) 63%);
+  background-size: 400% 100%;
+  animation: skshimmer 1.4s var(--ease) infinite;
+  border-radius: 6px;
+}
+@keyframes skshimmer { from { background-position: 100% 50%; } to { background-position: 0 50%; } }
+
+.cfc-page .cat-sk {
+  background: #fff; border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 20px 14px 16px; display: grid; justify-items: center; gap: 10px;
+}
+.cfc-page .cat-sk i { width: 46px; height: 46px; border-radius: 13px; display: block; }
+.cfc-page .cat-sk b { width: 72%; height: 11px; display: block; }
+.cfc-page .cat-sk s { width: 48%; height: 9px; display: block; }
+
+.cfc-page .bk-sk {
+  flex: 0 0 clamp(260px, 30vw, 310px);
+  background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden;
+}
+.cfc-page .bk-sk i { height: 132px; display: block; border-radius: 0; }
+.cfc-page .bk-sk div { padding: 16px; display: grid; gap: 10px; }
+.cfc-page .bk-sk b { width: 80%; height: 13px; display: block; }
+.cfc-page .bk-sk s { width: 55%; height: 10px; display: block; }
+
+/* Motion is decoration here; the layout still holds its shape. */
+@media (prefers-reduced-motion: reduce) {
+  .cfc-page .sk { animation: none; }
+}

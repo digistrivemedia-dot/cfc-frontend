@@ -1,0 +1,310 @@
+/*
+  CHROME — the signed-out header, footer and shared page furniture.
+  -----------------------------------------------------------------
+  Phase 0 move 4. Moved VERBATIM from `home-pages.css`: the Header block and
+  the Cities+footer / mobile action bar / reveal / skip link / search
+  suggestions / city picker / rail-progress blocks.
+
+  Their @media overrides deliberately STAY in home-pages.css, in their
+  original position, because they must keep loading after every rule they
+  override. Splitting them out would change cascade order and break mobile
+  layouts while desktop still looked correct.
+*/
+
+/* ============================================================
+   Header
+   ============================================================ */
+.cfc-page .hdr {
+  position: sticky; top: 0; z-index: 60;
+  /* Solid, not frosted. At .86 alpha the page showed through the bar: the dark
+     pro band tinted it blue-grey, and each section change dragged its colour
+     across the header. Opaque white is the only way that cannot happen, and it
+     drops two backdrop-filter passes that repainted on every scroll frame. */
+  background: #fff;
+  border-bottom: 1px solid transparent;
+  transition: border-color .3s, box-shadow .3s;
+}
+/* Scrolled state. The old shadow was `0 8px 24px -22px`: a -22px spread against
+   a 24px blur cancels itself out, so the header had nothing but a hairline of
+   --line under it and dissolved into the white hero and the white city section.
+   A crisp 1px edge plus a soft lift, both in palette navy rather than black. */
+.cfc-page .hdr.stuck {
+  border-bottom-color: var(--line);
+  box-shadow: 0 1px 0 rgba(11, 34, 57, .06), 0 6px 16px -8px rgba(11, 34, 57, .18);
+}
+.cfc-page .hdr-in { display: flex; align-items: center; gap: 18px; height: 72px; }
+
+.cfc-page .logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.cfc-page .logo-mark {
+  width: 38px; height: 38px; border-radius: 11px;
+  background: var(--teal);
+  color: #fff; display: grid; place-items: center;
+  box-shadow: 0 8px 18px -10px rgba(2, 186, 188, .9);
+}
+.cfc-page .logo-mark .ic { width: 20px; height: 20px; stroke-width: 1.8; }
+.cfc-page .logo-text { font-weight: 800; letter-spacing: -.03em; font-size: 1.06rem; line-height: 1.05; }
+/* ORANGE 1 of 4 (spec 4): the CFC superscript in the logo. */
+/* ORANGE 1 of 4 (spec 4): the CFC superscript. Scoped to `sup` rather than to
+   `span` - the tagline below is also a span inside .logo-text, and the old
+   selector would have painted it orange and forced it to display:block. */
+.cfc-page .logo-name { display: block; }
+.cfc-page .logo-text sup {
+  font-size: .5rem; font-weight: 800; letter-spacing: .06em;
+  color: var(--orange); vertical-align: super; margin-left: 2px;
+}
+.cfc-page .logo-tag {
+  display: block; font-size: .5rem; font-weight: 600; letter-spacing: .08em;
+  /* 3px and its own line-height: at margin-top 0 against the wordmark's 1.05
+     line-height the tagline sat clamped to the name with no air between them */
+  text-transform: uppercase; color: var(--muted); margin-top: 3px; line-height: 1.2;
+}
+
+/* spec 2: "Location pill - --cyan-l bg, --cyan-d text". It was white on a
+   --line border, which disappeared into the white header; the tint is what
+   makes it read as a control rather than as part of the bar. */
+.cfc-page .loc {
+  display: flex; align-items: center; gap: 6px; padding: 9px 14px 9px 11px;
+  border-radius: 999px; border: 1px solid transparent; background: var(--teal-wash);
+  color: var(--teal-ink);
+  font-size: .875rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+}
+/* spec 3: the pill is tinted at rest now, so a border-colour swap would be
+   invisible - it gains the same teal ring and glow the other controls use. */
+/* A thin teal border and a small neutral lift. The 2px inset ring PLUS a
+   saturated teal cloud was two treatments doing one job, and on a tinted pill
+   it read as a heavy outline rather than as a hover. */
+.cfc-page .loc:hover {
+  border-color: var(--teal);
+  box-shadow: 0 4px 12px -6px rgba(16, 41, 76, .22);
+}
+.cfc-page .loc .ic { width: 17px; height: 17px; color: var(--teal-ink); }
+/* was --muted, which was picked against a white pill and is too faint on the tint */
+.cfc-page .loc .ic-dn { width: 14px; height: 14px; color: var(--teal-ink); opacity: .7; }
+
+.cfc-page .nav { display: flex; align-items: center; gap: 26px; margin-left: auto; }
+.cfc-page .nav a { font-size: .925rem; font-weight: 500; color: var(--ink-2); position: relative; padding: 4px 0; }
+.cfc-page .nav a::after {
+  content: ''; position: absolute; left: 0; right: 100%; bottom: 0; height: 2px;
+  background: var(--teal); border-radius: 2px; transition: right .3s var(--ease);
+}
+.cfc-page .nav a:hover::after { right: 0; }
+.cfc-page .hdr-actions { display: flex; align-items: center; gap: 10px; }
+.cfc-page .burger { display: none; width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--line); background: #fff; cursor: pointer; place-items: center; }
+
+/* mobile sheet */
+/* A full-viewport `position: fixed` layer at z-index 90 - above the header's
+   60. It was hidden by `transform: translateY(-101%)` ALONE, and a transform
+   only moves an element visually: the layer still takes part in hit testing,
+   so it sat invisibly over the page and swallowed every click. On desktop
+   `.burger` is `display: none`, so the sheet could never even be opened - it
+   was pure dead weight intercepting the header's "Log in" and "Book Now".
+   `visibility` + `pointer-events` take it out of hit testing at rest;
+   `visibility` is transitioned so the slide-up animation still plays out. */
+.cfc-page .sheet {
+  position: fixed; inset: 0; z-index: 90; background: #fff;
+  padding: 20px var(--pad) 32px;
+  transform: translateY(-101%);
+  visibility: hidden; pointer-events: none;
+  transition: transform .42s var(--ease), visibility 0s linear .42s;
+  display: flex; flex-direction: column; gap: 6px; overflow-y: auto;
+}
+.cfc-page .sheet.open {
+  transform: none;
+  visibility: visible; pointer-events: auto;
+  transition: transform .42s var(--ease), visibility 0s;
+}
+.cfc-page .sheet-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.cfc-page .sheet a.sheet-item {
+  padding: 15px 4px; border-bottom: 1px solid var(--line-soft);
+  font-size: 1.125rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center;
+}
+.cfc-page .sheet .btn { width: 100%; margin-top: 10px; }
+
+/* ============================================================
+   Cities + footer
+   ============================================================ */
+/* no rule needed: the section is white on white now, and the tinted panel is
+   its own edge. A divider here would draw a line across an unbroken ground. */
+/* The app panel: a two-column card carrying the store CTAs on the left and the
+   city list on the right, matching the approved design. The cities used to be
+   a bare full-width section with nothing beside them. */
+.cfc-page .app-panel {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: start;
+  /* tinted, borderless - the panel is the coloured object on a white page, and
+     the tint is its own edge. It was white-on-tint, which is the inverse. */
+  background: #EEF4FC; border-radius: var(--r-xl);
+  padding: 44px 46px;
+}
+.cfc-page .app-copy, .cfc-page .app-cities { min-width: 0; }
+.cfc-page .app-copy p { color: var(--muted); margin-top: 12px; max-width: 42ch; font-size: .9375rem; }
+/* a column heading, not a section heading - the inherited h2 size dwarfed the panel */
+.cfc-page .app-cities h2 { font-size: 1.25rem; letter-spacing: -.02em; }
+.cfc-page .app-cities .sec-sub { color: var(--muted); margin-top: 8px; font-size: .875rem; }
+.cfc-page .app-btns { display: flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
+.cfc-page .app-btns .ic { width: 18px; height: 18px; }
+/* solid blue, per the reference - the one place blue leads a CTA */
+.cfc-page .btn-android { background: var(--blue); color: #fff; }
+.cfc-page .btn-android:hover {
+  background: #3C80F0; box-shadow: 0 10px 26px -8px rgba(36, 100, 208, .7);
+}
+.cfc-page .city-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+/* white pills on the tinted panel, per the reference. These were teal-wash for
+   a white panel; now the panel carries the tint, so the pills carry the white. */
+.cfc-page .city {
+  padding: 9px 16px; border-radius: 999px; background: #fff; border: 1px solid transparent;
+  font-size: .875rem; font-weight: 600; color: var(--ink-2); cursor: pointer; transition: .18s;
+}
+/* the resting pill is white now, so the old `background: #fff` hover changed
+   nothing. A teal ring plus a soft lift off the tinted ground instead. */
+.cfc-page .city:hover { color: var(--teal-ink); border-color: var(--teal); box-shadow: 0 4px 12px -6px rgba(16, 41, 76, .22); }
+/* the city you are browsing, per the reference: a teal border, nothing louder */
+.cfc-page .city.is-active { border-color: var(--teal); color: var(--teal-ink); }
+/* the inverse of its neighbours, per the reference: tinted and borderless where
+   they are white, so it reads as the odd one out without an outline. */
+.cfc-page .city.more { background: var(--teal-wash); border-color: transparent; color: var(--teal-deep); }
+
+/* spec 2: footer background #F5FAFC, headings --ink, links --muted. It was
+   var(--ink) - a full-width dark navy fill, which spec 7 forbids. */
+.cfc-page .foot { background: #F5FAFC; color: var(--muted); padding: 60px 0 0; }
+.cfc-page .foot-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 42px; padding-bottom: 46px; }
+.cfc-page .foot .logo-text { color: var(--ink); }
+.cfc-page .foot-about { font-size: .875rem; margin-top: 18px; max-width: 34ch; }
+/* .foot-apps / .app-btn removed with the footer store pills they styled - the
+   app panel above uses .app-btns, which is a different class and still live. */
+
+/* Round social marks under the about text, per the reference: one teal, two
+   blue. Replaces the two bordered "iOS app / Android app" pills, which
+   duplicated the store CTAs already sitting in the app panel above. */
+.cfc-page .foot-soc { display: flex; gap: 10px; margin-top: 20px; }
+.cfc-page .soc {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 50%; background: var(--teal);
+  color: #fff; transition: .18s;
+}
+.cfc-page .soc:nth-child(2), .cfc-page .soc:nth-child(3) { background: var(--blue); }
+.cfc-page .soc .ic { width: 18px; height: 18px; color: #fff; }
+.cfc-page .soc:hover { transform: translateY(-2px); box-shadow: 0 6px 16px -6px rgba(16, 41, 76, .35); }
+.cfc-page .foot h4 { color: var(--ink); font-size: .9375rem; margin-bottom: 16px; }
+.cfc-page .foot li { margin-bottom: 11px; font-size: .875rem; }
+.cfc-page .foot li a:hover { color: var(--blue); }
+.cfc-page .foot-bar {
+  border-top: 1px solid var(--line); padding: 22px 0; display: flex;
+  justify-content: space-between; gap: 18px; flex-wrap: wrap; font-size: .8125rem;
+}
+.cfc-page .foot-bar .links { display: flex; gap: 22px; flex-wrap: wrap; }
+
+/* ============================================================
+   Mobile sticky action bar
+   ============================================================ */
+.cfc-page .mbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; display: none;
+  gap: 10px; padding: 10px var(--pad) calc(10px + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, .94); backdrop-filter: blur(14px);
+  border-top: 1px solid var(--line);
+  transform: translateY(120%); transition: transform .4s var(--ease);
+}
+.cfc-page .mbar.show { transform: none; }
+.cfc-page .mbar .btn { flex: 1; }
+.cfc-page .mbar .btn-ghost { flex: 0 0 46px; padding: 0; }
+
+/* ============================================================
+   Reveal — used on two moments only, not every section
+   ============================================================ */
+.cfc-page .rv { opacity: 0; transform: translateY(16px); transition: opacity .65s var(--ease), transform .65s var(--ease); }
+.cfc-page .rv.in { opacity: 1; transform: none; }
+.cfc-page .rv-1 { transition-delay: .07s; } .rv-2 { transition-delay: .14s; }
+.cfc-page .rv-3 { transition-delay: .21s; } .rv-4 { transition-delay: .28s; }
+.cfc-page .rv-5 { transition-delay: .35s; } .rv-6 { transition-delay: .42s; }
+
+/* ============================================================
+   Skip link
+   ============================================================ */
+.cfc-page .skip {
+  position: absolute; left: 16px; top: -60px; z-index: 200;
+  background: var(--ink); color: #fff; padding: 11px 18px; border-radius: 0 0 12px 12px;
+  font-size: .875rem; font-weight: 600; transition: top .2s var(--ease);
+}
+.cfc-page .skip:focus { top: 0; }
+
+/* ============================================================
+   Search suggestions
+   ============================================================ */
+.cfc-page .ask-field { position: relative; }
+.cfc-page .sug {
+  position: absolute; left: 0; right: 0; top: calc(100% + 12px); z-index: 40;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lift); padding: 8px; overflow: hidden;
+  opacity: 0; transform: translateY(-6px); pointer-events: none;
+  transition: opacity .18s var(--ease), transform .18s var(--ease);
+}
+.cfc-page .sug.open { opacity: 1; transform: none; pointer-events: auto; }
+.cfc-page .sug-label {
+  font-size: .6875rem; font-weight: 700; color: var(--muted);
+  padding: 8px 12px 6px; letter-spacing: .01em;
+}
+.cfc-page .sug-item {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 10px 12px; border: 0; background: transparent; border-radius: var(--r-md); cursor: pointer;
+}
+.cfc-page .sug-item:hover, .cfc-page .sug-item.active { background: var(--teal-wash); }
+.cfc-page .sug-ic {
+  width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0; display: grid; place-items: center;
+  background: var(--paper); color: var(--teal-ink);
+}
+.cfc-page .sug-item:hover .sug-ic, .cfc-page .sug-item.active .sug-ic { background: #fff; }
+.cfc-page .sug-ic .ic { width: 19px; height: 19px; }
+.cfc-page .sug-main { flex: 1; min-width: 0; }
+.cfc-page .sug-main b { display: block; font-size: .9375rem; font-weight: 600; }
+.cfc-page .sug-main span { font-size: .75rem; color: var(--muted); }
+.cfc-page .sug-main mark { background: transparent; color: var(--teal-deep); font-weight: 700; }
+.cfc-page .sug-price { font-size: .8125rem; font-weight: 700; white-space: nowrap; }
+.cfc-page .sug-empty { padding: 18px 12px; font-size: .875rem; color: var(--muted); }
+.cfc-page .sug-empty b { color: var(--ink); display: block; margin-bottom: 3px; font-size: .9375rem; }
+
+/* ============================================================
+   City picker
+   ============================================================ */
+.cfc-page .loc-wrap { position: relative; }
+.cfc-page .loc-pop {
+  position: absolute; left: 0; top: calc(100% + 10px); width: 264px; z-index: 80;
+  background: #fff; border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lift); padding: 10px;
+  opacity: 0; transform: translateY(-6px) scale(.98); transform-origin: top left; pointer-events: none;
+  transition: opacity .18s var(--ease), transform .18s var(--ease);
+}
+.cfc-page .loc-pop.open { opacity: 1; transform: none; pointer-events: auto; }
+.cfc-page .loc-pop h4 { font-size: .6875rem; color: var(--muted); padding: 4px 8px 8px; font-weight: 700; }
+.cfc-page #locList { max-height: min(52vh, 400px); overflow-y: auto; }
+.cfc-page .loc-opt {
+  display: flex; align-items: center; justify-content: space-between; width: 100%;
+  padding: 9px 10px; border: 0; background: transparent; border-radius: 10px;
+  font-size: .875rem; font-weight: 600; cursor: pointer; text-align: left;
+}
+.cfc-page .loc-opt:hover { background: var(--paper); }
+.cfc-page .loc-opt[aria-selected="true"] { background: var(--teal-wash); color: var(--teal-ink); }
+.cfc-page .loc-opt .ic { width: 15px; height: 15px; color: var(--teal-deep); opacity: 0; }
+.cfc-page .loc-opt[aria-selected="true"] .ic { opacity: 1; }
+.cfc-page .loc-detect {
+  margin-top: 6px; padding-top: 8px; border-top: 1px solid var(--line-soft);
+  display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: transparent;
+  padding-left: 10px; font-size: .8125rem; font-weight: 600; color: var(--teal-deep); cursor: pointer;
+  border-radius: 10px; min-height: 38px;
+}
+.cfc-page .loc-detect:hover { background: var(--teal-wash); }
+.cfc-page .loc-detect .ic { width: 15px; height: 15px; }
+
+/* ============================================================
+   Rail progress + drag
+   ============================================================ */
+/* Hidden: the reference has no progress bar under the rail, and with the
+   scrollbar gone this teal line was the only thing left sitting under the
+   cards. The prev/next arrows carry the affordance instead. */
+.cfc-page .rail-prog { display: none; height: 3px; background: var(--line); border-radius: 3px; overflow: hidden; margin-top: 2px; }
+.cfc-page .rail-prog i { display: block; height: 100%; width: 20%; background: var(--teal); border-radius: 3px; }
+.cfc-page .rail.dragging { cursor: grabbing; scroll-snap-type: none; }
+.cfc-page .rail.dragging .bk { pointer-events: none; }
+.cfc-page .rail-btn[disabled] { opacity: .35; cursor: default; }
+.cfc-page .rail-btn[disabled]:hover { border-color: var(--line); color: var(--ink); background: #fff; }
+
+/* live counters keep a stable width while they run */
+.cfc-page .pstat strong { font-variant-numeric: tabular-nums; }

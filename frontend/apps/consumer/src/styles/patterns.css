@@ -393,3 +393,103 @@
   color: var(--muted, #6A83A0);
   font-weight: 500;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   9. BADGES — the rationed accents
+   ═══════════════════════════════════════════════════════════════════════
+   The home page spends orange in exactly four places: HOT badges, the "most
+   booked" badge, the pro-band eyebrow and the live-ETA pill. Its job is to
+   mark what must NOT read as teal - an earlier build put a teal badge on a
+   teal icon tile and it was invisible, which is the one thing a badge exists
+   to avoid.
+
+   ORANGE IS RATIONED. One or two per screen. Spending it more widely
+   destroys the signal, which is why these are separate named classes rather
+   than a generic `.badge` with a colour prop - you have to choose it. */
+
+.cfc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+/* The loud one. HOT / MOST BOOKED / limited offers. */
+.cfc-badge-promo {
+  background: var(--orange, #F47B20);
+  color: #fff;
+}
+
+/* The quiet one, for the same idea on a busy surface where a solid fill
+   would shout over the content it is labelling. */
+.cfc-badge-promo-soft {
+  background: var(--color-promo-subtle, #FDF0E6);
+  color: var(--orange, #F47B20);
+}
+
+/* NEW, and anything that is a fact rather than a deal. */
+.cfc-badge-teal {
+  background: var(--teal-wash, #E2F7F7);
+  color: var(--teal-ink, #02BABC);
+}
+
+/* A live state - in progress, on the way, arriving. Solid teal, because a
+   wash reads as decoration and this is a status. */
+.cfc-badge-live {
+  background: var(--teal, #02BABC);
+  color: #fff;
+}
+
+/* Rating. Yellow appears ONLY on stars and rating pills, nowhere else. */
+.cfc-badge-rating {
+  background: var(--white, #fff);
+  border: 1px solid var(--line, #E3ECF4);
+  color: var(--ink, #0E2A47);
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.75rem;
+}
+
+.cfc-badge-rating .cfc-star {
+  color: var(--yellow, #F5A623);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   10. PRICE EMPHASIS
+   ═══════════════════════════════════════════════════════════════════════
+   A price is the second thing a customer looks for after the name. On the
+   home page's booked rail it is the largest dark thing in the card; here the
+   same weight is available to any screen showing money. */
+
+.cfc-price-lg {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink, #0E2A47);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+/* A price that has been reduced. The struck original stays muted so the
+   saving is what the eye lands on. */
+.cfc-price-was {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted, #6A83A0);
+  text-decoration: line-through;
+  font-variant-numeric: tabular-nums;
+}
+
+.cfc-price-save {
+  color: var(--orange, #F47B20);
+  font-weight: 700;
+  font-size: 0.8125rem;
+}

@@ -23,7 +23,7 @@ import { useSession } from "@/lib/session";
  */
 export function AppHeader() {
   const router = useRouter();
-  const { signOut } = useSession();
+  const { signedIn, signOut } = useSession();
 
   return (
     <header className="appbar" id="appbar">
@@ -62,41 +62,60 @@ export function AppHeader() {
             <svg className="ic" aria-hidden="true"><use href="#i-cart"></use></svg>
             <span className="pip hide" id="cartPip">0</span>
           </button>
-          <button className="acct-btn" type="button" id="acctBtn" aria-haspopup="menu" aria-expanded="false">
-            <span className="avatar">AS</span>
-            <svg className="ic" aria-hidden="true"><use href="#i-chev"></use></svg>
-          </button>
+          {/* The account control follows the SESSION.
 
-          <div className="menu" id="acctMenu" role="menu">
-            <div className="menu-id">
-              <span className="avatar">AS</span>
-              <div>
-                <b>Aarthi Subramanian</b>
-                <span>+91 98xxx xx190</span>
+              This block used to render unconditionally: a signed-out visitor
+              saw "Aarthi Subramanian" and a full account menu in the header
+              while the page below them said "Sign in to book". Two parts of
+              the same screen disagreeing about who you are.
+
+              `signedIn` is null until localStorage has been read, which on the
+              server is always. Rendering the signed-out button during that
+              window would flash "Sign in" at a customer who IS signed in, so
+              the control is held back until the answer is known. */}
+          {signedIn === true && (
+            <>
+              <button className="acct-btn" type="button" id="acctBtn" aria-haspopup="menu" aria-expanded="false">
+                <span className="avatar">AS</span>
+                <svg className="ic" aria-hidden="true"><use href="#i-chev"></use></svg>
+              </button>
+
+              <div className="menu" id="acctMenu" role="menu">
+                <div className="menu-id">
+                  <span className="avatar">AS</span>
+                  <div>
+                    <b>Aarthi Subramanian</b>
+                    <span>+91 98xxx xx190</span>
+                  </div>
+                </div>
+                <hr />
+                <Link href="/bookings" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-receipt"></use></svg>My bookings</Link>
+                <Link href="/addresses" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-pin"></use></svg>Saved addresses</Link>
+                <Link href="/wallet" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-card"></use></svg>Wallet</Link>
+                <Link href="/refer" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-gift"></use></svg>Refer and earn</Link>
+                <hr />
+                <Link href="/support" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-headset"></use></svg>Help centre</Link>
+                <Link href="/settings" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-cog"></use></svg>Settings</Link>
+                <button
+                  className="menu-item out"
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    signOut();
+                    router.push("/");
+                  }}
+                >
+                  <svg className="ic" aria-hidden="true"><use href="#i-logout"></use></svg>Log out
+                </button>
               </div>
-            </div>
-            <hr />
-            <Link href="/bookings" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-receipt"></use></svg>My bookings</Link>
-            {/* Real routes. These were href="#main" and silently scrolled to
-                the top of whatever page you were on. */}
-            <Link href="/addresses" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-pin"></use></svg>Saved addresses</Link>
-            <Link href="/wallet" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-card"></use></svg>Wallet</Link>
-            <Link href="/refer" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-gift"></use></svg>Refer and earn</Link>
-            <hr />
-            <Link href="/support" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-headset"></use></svg>Help centre</Link>
-            <Link href="/settings" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-cog"></use></svg>Settings</Link>
-            <button
-              className="menu-item out"
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                signOut();
-                router.push("/");
-              }}
-            >
-              <svg className="ic" aria-hidden="true"><use href="#i-logout"></use></svg>Log out
-            </button>
-          </div>
+            </>
+          )}
+
+          {signedIn === false && (
+            <Link href="/login" className="btn btn-primary btn-sm">
+              Sign in
+            </Link>
+          )}
         </div>
       </div>
 

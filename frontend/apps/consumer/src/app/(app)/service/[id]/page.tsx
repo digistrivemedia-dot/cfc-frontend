@@ -167,9 +167,16 @@ export default function ServiceDetailPage() {
               {/* Spec: "warranty badge". The number is real — it comes from
                   the catalogue, per service. */}
               {service.warrantyDays > 0 && (
-                <Badge tone="live" dot>
+                <span className="cfc-badge cfc-badge-teal">
                   {service.warrantyDays}-day warranty
-                </Badge>
+                </span>
+              )}
+              {/* ORANGE, rationed. The one loud mark on this screen, and it
+                  marks the thing a customer is actually persuaded by: that
+                  other people book this service. Spending orange on anything
+                  else here would flatten the signal. */}
+              {service.reviewCount >= 100 && (
+                <span className="cfc-badge cfc-badge-promo">Most booked</span>
               )}
             </div>
 
@@ -312,11 +319,11 @@ function BookingCard({
   onQuantityChange: (next: number) => void;
 }) {
   return (
-    <div className="rounded-card border border-border bg-surface p-4">
+    <div className="cfc-card p-4">
       <p className="text-caption text-ink-muted">Starting at</p>
-      <p className="tabular text-title font-semibold text-ink">
-        {formatCurrency(totalPaise)}
-      </p>
+      {/* The price is the second thing a customer looks for after the name,
+          so it carries the weight the home page's booked rail gives it. */}
+      <p className="cfc-price-lg">{formatCurrency(totalPaise)}</p>
       {durationMinutes !== null && (
         <p className="mt-1 flex items-center gap-1 text-caption text-ink-muted">
           <Clock className="size-3" aria-hidden="true" />

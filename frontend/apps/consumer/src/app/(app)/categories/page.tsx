@@ -5,23 +5,12 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  AirVent,
-  Bath,
-  Brush,
-  Bug,
   ChevronRight,
-  Droplets,
-  Hammer,
-  HeartPulse,
-  Home as HomeIcon,
-  Scissors,
-  Sparkles,
-  Star,
-  WashingMachine,
+
 } from "lucide-react";
 import { getServices, getSubCategories } from "@cfc/mocks";
 import type { ServiceDetail, SubCategory } from "@cfc/types";
-import { EmptyState, ErrorState, Skeleton, cn, formatCurrency } from "@cfc/ui";
+import { EmptyState, ErrorState, Skeleton, cn } from "@cfc/ui";
 import { ShopServiceCard } from "@/components/shop-service-card";
 
 /**
@@ -70,21 +59,6 @@ import { ShopServiceCard } from "@/components/shop-service-card";
  * catalogue rather than from this file - a real photo of the actual job is the
  * right thing there. Only the category tiles change.
  */
-const SUBCATEGORY_ICON: Record<
-  string,
-  React.ComponentType<{ className?: string }>
-> = {
-  "Electrical & AC": AirVent,
-  Cleaning: Sparkles,
-  Plumbing: Droplets,
-  Beauty: Scissors,
-  "Pest control": Bug,
-  Appliance: WashingMachine,
-  Carpentry: Hammer,
-  Painting: Brush,
-  Water: Bath,
-  Nursing: HeartPulse,
-};
 
 type SortKey = "relevance" | "rating" | "price-low" | "price-high" | "distance";
 
@@ -211,8 +185,12 @@ function CategoriesInner() {
       .filter(({ count }) => count > 0);
   }, [subs, services]);
 
+  /* No `sub` in the URL means ALL services, not no services. The screen used
+     to return null here and render a grid of category tiles instead; now the
+     unfiltered catalogue is the landing state. */
   const visibleServices = React.useMemo(() => {
-    if (services === null || subName === null) return null;
+    if (services === null) return null;
+    if (subName === null) return services;
     return services.filter((s) => s.subCategoryName === subName);
   }, [services, subName]);
 
@@ -297,57 +275,19 @@ function CategoriesInner() {
     <div className="cfc-band-wash min-h-screen px-4 pt-4 md:px-6 md:pb-12 lg:px-8 mx-auto max-w-screen-xl">
       <Breadcrumb subName={subName} onGo={go} />
 
-      {/* Depth 1 - every sub-category, same ten Home shows. */}
-      {subName === null && (
-        <>
-          {/* The eyebrow pill the approved home page puts above every section
-              heading. This screen is reached straight from that grid, so
-              arriving at a bare heading made it read as a different product. */}
-          <span className="mt-2 inline-flex items-center gap-2 rounded-pill bg-action-subtle px-3 py-1 text-caption font-bold uppercase tracking-wide text-action">
-            <Sparkles className="size-3" aria-hidden="true" />
-            Browse by category
-          </span>
-          <h1 className="mt-2 text-title font-extrabold tracking-tight text-ink md:text-title-lg">
-            All services
-          </h1>
-          <p className="mt-1 text-small text-ink-muted">
-            Pick a category to see what is available.
-          </p>
+      {/* ONE page, not two.
 
-          {browsable === null ? (
-            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {/* matches the icon tile's real height, not the old photo card's
-                  aspect ratio, so nothing jumps when the data lands */}
-              {Array.from({ length: 10 }, (_, i) => (
-                <Skeleton key={i} className="h-block-md rounded-card" />
-              ))}
-            </div>
-          ) : (
-            /* The grid sits on white, on the page's wash. Without this the
-               screen was one flat tinted sheet from the header to the footer -
-               the thing that made it read as unfinished next to the home page,
-               which never runs two identical grounds together. */
-            <ul className="cfc-card mt-5 grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 md:p-6 lg:grid-cols-5">
-              {browsable.map(({ sub: s, count, fromPaise, rating, reviews }, i) => (
-                <li key={s.id}>
-                  <SubCategoryCard
-                    name={s.name}
-                    serviceCount={count}
-                    fromPaise={fromPaise}
-                    rating={rating}
-                    reviews={reviews}
-                    href={hrefFor({ sub: s.name })}
-                    index={i}
-                  />
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
+          This screen used to be a grid of icon tiles that linked to a SECOND
+          page listing that category's services. With 16 services across 10
+          sub-categories - five of which hold exactly one service - that put a
+          whole page between a customer and a single bookable thing, and spent
+          one of the three clicks the agreement promises before booking even
+          starts.
 
-      {/* Depth 2 - one sub-category's services. */}
-      {subName !== null && (
+          The category strip now does that job inline: it is always on screen,
+          "All" is the default, and choosing one filters the grid below without
+          a page load. Every service is reachable in one click from here. */}
+      {true && (
         <>
           {/* The sub-category switcher. This is where it earns its place: a
               customer looking at Plumbing can move straight to Electrical
@@ -363,8 +303,14 @@ function CategoriesInner() {
               aria-label="Switch category"
             >
               <Link
-                href="/categories"
-                className="shrink-0 whitespace-nowrap rounded-pill border border-border bg-surface px-4 py-2 text-small font-bold text-ink transition-all duration-fast hover:border-action hover:text-action"
+                href={hrefFor({ sub: null })}
+                aria-current={subName === null ? "page" : undefined}
+                className={cn(
+                  "shrink-0 whitespace-nowrap rounded-pill border px-4 py-2 text-small font-bold transition-all duration-fast",
+                  subName === null
+                    ? "border-action bg-action text-on-action"
+                    : "border-border bg-surface text-ink hover:border-action hover:text-action",
+                )}
               >
                 All
               </Link>
@@ -390,9 +336,14 @@ function CategoriesInner() {
             </nav>
           )}
 
-          <h1 className="mt-3 text-title font-extrabold tracking-tight text-ink md:text-title-lg">
-            {subName}
+          <h1 className="mt-4 text-title font-extrabold tracking-tight text-ink md:text-title-lg">
+            {subName ?? "All services"}
           </h1>
+          <p className="mt-1 text-small text-ink-muted">
+            {subName === null
+              ? "Every service we offer, ready to book."
+              : `Book a verified pro for ${subName.toLowerCase()}.`}
+          </p>
 
           {sortedServices === null ? (
             <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
@@ -488,7 +439,7 @@ function CategoriesInner() {
                   </label>
                 )}
               </div>
-              <ul className="cfc-card mt-3 grid grid-cols-2 gap-3 p-4 md:grid-cols-3 md:p-6 lg:grid-cols-4">
+              <ul className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                 {sortedServices.map((s) => (
                   <li key={s.id}>
                     {/* The shop card rather than the plain one: this is the
@@ -565,91 +516,6 @@ function Breadcrumb({
  * larger min-width (5 columns on desktop vs Home's tighter strip) and carries
  * its own hover chevron, so it earns being a sibling rather than a reuse.
  */
-function SubCategoryCard({
-  name,
-  serviceCount,
-  fromPaise,
-  rating,
-  reviews,
-  href,
-  index,
-}: {
-  name: string;
-  serviceCount: number;
-  fromPaise: number;
-  rating: number;
-  reviews: number;
-  href: string;
-  index: number;
-}) {
-  const Icon = SUBCATEGORY_ICON[name] ?? HomeIcon;
-  // Every third tile in blue, as the approved grid does (.cat-ic on 3n+2), so
-  // a ten-tile grid is not monotone teal.
-  const isBlue = index % 3 === 1;
-
-  return (
-    /* A Link, not a button with router.push. Next prefetches the destination
-     * once the tile is in view, so opening a category is instant rather than
-     * starting its fetch on click - and it restores middle-click, ctrl-click
-     * and "open in new tab", which a button silently swallows. */
-    <Link
-      href={href}
-      className={cn(
-        "group relative flex h-full w-full flex-col rounded-card border border-border bg-canvas p-4",
-        "transition-all duration-base",
-        "hover:-translate-y-1 hover:border-action hover:bg-surface hover:shadow-md",
-        "focus-visible:outline-none focus-visible:outline-focus",
-      )}
-    >
-      {/* POPULAR is the one orange mark in this grid, and it is earned rather
-          than decorative: a category with 200+ reviews behind it is genuinely
-          the one a new customer should look at first. Rationed to the top of
-          the grid by the threshold, not by an index. */}
-      {reviews >= 200 && (
-        <span className="cfc-badge cfc-badge-promo absolute right-3 top-3">
-          Popular
-        </span>
-      )}
-
-      <span
-        className={cn(
-          "grid size-tile-lg place-items-center rounded-control text-on-action",
-          isBlue ? "bg-clock" : "bg-action",
-        )}
-      >
-        <Icon className="size-6" />
-      </span>
-
-      <span className="mt-3 block truncate text-small font-bold text-ink">
-        {name}
-      </span>
-
-      {/* Rating, where there is one. A category nobody has reviewed says
-          nothing rather than showing a hollow zero. */}
-      {rating > 0 && (
-        <span className="mt-1 flex items-center gap-1 text-caption text-ink-muted">
-          <Star className="size-3 fill-star text-star" aria-hidden="true" />
-          <span className="tabular font-semibold text-ink">
-            {rating.toFixed(1)}
-          </span>
-          <span className="tabular">({reviews})</span>
-        </span>
-      )}
-
-      {/* THE PRICING PREVIEW the agreement asks for (Customer 10). Pushed to
-          the foot of the tile with mt-auto so every tile in the row shows its
-          price on the same line, whatever the length of the name above it. */}
-      <span className="mt-auto flex items-baseline gap-1 pt-3">
-        <span className="text-caption text-ink-muted">from</span>
-        <span className="cfc-price">{formatCurrency(fromPaise)}</span>
-      </span>
-
-      <span className="tabular mt-0.5 block text-caption text-ink-faint">
-        {serviceCount} {serviceCount === 1 ? "service" : "services"}
-      </span>
-    </Link>
-  );
-}
 
 export default function CategoriesPage() {
   return (

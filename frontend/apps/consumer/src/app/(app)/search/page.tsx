@@ -242,7 +242,11 @@ function SearchInner() {
   }, [results, sort]);
 
   return (
-    <div className="cfc-band-wash mx-auto min-h-screen max-w-screen-xl px-4 pb-12 md:px-6 lg:px-8">
+    <div className="cfc-band-wash min-h-screen pb-12 pt-4">
+      {/* `cfc-wrap` is the box the app bar and footer use. A page that sets its
+          own container is 100px wider with less padding, so its first line of
+          content starts visibly left of the logo above it. */}
+      <div className="cfc-wrap">
       {/* The search field is present at every width. It used to be
           `md:hidden` on the reasoning that the desktop header carries one —
           but on the results page that left a desktop customer with no visible
@@ -452,6 +456,7 @@ function SearchInner() {
           onClear={() => router.push("/search")}
         />
       )}
+      </div>
     </div>
   );
 }
@@ -768,7 +773,7 @@ export default function SearchPage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto max-w-screen-xl px-4 py-6 md:px-6 lg:px-8">
+        <div className="cfc-wrap py-6">
           <Skeleton className="h-touch rounded-control" />
         </div>
       }

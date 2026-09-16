@@ -143,7 +143,8 @@ function ReviewPageInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-sm px-4 pt-4 md:px-6 md:pb-12">
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-screen-sm">
       <Link
         href={`/bookings/${booking.id}`}
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
@@ -250,6 +251,7 @@ function ReviewPageInner() {
           </Button>
         </>
       )}
+      </div>
     </div>
   );
 }

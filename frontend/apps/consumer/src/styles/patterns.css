@@ -55,11 +55,25 @@
   width: 100%;
 }
 
-.cfc-band-in {
+.cfc-band-in,
+.cfc-wrap {
   width: 100%;
   max-width: var(--max, 1180px);
   margin: 0 auto;
   padding: 0 var(--pad, 24px);
+}
+
+/* `.cfc-wrap` is the same box the app bar and the footer use (`.wrap` in
+   foundation.css). A screen that sets its own `max-w-screen-xl px-4` is 100px
+   wider with 8px less padding, so its first line of content starts visibly
+   left of the logo above it - which is exactly what a breadcrumb sitting
+   under the navbar makes obvious. Use this, not a Tailwind container, for the
+   outermost box of a page. */
+@media (max-width: 620px) {
+  .cfc-band-in,
+  .cfc-wrap {
+    padding: 0 16px;
+  }
 }
 
 /* White — the resting surface. Cards on it need a border to separate. */

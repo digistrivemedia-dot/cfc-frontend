@@ -257,10 +257,21 @@
 .cfc-page .acct-btn {
   display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 4px; margin-left: 4px;
   border-radius: 999px; border: 1px solid var(--line); background: #fff; cursor: pointer;
+  transition: border-color .18s var(--ease), box-shadow .18s var(--ease);
 }
-.cfc-page .acct-btn:hover { border-color: var(--line); }
-.cfc-page .acct-btn .avatar { width: 32px; height: 32px; border-radius: 50%; font-size: .75rem; }
-.cfc-page .acct-btn .ic { width: 14px; height: 14px; color: var(--muted); }
+/* The hover state was `border-color: var(--line)` - the colour it already
+   had - so the control looked inert under the cursor. */
+.cfc-page .acct-btn:hover { border-color: var(--teal); box-shadow: 0 4px 12px -6px rgba(16, 41, 76, .22); }
+.cfc-page .acct-btn[aria-expanded="true"] { border-color: var(--teal); }
+.cfc-page .acct-btn .avatar {
+  width: 32px; height: 32px; border-radius: 50%; font-size: .75rem;
+  /* The avatar carried no fill of its own, so the initials sat on the white
+     button as bare text rather than reading as an avatar. */
+  background: var(--teal); color: #fff; font-weight: 700;
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.cfc-page .acct-btn .ic { width: 14px; height: 14px; color: var(--muted); transition: transform .18s var(--ease); }
+.cfc-page .acct-btn[aria-expanded="true"] .ic { transform: rotate(180deg); }
 
 .cfc-page .menu {
   position: absolute; right: 0; top: calc(100% + 10px); width: 262px; z-index: 80;
@@ -270,8 +281,18 @@
   transition: opacity .18s var(--ease), transform .18s var(--ease);
 }
 .cfc-page .menu.open { opacity: 1; transform: none; pointer-events: auto; }
-.cfc-page .menu-id { display: flex; align-items: center; gap: 11px; padding: 10px 10px 14px; }
-.cfc-page .menu-id .avatar { width: 40px; height: 40px; border-radius: 13px; }
+/* The identity block sits on a tinted plate, not on the same white as the
+   links below it: without a ground of its own the name and number read as the
+   first two menu items rather than as a header. */
+.cfc-page .menu-id {
+  display: flex; align-items: center; gap: 11px; padding: 12px;
+  background: var(--paper); border-radius: 12px; margin-bottom: 4px;
+}
+.cfc-page .menu-id .avatar {
+  width: 40px; height: 40px; border-radius: 13px;
+  background: var(--teal); color: #fff; font-size: .875rem; font-weight: 700;
+  display: grid; place-items: center; flex-shrink: 0;
+}
 .cfc-page .menu-id b { display: block; font-size: .9375rem; }
 .cfc-page .menu-id span { font-size: .75rem; color: var(--muted); }
 .cfc-page .menu hr { border: 0; border-top: 1px solid var(--line-soft); margin: 4px 0; }
@@ -280,10 +301,18 @@
   border: 0; background: transparent; border-radius: 10px; cursor: pointer;
   font-size: .875rem; font-weight: 500; text-align: left; color: var(--ink);
 }
-.cfc-page .menu a:hover, .cfc-page .menu button.menu-item:hover { background: var(--paper); }
-.cfc-page .menu .ic { width: 17px; height: 17px; color: var(--muted); flex-shrink: 0; }
+/* Teal on hover, not grey. Every other action surface in the app moves to
+   teal under the cursor; a grey wash made these read as disabled rows. */
+.cfc-page .menu a:hover, .cfc-page .menu button.menu-item:hover {
+  background: var(--teal-wash); color: var(--teal-ink);
+}
+.cfc-page .menu a:hover .ic, .cfc-page .menu button.menu-item:hover .ic { color: var(--teal-ink); }
+.cfc-page .menu .ic { width: 17px; height: 17px; color: var(--muted); flex-shrink: 0; transition: color .14s; }
 .cfc-page .menu .out { color: #b4242f; }
 .cfc-page .menu .out .ic { color: #b4242f; }
+/* Log out keeps its own red on hover rather than inheriting the teal above. */
+.cfc-page .menu button.out:hover { background: #fdeced; color: #b4242f; }
+.cfc-page .menu button.out:hover .ic { color: #b4242f; }
 .cfc-page .menu .tail { margin-left: auto; font-size: .6875rem; font-weight: 700; color: var(--teal-deep); background: var(--teal-wash); padding: 3px 8px; border-radius: 999px; }
 
 /* ---------- welcome + setup ---------- */

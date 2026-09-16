@@ -104,12 +104,15 @@ function WalletInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
-      <h1 className="text-title font-bold text-ink">Wallet</h1>
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-screen-md">
+      <h1 className="text-section text-ink">Wallet</h1>
 
       {/* Balance. The one number this screen exists for, so it gets the room. */}
-      <section className="mt-3 rounded-card border border-action-line bg-action-subtle p-4">
-        <p className="text-caption text-ink-muted">Available balance</p>
+      <section className="mt-3 rounded-card border-2 border-action-line bg-action-subtle p-5 shadow-sm">
+        <p className="text-caption font-semibold uppercase tracking-wide text-action">
+          Available balance
+        </p>
         {balance === null ? (
           <Skeleton className="mt-1 h-8 w-line-md" />
         ) : (
@@ -178,7 +181,7 @@ function WalletInner() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="mt-3 rounded-card border border-border bg-surface">
+        <div className="mt-3 cfc-card">
           <EmptyState
             icon={<WalletIcon />}
             title="Nothing here yet"
@@ -190,7 +193,7 @@ function WalletInner() {
           />
         </div>
       ) : (
-        <ul className="mt-3 divide-y divide-border-soft overflow-hidden rounded-card border border-border bg-surface">
+        <ul className="mt-3 divide-y divide-border-soft overflow-hidden cfc-card">
           {rows.map((t) => (
             <li key={t.id}>
               <TransactionRow transaction={t} />
@@ -204,6 +207,7 @@ function WalletInner() {
         onOpenChange={setAddOpen}
         onAdded={load}
       />
+      </div>
     </div>
   );
 }

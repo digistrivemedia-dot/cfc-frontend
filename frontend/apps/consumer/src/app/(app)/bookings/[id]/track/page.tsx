@@ -101,7 +101,8 @@ function TrackPageInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-screen-md">
       <Link
         href={`/bookings/${booking.id}`}
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
@@ -124,7 +125,7 @@ function TrackPageInner() {
         <>
           <Eta minutes={booking.etaMinutes} />
 
-          <section className="mt-3 overflow-hidden rounded-card border border-border bg-surface">
+          <section className="mt-3 overflow-hidden cfc-card">
             <MapView
               className="h-block-lg"
               markers={[
@@ -175,7 +176,7 @@ function TrackPageInner() {
 
       {/* The professional, and how to reach them. */}
       {booking.pro !== null && (travelling || onSite) && (
-        <section className="mt-4 rounded-card border border-border bg-surface p-4">
+        <section className="mt-4 cfc-card p-4">
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-small font-medium text-ink">
@@ -218,7 +219,7 @@ function TrackPageInner() {
       {/* Customer 28 — proof of work. */}
       {(booking.beforePhotoUrls.length > 0 ||
         booking.afterPhotoUrls.length > 0) && (
-        <section className="mt-4 rounded-card border border-border bg-surface p-4">
+        <section className="mt-4 cfc-card p-4">
           <h2 className="text-small font-semibold text-ink">
             {finished ? "Before and after" : "Before starting"}
           </h2>
@@ -240,7 +241,7 @@ function TrackPageInner() {
       )}
 
       {/* Customer 27 — the job status timeline. */}
-      <section className="mt-4 rounded-card border border-border bg-surface p-4">
+      <section className="mt-4 cfc-card p-4">
         <h2 className="mb-3 text-small font-semibold text-ink">Progress</h2>
         <Timeline>
           {booking.events.map((e, i) => {
@@ -275,6 +276,7 @@ function TrackPageInner() {
           <Link href={`/bookings/${booking.id}/review`}>Rate this job</Link>
         </Button>
       )}
+      </div>
     </div>
   );
 }
@@ -308,8 +310,14 @@ function Eta({ minutes }: { minutes: number | null }) {
   return (
     <div
       className={cn(
-        "mt-3 rounded-card border p-4 text-center",
-        left > 0 ? "border-action-line bg-action-subtle" : "border-live-line bg-live-subtle",
+        "mt-3 rounded-card border-2 p-5 text-center shadow-sm",
+        // ORANGE while the pro is on the way - one of the four places the
+        // approved design spends it, and the reason this screen is open. It
+        // was teal, which made the countdown one more teal thing among the
+        // map, the timeline and the buttons.
+        left > 0
+          ? "border-promo/30 bg-promo-subtle"
+          : "border-live-line bg-live-subtle",
       )}
       // The countdown changes without the customer acting, so it announces
       // itself — but politely, not interrupting whatever they are reading.
@@ -317,12 +325,10 @@ function Eta({ minutes }: { minutes: number | null }) {
     >
       {left > 0 ? (
         <>
-          {/* The countdown is the reason this screen is open. Teal and
-              extrabold, as the approved hero sets its own live ETA. */}
-          <p className="tabular text-display font-extrabold tracking-tight text-action">
+          <p className="tabular text-display font-extrabold tracking-tight text-promo">
             {left} min
           </p>
-          <p className="mt-1 text-caption text-ink-muted">
+          <p className="mt-1 text-small font-medium text-ink-muted">
             Estimated arrival · about {formatTime(new Date(Date.now() + left * 60_000))}
           </p>
         </>

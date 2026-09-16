@@ -101,11 +101,20 @@ export function ShopServiceCard({
           {name}
         </Link>
 
-        {description && (
-          <p className="mt-1 line-clamp-2 text-caption leading-relaxed text-ink-muted">
-            {description}
-          </p>
-        )}
+        {/* A fixed two-line block, always rendered.
+
+            `line-clamp-2` alone let each card size itself to its own copy, so
+            a two-line description and a three-line one produced cards of
+            different heights and every row in the catalogue sat ragged.
+            `min-h` reserves the two lines whether or not the text fills them,
+            which levels the row without padding the shorter cards visually.
+
+            The clamp ends a cut line with an ellipsis rather than breaking a
+            word in half - the "lowest-cost job on..." effect - because it cuts
+            on the rendered line box, not the character count. */}
+        <p className="mt-1 line-clamp-2 min-h-[2.6em] text-caption leading-relaxed text-ink-muted">
+          {description ?? ""}
+        </p>
 
         {/* A filled pill, as the approved rail sets a rating (.bk-rate) - a
             grey line with a tiny glyph read as metadata rather than as a score

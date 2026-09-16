@@ -170,6 +170,29 @@ module.exports = {
         line: "var(--color-critical-line)",
       },
       star: "var(--color-star)",
+      // ── Promotional accent ──────────────────────────────────────────────
+      // ADDITIVE, and consumer-only in practice. No existing key changes.
+      //
+      // The client's approved home design spends orange in exactly four
+      // places - HOT badges, the "most booked" badge, the pro-band eyebrow
+      // and the live-ETA pill. Its job is to mark what must NOT read as teal:
+      // an earlier version used a teal badge on a teal icon tile and it was
+      // invisible, which is what the badge exists to avoid.
+      //
+      // It is NOT a status colour. `critical`/`danger` mean something has
+      // gone wrong, `clock` means waiting - reusing either for a promotional
+      // badge would make both names lie. Hence a key of its own.
+      //
+      // Pro and Admin never reference it. An unused scale entry emits no CSS,
+      // so their bundles are byte-identical. The VALUE is defined only in the
+      // consumer's brand.css; the shared tokens leave it undefined, so a
+      // `bg-promo` written in Pro or Admin would resolve to nothing and be
+      // caught immediately rather than silently painting something.
+      promo: {
+        DEFAULT: "var(--color-promo)",
+        bright: "var(--color-promo-bright)",
+        subtle: "var(--color-promo-subtle)",
+      },
       disabled: {
         DEFAULT: "var(--color-disabled-surface)",
         ink: "var(--color-disabled-ink)",
@@ -229,6 +252,18 @@ module.exports = {
       6: "24px",
       8: "32px",
       12: "48px",
+      // ── Section rhythm ────────────────────────────────────────────────
+      // ADDITIVE, same reasoning as the weights above: no existing step is
+      // redefined, so `p-12` and everything below it are unchanged.
+      //
+      // 48px was the ceiling, which meant no screen could put more than 48px
+      // between two sections - so an eleven-section page read as one flat
+      // scroll with no chapter breaks. The approved home design uses 68px
+      // section padding; these are the steps that make that expressible as a
+      // utility rather than an inline style.
+      16: "64px",
+      20: "80px",
+      24: "96px",
       touch: "44px", // minimum target on consumer and pro
       // The pro app's primary action — ACCEPT, I'M HERE, COMPLETE JOB. A pro
       // presses these one-handed, standing, often in daylight, and getting one
@@ -284,6 +319,23 @@ module.exports = {
       normal: "400",
       medium: "500",
       semibold: "600",
+      // ── Display weights ───────────────────────────────────────────────
+      // ADDITIVE. `normal`/`medium`/`semibold` are untouched, so every
+      // existing `font-semibold` in all three apps resolves to exactly the
+      // same 600 it always has. Nothing re-renders differently anywhere.
+      //
+      // These exist because the consumer app is a shopfront and the scale
+      // above was written for an operations console. The original comment
+      // reasoned that "a page where somebody is choosing what to pay for
+      // should not shout" - true of an admin table, wrong of a marketplace
+      // home screen, where the headline IS the product. Capping at 600 meant
+      // real bold did not exist anywhere in the product, and the client-
+      // approved home design uses 700 and 800 throughout.
+      //
+      // Pro and Admin simply never use these keys. An unused scale entry
+      // emits no CSS, so their bundles are byte-identical.
+      bold: "700",
+      extrabold: "800",
     },
 
     boxShadow: {

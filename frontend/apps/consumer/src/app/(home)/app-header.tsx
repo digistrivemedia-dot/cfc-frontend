@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
+import { useArea } from "@/lib/area";
 
 /**
  * The signed-in app bar — one component, rendered by every screen behind a
@@ -24,6 +25,7 @@ import { useSession } from "@/lib/session";
 export function AppHeader() {
   const router = useRouter();
   const { signedIn, signOut } = useSession();
+  const { area, ready } = useArea();
 
   return (
     <header className="appbar" id="appbar">
@@ -32,14 +34,37 @@ export function AppHeader() {
           <span className="logo-mark"><svg className="ic" aria-hidden="true"><use href="#i-home"></use></svg></span>
           <span className="logo-text">
             <span className="logo-name">CityFamilyCare<sup>CFC</sup></span>
+            {/* The tagline the marketing header carries (`.logo-tag`). Without
+                it the same brand appeared two different ways depending on
+                which side of sign-in you were on. */}
+            <span className="logo-tag">Verified home services</span>
           </span>
         </Link>
 
+        {/* The address follows the STORED area, not a hardcoded string.
+
+            This read "Add your address / Bengaluru" for everyone, always -
+            a prompt to add an address sitting directly above a city that
+            looked like one had already been added. Whichever a customer
+            believed, the other line contradicted it.
+
+            `ready` guards the first paint: `area` is null until localStorage
+            has been read, so rendering the prompt during that window would
+            flash "Add your address" at someone who has one. */}
         <button className="addr-btn unset" type="button" id="addrBtn">
           <svg className="ic" aria-hidden="true"><use href="#i-pin"></use></svg>
           <span className="addr-text">
-            <b id="addrTitle">Add your address</b>
-            <span id="addrSub">Bengaluru</span>
+            {ready && area ? (
+              <>
+                <b id="addrTitle">{area}</b>
+                <span id="addrSub">Deliver here</span>
+              </>
+            ) : (
+              <>
+                <b id="addrTitle">Add your address</b>
+                <span id="addrSub">Set your location</span>
+              </>
+            )}
           </span>
           <svg className="ic ic-dn" aria-hidden="true"><use href="#i-chev"></use></svg>
         </button>

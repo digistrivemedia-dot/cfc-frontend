@@ -85,8 +85,10 @@ function BookingsInner() {
   React.useEffect(() => load(), [load]);
 
   return (
-    <div className="mx-auto max-w-screen-lg px-4 pt-4 md:px-6 md:pb-12 lg:px-8">
-      <h1 className="text-title font-bold text-ink">My bookings</h1>
+    <div className="cfc-band-wash min-h-screen pb-20 pt-6">
+      <div className="cfc-wrap">
+      <span className="cfc-eyebrow">Your bookings</span>
+      <h1 className="mt-3 text-section text-ink">My bookings</h1>
 
       {/* Scrolls on a phone: four tabs with counts do not fit at 390px. */}
       <div
@@ -143,7 +145,7 @@ function BookingsInner() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="mt-4 rounded-card border border-border bg-surface">
+        <div className="mt-4 cfc-card">
           <EmptyState
             icon={<CalendarDays />}
             title={EMPTY[tab].title}
@@ -167,6 +169,7 @@ function BookingsInner() {
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }
@@ -186,7 +189,7 @@ function BookingCard({ booking }: { booking: ConsumerBooking }) {
     <Link
       href={`/bookings/${booking.id}`}
       className={cn(
-        "block rounded-card border border-border bg-surface p-4 shadow-sm",
+        "block cfc-card p-4 shadow-sm",
         // the approved card hover: a lift and a teal edge
         "transition-all duration-fast hover:-translate-y-1 hover:border-action hover:shadow-md",
       )}
@@ -195,10 +198,12 @@ function BookingCard({ booking }: { booking: ConsumerBooking }) {
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <BookingStatusBadge status={booking.status} />
+            {/* ORANGE, and the only orange in this list. Every other badge
+                here reports a state; this one asks the customer to do
+                something, and it is the single outstanding task on the
+                screen. Blue reported it as one more status. */}
             {needsRating && (
-              <Badge tone="clock" dot>
-                Rate this
-              </Badge>
+              <span className="cfc-badge cfc-badge-promo">Rate this</span>
             )}
           </div>
 

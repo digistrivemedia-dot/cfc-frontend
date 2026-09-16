@@ -176,7 +176,11 @@ function OtpInner() {
                 // boxes ARE the screen - at h-touch with heading text they
                 // read as six small inputs rather than as the one thing being
                 // asked for. touch-lg is the existing 56px step.
-                "h-touch-lg min-w-0 flex-1 rounded-card border-2 text-center",
+                // `max-w-touch-lg` caps the growth so the boxes stay SQUARE.
+                // `flex-1` alone stretched them to fill whatever width the
+                // card had, which in a 640px card made six wide rectangles
+                // with the digits lost in the middle of them.
+                "h-touch-lg min-w-0 max-w-touch-lg flex-1 rounded-card border-2 text-center",
                 "text-title font-extrabold tabular-nums text-ink",
                 // `outline-focus` rather than a ring: it is the token the rest
                 // of the app focuses with, so the focus state here matches
@@ -209,8 +213,7 @@ function OtpInner() {
             {isComplete ? (
               <>
                 Code ready &mdash; tap{" "}
-                <span className="font-extrabold text-promo">Verify</span> to
-                continue
+                <span className="font-extrabold">Verify</span> to continue
               </>
             ) : (
               "Waiting for auto-fill…"
@@ -230,12 +233,17 @@ function OtpInner() {
         </Button>
       </form>
 
-      {/* Resend */}
-      <div className="mt-8 text-center">
+      {/* Resend, above a rule like the footer link on the other three screens
+          so all four share one construction. */}
+      <div className="mt-6 border-t border-border pt-5 text-center">
         {resendSeconds > 0 ? (
           <p className="text-small text-ink-muted">
             Resend OTP in{" "}
-            <span className="font-extrabold text-promo tabular-nums">
+            {/* Teal, not orange. Orange is this app's badge colour and every
+                other countdown and link across the four auth screens is teal;
+                an orange number here made the timer the loudest thing on a
+                screen whose job is the six boxes above it. */}
+            <span className="font-extrabold text-action tabular-nums">
               0:{resendSeconds.toString().padStart(2, "0")}
             </span>
           </p>

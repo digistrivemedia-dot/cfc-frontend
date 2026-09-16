@@ -68,6 +68,19 @@ export default function LoginPage() {
     <AuthShell
       heading="Welcome back"
       subheading="Enter your mobile number to receive a one-time code."
+      // Login had NO back control at all - Register and Forgot Password both
+      // set one, this did not. Someone who reached this screen and changed
+      // their mind had no way out except the browser's back button.
+      backHref="/"
+      backLabel="Back to home"
+      // Titles only left the three cards looking hollow - a bold line and
+      // nothing under it, in a card sized for more. They carry the same
+      // explanations /register does.
+      //
+      // The four-item row is off here. With three detailed cards the panel
+      // already reaches the login card's height, and the extra row ran past
+      // its bottom edge.
+      showExtras={false}
     >
       <form
         id="login-form"
@@ -127,37 +140,16 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      {/* Divider */}
-      <div className="my-8 flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-small text-ink-muted">or</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
+      {/* ONE ORDER, NOT FOUR COMPETING BLOCKS.
 
-      {/* Secondary actions */}
-      <div className="space-y-4 text-center">
-        <div className="text-body text-ink-muted">
-          New to CFC?{" "}
-          {/* font-semibold to match the weight the approved design gives every
-              teal link. At font-medium on a 2:1-contrast teal it was the
-              faintest thing on the card. */}
-          <button
-            id="login-go-register"
-            type="button"
-            className="font-bold text-promo underline-offset-2 hover:underline"
-            onClick={() => router.push("/register")}
-          >
-            Create an account
-          </button>
-        </div>
-        {/* "Forgot password?" was wrong: this platform has no passwords, and
-            the screen it opens says so in its first paragraph. The link is
-            really for someone who has lost access to their number.
+          Under the button sat: a dark link, a rule, a teal link, then legal
+          text - four separate stacks at three different sizes, each with its
+          own margin, reading as a list of afterthoughts.
 
-            Full ink weight, not muted. Someone locked out of their number is
-            the most stuck person who reaches this screen, and this was the
-            faintest thing on the card - grey and small, directly beneath a
-            bold orange link that pulled the eye away from it. */}
+          Now: the recovery link directly under the form because the person who
+          needs it is the most stuck person on this screen; then one rule; then
+          the cross-link; then legal, visibly last at caption size. */}
+      <p className="mt-4 text-center">
         <button
           id="login-forgot-password"
           type="button"
@@ -166,27 +158,41 @@ export default function LoginPage() {
         >
           Can&rsquo;t access your number?
         </button>
-      </div>
-
-      {/* Real links. These were teal <span>s - styled exactly like the links
-          beside them but doing nothing, which is worse than plain text: it
-          offers the terms and then refuses to show them. Both routes exist. */}
-      <p className="mt-8 text-center text-caption text-ink-muted">
-        By continuing you agree to our{" "}
-        <Link
-          href="/legal/terms"
-          className="font-semibold text-ink underline-offset-2 hover:text-action hover:underline"
-        >
-          Terms of Service
-        </Link>{" "}
-        and{" "}
-        <Link
-          href="/legal/privacy"
-          className="font-semibold text-ink underline-offset-2 hover:text-action hover:underline"
-        >
-          Privacy Policy
-        </Link>
       </p>
+
+      <div className="mt-6 border-t border-border pt-5 text-center">
+        <p className="text-small text-ink-muted">
+          New to CFC?{" "}
+          <button
+            id="login-go-register"
+            type="button"
+            className="font-bold text-action underline-offset-2 hover:underline"
+            onClick={() => router.push("/register")}
+          >
+            Create an account
+          </button>
+        </p>
+
+        {/* Real links. These were teal <span>s - styled exactly like the links
+            beside them but doing nothing, which is worse than plain text: it
+            offers the terms and then refuses to show them. */}
+        <p className="mt-3 text-caption leading-relaxed text-ink-faint">
+          By continuing you agree to our{" "}
+          <Link
+            href="/legal/terms"
+            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline"
+          >
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link
+            href="/legal/privacy"
+            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline"
+          >
+            Privacy Policy
+          </Link>
+        </p>
+      </div>
     </AuthShell>
   );
 }

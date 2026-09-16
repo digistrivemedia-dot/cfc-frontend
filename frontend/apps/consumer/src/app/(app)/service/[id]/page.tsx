@@ -112,7 +112,7 @@ export default function ServiceDetailPage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-screen-xl px-4 py-12 md:px-6 lg:px-8">
+      <div className="cfc-wrap py-12">
         <ErrorState
           title="This service is not available"
           description="It may have been removed from the catalogue."
@@ -124,7 +124,7 @@ export default function ServiceDetailPage() {
 
   if (service === null) {
     return (
-      <div className="mx-auto max-w-screen-xl px-4 py-6 md:px-6 lg:px-8">
+      <div className="cfc-wrap py-6">
         {/* `aspect-card`, matching the gallery it stands in for: a fixed-height
             skeleton made the page jump the moment the photograph arrived. */}
         <Skeleton className="aspect-card w-full rounded-card" />
@@ -139,7 +139,7 @@ export default function ServiceDetailPage() {
        tinted ground is the construction that makes a card read as PLACED on
        the page rather than outlined on it. */
     <div className="cfc-band cfc-band-wash min-h-screen pt-4 md:pb-12">
-      <div className="mx-auto max-w-screen-xl px-4 md:px-6 lg:px-8">
+      <div className="cfc-wrap">
       <Link
         href="/categories"
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"

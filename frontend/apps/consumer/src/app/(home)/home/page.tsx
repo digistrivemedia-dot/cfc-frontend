@@ -7,6 +7,7 @@ import { useCatalogue, useRevealLateContent } from '../use-catalogue';
 import { SiteFooter } from '../site-footer';
 import { AppHeader } from '../app-header';
 import { CfcSprite } from '../cfc-sprite';
+import { useCart } from '@/lib/cart';
 
 export default function SignedInHomePage() {
   // The header, its sprite and the footer are shared components now - see
@@ -204,7 +205,17 @@ export default function SignedInHomePage() {
                       </div>
                       <div className="bk-foot">
                         <div><b>{b.priceLabel}</b><small>onwards, taxes included</small></div>
-                        <div className="bk-add"></div>
+                        {/* A real control on the real cart.
+                            `.bk-add` was an empty div that `interactions.js`
+                            injected a button into, wired to its own in-memory
+                            array. */}
+                        <div className="bk-add">
+                          <AddToCart
+                            id={b.id}
+                            name={b.name}
+                            pricePaise={b.pricePaise}
+                          />
+                        </div>
                       </div>
                     </div>
                   </article>
@@ -305,60 +316,87 @@ export default function SignedInHomePage() {
           `href="#main"` and silently scrolled to the top. */}
       <SiteFooter tiles={tiles} />
 
-      {/* Cart */}
-      <div className="scrim" id="scrim"></div>
-      <aside className="cart" id="cart" aria-label="Your cart" aria-hidden="true">
-        <div className="cart-top">
-          <div>
-            <h3>Your cart</h3>
-            <span id="cartCount">Nothing added yet</span>
-          </div>
-          <button className="icon-btn" type="button" id="cartClose" aria-label="Close cart">
-            <svg className="ic" aria-hidden="true"><use href="#i-x"></use></svg>
-          </button>
-        </div>
-        <div className="cart-body" id="cartBody"></div>
-        <div className="cart-foot" id="cartFoot" hidden>
-          <div className="cart-line"><span>Item total</span><b id="sumItems">&#8377;0</b></div>
-          <div className="cart-line save"><span>FIRST20 applied</span><b id="sumDisc">&#8377;0</b></div>
-          <div className="cart-line"><span>Visit charge</span><b>Free</b></div>
-          <div className="cart-line total"><span>To pay</span><b id="sumTotal">&#8377;0</b></div>
-          <button className="btn btn-primary" type="button" id="checkoutBtn">Choose a slot</button>
-          <p className="cart-note">You pay after the job is done. UPI, card or cash.</p>
-        </div>
-      </aside>
+      {/* FOUR PROTOTYPE DUPLICATES REMOVED FROM HERE.
+          ---------------------------------------------
+          This screen was ported from a standalone HTML prototype and brought
+          that prototype's own furniture with it: a cart drawer (`#cart` plus
+          its scrim), a toast (`#toast`), a cart bar (`#cartBar`) and a mobile
+          tab bar (`.tabbar`). The app already provides all but the last, on
+          every screen, through `AppShell` and the root layout.
 
-      <div className="toast" id="toast" role="status" aria-live="polite">
-        <svg className="ic" aria-hidden="true"><use href="#i-check"></use></svg>
-        <span id="toastText">Added to cart</span>
-      </div>
+          The cart data was the real problem. `interactions.js` held its cart
+          in `var cart = []` - an in-memory array that never touched
+          localStorage - while the app's cart lives under `cfc.consumer.cart`.
+          So adding a service here updated a counter no other screen could
+          see, showed a total unrelated to the real basket, and vanished on
+          reload. The "5 services · ₹5,495 · View cart" bar was reporting a
+          cart that did not exist.
 
-      <button className="cartbar" type="button" id="cartBar">
-        <span className="cartbar-left">
-          <svg className="ic" aria-hidden="true"><use href="#i-cart"></use></svg>
-          <span><b id="cartBarCount">0 services</b><small id="cartBarTotal">&#8377;0</small></span>
-        </span>
-        <span className="cartbar-cta">View cart<svg className="ic" aria-hidden="true"><use href="#i-arr-r"></use></svg></span>
-      </button>
+          Two toasts also fired on every add: Sonner's, and this one with its
+          own 2.6s timer sitting behind the cart bar on a phone - which is why
+          "Pest control added" appeared stuck.
 
-      <nav className="tabbar" aria-label="Main">
-        {/* The primary navigation on a phone. These were four inert
-            buttons; three of the four routes already exist in the app, so
-            leaving them dead made the whole screen feel like a mock-up. */}
-        <Link className="tab" href="/home" aria-current="page">
-          <svg className="ic" aria-hidden="true"><use href="#i-home"></use></svg>Home
-        </Link>
-        <Link className="tab" href="/bookings">
-          <svg className="ic" aria-hidden="true"><use href="#i-receipt"></use></svg>Bookings
-        </Link>
-        <Link className="tab" href="/support">
-          <svg className="ic" aria-hidden="true"><use href="#i-headset"></use></svg>Help
-        </Link>
-        <Link className="tab" href="/profile">
-          <svg className="ic" aria-hidden="true"><use href="#i-user"></use></svg>Account
-        </Link>
-      </nav>
+          The tab bar was this screen's alone. No other route in the app has
+          one, which is why both mobile action bars offset 80px to clear a bar
+          that was not there.
+
+          Replaced by: `CartBar`, `Toaster`, `/cart`, and the header. */}
 
     </div>
+  );
+}
+
+/**
+ * Add-to-cart for a most-booked card, on the REAL cart.
+ *
+ * Styled with the prototype's own `.btn` classes so it sits in `.bk-foot`
+ * exactly as the injected button did — the difference is entirely in what it
+ * writes to. Once a service is in the basket this becomes a stepper, matching
+ * every other service card in the app, rather than a dead "Added" label.
+ */
+function AddToCart({
+  id,
+  name,
+  pricePaise,
+}: {
+  id: string;
+  name: string;
+  pricePaise: number;
+}) {
+  const { has, add, setQuantity, lines } = useCart();
+  const quantity = (lines ?? []).find((l) => l.serviceId === id)?.quantity ?? 0;
+
+  if (!has(id)) {
+    return (
+      <button
+        className="btn btn-primary btn-sm"
+        type="button"
+        onClick={() =>
+          add({ serviceId: id, serviceName: name, fromPricePaise: pricePaise })
+        }
+      >
+        Add
+      </button>
+    );
+  }
+
+  return (
+    <span className="qty">
+      <button
+        type="button"
+        aria-label={`Remove one ${name}`}
+        onClick={() => setQuantity(id, quantity - 1)}
+      >
+        &minus;
+      </button>
+      <b aria-live="polite">{quantity}</b>
+      <button
+        type="button"
+        aria-label={`Add another ${name}`}
+        onClick={() => setQuantity(id, quantity + 1)}
+      >
+        +
+      </button>
+    </span>
   );
 }

@@ -268,7 +268,7 @@ export default function HomePage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-screen-xl px-4 py-12 md:px-6 lg:px-8">
+      <div className="cfc-wrap py-12">
         <ErrorState
           title="We could not load this"
           description="Check your connection and try again."
@@ -318,7 +318,7 @@ export default function HomePage() {
   return (
     <div>
       {hasActive ? (
-        <div className="mx-auto max-w-screen-xl px-4 pt-6 md:px-6 lg:px-8">
+        <div className="cfc-wrap pt-6">
           <ActiveBookingCard booking={active} />
         </div>
       ) : (
@@ -338,7 +338,11 @@ export default function HomePage() {
         />
       )}
 
-      <div className="cfc-band-wash mx-auto max-w-screen-xl px-4 pb-12 md:px-6 lg:px-8">
+      {/* The wash is a full-bleed ground; `cfc-wrap` is a centred box. Putting
+          both on one element made the tint stop at the container edge instead
+          of running the width of the page. */}
+      <div className="cfc-band-wash pb-12">
+        <div className="cfc-wrap">
         {/* ── Book again — a returning customer's shortcut ─────────────── */}
         {rebookable !== null && rebookable.length > 0 && (
           <Band title="Book again" description="Services you've booked before.">
@@ -523,6 +527,7 @@ export default function HomePage() {
         )}
         {filter === null && <JoinAsPro />}
         {filter === null && <GetTheApp />}
+        </div>
       </div>
     </div>
   );

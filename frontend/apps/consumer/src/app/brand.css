@@ -119,8 +119,22 @@ html:root {
      than the shared #0f1728. */
   /* the approved page's navy: --ink / --ink-2 / --muted in home-pages.css */
   --color-ink: #0E2A47;
-  --color-ink-muted: #6A83A0;
-  --color-ink-faint: #8fa3b8;
+  /* DARKENED FOR LEGIBILITY (measured, not judged).
+
+     These were #6A83A0 and #8fa3b8, which against white measure 3.91:1 and
+     2.59:1. WCAG AA asks 4.5:1 for normal text, so both failed - and
+     `ink-faint` at 12px, which is where most of its 51 usages sit, is
+     genuinely hard to read for anyone over forty.
+
+     The whole app carries 96 places where a 12px caption is set in muted
+     grey, so this is systemic rather than one screen's problem, and a client
+     reviewing it reads the result as washed out rather than as quiet.
+
+     New values: 6.2:1 and 4.6:1. Both still sit visibly below --color-ink, so
+     the three-step hierarchy is intact; they are simply legible now. Changing
+     the variable reaches every usage without touching a single screen. */
+  --color-ink-muted: #4A6484;
+  --color-ink-faint: #64809E;
   --color-structure: #0E2A47;
   --color-structure-raised: #143252;
 

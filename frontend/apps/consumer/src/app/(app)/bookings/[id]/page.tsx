@@ -118,7 +118,8 @@ function BookingDetailPageInner() {
   const needsRating = booking.status === "completed" && !booking.rated;
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-screen-md">
       <Link
         href="/bookings"
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
@@ -182,7 +183,7 @@ function BookingDetailPageInner() {
 
       {/* The professional. */}
       {booking.pro !== null && (
-        <section className="mt-4 rounded-card border border-border bg-surface p-4">
+        <section className="mt-4 cfc-card p-4">
           <h2 className="text-small font-semibold text-ink">
             Your professional
           </h2>
@@ -229,7 +230,7 @@ function BookingDetailPageInner() {
       )}
 
       {/* The facts. */}
-      <section className="mt-4 rounded-card border border-border bg-surface">
+      <section className="mt-4 cfc-card">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           Details
         </h2>
@@ -280,7 +281,7 @@ function BookingDetailPageInner() {
       {/* Photos, once there are any. */}
       {(booking.beforePhotoUrls.length > 0 ||
         booking.afterPhotoUrls.length > 0) && (
-        <section className="mt-4 rounded-card border border-border bg-surface p-4">
+        <section className="mt-4 cfc-card p-4">
           <h2 className="text-small font-semibold text-ink">Photos</h2>
           {booking.beforePhotoUrls.length > 0 && (
             <PhotoRow label="Before" urls={booking.beforePhotoUrls} />
@@ -292,7 +293,7 @@ function BookingDetailPageInner() {
       )}
 
       {/* What happened, when. */}
-      <section className="mt-4 rounded-card border border-border bg-surface p-4">
+      <section className="mt-4 cfc-card p-4">
         <h2 className="mb-3 text-small font-semibold text-ink">Progress</h2>
         <Timeline>
           {booking.events.map((e, i) => (
@@ -360,6 +361,7 @@ function BookingDetailPageInner() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   );
 }

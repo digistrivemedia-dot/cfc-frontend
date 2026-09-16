@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Check, HelpCircle, Wrench } from "lucide-react";
+import { ArrowLeft, Check, HelpCircle, Info, Wrench } from "lucide-react";
 import {
   acceptQuotation,
   askQuotationQuestion,
@@ -126,7 +126,8 @@ function QuotationPageInner() {
   const rejectedByCfc = quote.status === "rejected";
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-screen-md">
       <Link
         href="/bookings"
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
@@ -193,7 +194,7 @@ function QuotationPageInner() {
       )}
 
       {/* What the professional found. */}
-      <section className="mt-4 rounded-card border border-border bg-surface p-4">
+      <section className="mt-4 cfc-card p-4">
         <h2 className="text-small font-semibold text-ink">
           What {quote.proName} found
         </h2>
@@ -207,7 +208,7 @@ function QuotationPageInner() {
 
       {/* Customer 22 — before photos. Evidence, so they open full size. */}
       {quote.beforePhotoUrls.length > 0 && (
-        <section className="mt-4 rounded-card border border-border bg-surface p-4">
+        <section className="mt-4 cfc-card p-4">
           <h2 className="text-small font-semibold text-ink">Photos</h2>
           <p className="mb-2 text-caption text-ink-muted">
             Taken on site before any work.
@@ -217,7 +218,7 @@ function QuotationPageInner() {
       )}
 
       {/* Customer 22 — the material list, itemised. */}
-      <section className="mt-4 rounded-card border border-border bg-surface">
+      <section className="mt-4 cfc-card">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           What it costs
         </h2>
@@ -262,28 +263,45 @@ function QuotationPageInner() {
       {/* The 50/50 split, spelled out. A customer agreeing to pay half now
           should see both halves and what triggers the second. */}
       {(awaitingCustomer || accepted) && (
-        <section className="mt-4 rounded-card border border-action-line bg-action-subtle p-4">
-          <h2 className="text-small font-semibold text-ink">
+        /* THE SPLIT, UNAMBIGUOUS.
+
+           Both figures sat at the same size and weight in a two-row list, so
+           "pay now" and "pay later" looked like one bill read twice - and a
+           customer could agree to 4,000 believing they owed 2,000. The amount
+           due NOW is set at display weight; the balance is a quiet line
+           underneath with the condition that triggers it spelled out. */
+        <section className="cfc-card mt-4 overflow-hidden">
+          <h2 className="bg-clock px-4 py-3 text-body font-bold text-on-action">
             {accepted ? "Payment" : "How payment works"}
           </h2>
-          <dl className="mt-3 space-y-2">
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-small text-ink-muted">
-                {accepted ? "Advance paid" : "Pay now (50%)"}
-              </dt>
-              <dd className="tabular text-small font-semibold text-ink">
+
+          <div className="p-4">
+            <div className="rounded-card bg-action-subtle p-4 text-center">
+              <p className="text-caption font-semibold uppercase tracking-wide text-action">
+                {accepted ? "Advance paid" : "Pay now — 50% advance"}
+              </p>
+              <p className="tabular mt-1 text-display font-extrabold tracking-tight text-action">
                 {formatCurrency(advancePaise)}
-              </dd>
+              </p>
             </div>
-            <div className="flex items-baseline justify-between gap-3">
+
+            <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-border pt-3">
               <dt className="text-small text-ink-muted">
-                Balance on completion
+                Balance, after the job is done
               </dt>
-              <dd className="tabular text-small text-ink">
+              <dd className="tabular text-body font-bold text-ink">
                 {formatCurrency(balancePaise)}
               </dd>
             </div>
-          </dl>
+
+            <p className="cfc-info mt-3">
+              <Info className="cfc-info-ic size-4" aria-hidden="true" />
+              <span>
+                Nothing else is charged. The balance is collected only once the
+                professional has finished.
+              </span>
+            </p>
+          </div>
         </section>
       )}
 
@@ -354,6 +372,7 @@ function QuotationPageInner() {
         quotationId={id}
         proName={quote.proName}
       />
+      </div>
     </div>
   );
 }

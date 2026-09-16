@@ -166,7 +166,8 @@ function AddressesInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-screen-md">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-title font-extrabold tracking-tight text-ink md:text-title-lg">
@@ -391,6 +392,7 @@ function AddressesInner() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </div>
     </div>
   );
 }

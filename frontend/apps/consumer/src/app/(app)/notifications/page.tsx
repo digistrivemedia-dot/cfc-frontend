@@ -57,7 +57,10 @@ const KIND_META: Record<
   // A quotation is the one that needs a decision, so it is the only kind that
   // spends colour.
   quotation: { icon: FileText, tint: "bg-clock-subtle text-clock-ink" },
-  offer: { icon: Tag, tint: "bg-neutral-subtle text-ink-muted" },
+  // ORANGE on offers, and only on offers. A promotion is the one kind here
+  // that is trying to persuade rather than inform, and in neutral grey it read
+  // as the least important row in a list it is meant to lead.
+  offer: { icon: Tag, tint: "bg-promo-subtle text-promo" },
   reminder: { icon: Clock, tint: "bg-neutral-subtle text-ink-muted" },
 };
 
@@ -106,7 +109,8 @@ function NotificationsInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-screen-md">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-title font-bold text-ink">Notifications</h1>
         {unread > 0 && (
@@ -160,7 +164,7 @@ function NotificationsInner() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="mt-3 rounded-card border border-border bg-surface">
+        <div className="mt-3 cfc-card">
           <EmptyState
             icon={<BellOff />}
             title={
@@ -184,6 +188,7 @@ function NotificationsInner() {
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }

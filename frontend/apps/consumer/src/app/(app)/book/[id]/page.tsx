@@ -320,7 +320,7 @@ function BookInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6"><div className="mx-auto max-w-screen-md">
       {/* The confirmation is a terminal state: there is nothing to go back
           to, and offering it invites a customer to try re-paying. */}
       {step !== "done" && (
@@ -359,7 +359,7 @@ function BookInner() {
         <Skeleton className="mt-4 h-block-lg rounded-card" />
       ) : (
         <>
-          <div className="mt-4 rounded-card border border-border bg-surface p-4">
+          <div className="cfc-card mt-4 p-4">
             <p className="text-caption text-ink-muted">You are booking</p>
             <p className="text-small font-semibold text-ink">{service.name}</p>
             <p className="tabular mt-1 text-small text-ink-muted">
@@ -477,6 +477,7 @@ function BookInner() {
           loadAddresses();
         }}
       />
+      </div>
     </div>
   );
 }
@@ -515,34 +516,53 @@ function Steps({
   const activeIndex = steps.findIndex((s) => s.key === current);
 
   return (
-    <ol className="mt-3 flex items-center gap-1" aria-label="Booking steps">
+    /* The flow's primary wayfinding, at a size that says so.
+
+       It was 20px circles with 11px labels and a hairline connector - the
+       smallest thing on a screen whose whole job is telling a customer where
+       they are in a five-step commitment. Circles are 28px, the active label
+       is body weight, and the connector carries the progress colour up to the
+       current step rather than staying grey throughout. */
+    <ol className="mt-4 flex items-center gap-2" aria-label="Booking steps">
       {steps.map((s, i) => {
         const done = i < activeIndex;
         const active = i === activeIndex;
         return (
-          <li key={s.key} className="flex min-w-0 flex-1 items-center gap-1">
+          <li key={s.key} className="flex min-w-0 flex-1 items-center gap-2">
             <span
               className={cn(
-                "flex size-5 shrink-0 items-center justify-center rounded-full text-caption font-semibold",
-                done && "bg-live text-on-action",
-                active && "bg-action text-on-action",
+                "flex size-6 shrink-0 items-center justify-center rounded-full text-caption font-bold",
+                "transition-colors duration-base",
+                done && "bg-action text-on-action",
+                active && "bg-action text-on-action ring-2 ring-action-line",
                 !done && !active && "bg-neutral-subtle text-ink-faint",
               )}
               aria-hidden="true"
             >
-              {done ? <Check className="size-3" /> : i + 1}
+              {done ? <Check className="size-4" /> : i + 1}
             </span>
             <span
               className={cn(
-                "truncate text-caption",
-                active ? "font-medium text-ink" : "text-ink-faint",
+                // `text-small` (14px), not caption (12px). This is the flow's
+                // wayfinding on a five-step commitment, and at 12px in a muted
+                // grey it was the hardest thing on the screen to read.
+                "truncate text-small",
+                active && "font-bold text-ink",
+                done && "font-semibold text-ink-muted",
+                !done && !active && "text-ink-muted",
               )}
               aria-current={active ? "step" : undefined}
             >
               {s.label}
             </span>
             {i < steps.length - 1 && (
-              <span className="h-px min-w-0 flex-1 bg-border" aria-hidden="true" />
+              <span
+                className={cn(
+                  "h-px min-w-0 flex-1 rounded-pill transition-colors duration-base",
+                  done ? "bg-action" : "bg-border",
+                )}
+                aria-hidden="true"
+              />
             )}
           </li>
         );
@@ -586,7 +606,7 @@ function SlotStep({
 
   return (
     <div className="mt-4 space-y-4">
-      <section className="rounded-card border border-border bg-surface">
+      <section className="cfc-card">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           Pick a date
         </h2>
@@ -601,7 +621,7 @@ function SlotStep({
         />
       </section>
 
-      <section className="rounded-card border border-border bg-surface">
+      <section className="cfc-card">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           Pick an arrival window
         </h2>
@@ -678,15 +698,18 @@ function SlotGroup({
               aria-pressed={selected}
               onClick={() => onSelect(s.startsAt)}
               className={cn(
-                "tabular flex h-touch items-center justify-center rounded-control border text-small",
-                "transition-colors duration-fast",
+                "tabular flex h-touch items-center justify-center rounded-control border-2 text-small",
+                "transition-all duration-fast",
+                // Selected gets a ring as well as a fill. On a grid of nine
+                // near-identical buttons a fill alone is easy to lose when
+                // scanning, and this is the choice the whole step exists for.
                 selected
-                  ? "border-action bg-action font-medium text-on-action"
-                  : "border-border bg-surface text-ink hover:border-action-line hover:bg-action-subtle",
+                  ? "border-action bg-action font-bold text-on-action shadow-md ring-2 ring-action-line"
+                  : "border-border bg-surface font-medium text-ink hover:border-action hover:bg-action-subtle",
                 // A taken window stays visible rather than disappearing: a
                 // grid that changes shape between days is hard to scan.
                 !s.available &&
-                  "cursor-not-allowed border-border-soft bg-disabled text-disabled-ink line-through hover:bg-disabled",
+                  "cursor-not-allowed border-border-soft bg-disabled font-normal text-disabled-ink line-through hover:border-border-soft hover:bg-disabled",
               )}
             >
               {formatTime(start)} – {formatTime(end)}
@@ -729,7 +752,7 @@ function AddressStep({
         </div>
       )}
 
-      <section className="rounded-card border border-border bg-surface">
+      <section className="cfc-card">
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
           <h2 className="text-small font-semibold text-ink">Where to?</h2>
           <Button variant="ghost" size="sm" onClick={onAdd}>
@@ -771,7 +794,7 @@ function AddressStep({
           honest thing is to show where we think the address is and let the
           customer correct the text. */}
       {selected !== null && (
-        <section className="overflow-hidden rounded-card border border-border bg-surface">
+        <section className="cfc-card overflow-hidden">
           <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
             On the map
           </h2>
@@ -821,10 +844,18 @@ function AddressRow({
   const Icon = LABEL_ICON[address.label];
 
   return (
+    /* A selected row is marked by a radio dot AND a tint, not a tint alone.
+
+       `bg-action-subtle` on its own is a pale wash that a customer scanning
+       three saved addresses can miss - and this is the choice the step exists
+       to make. The dot says "chosen" unambiguously; the tint and the edge
+       reinforce it. */
     <div
       className={cn(
         "flex items-start gap-3 p-4 transition-colors duration-fast",
-        selected && "bg-action-subtle",
+        selected
+          ? "border-l-4 border-action bg-action-subtle pl-3"
+          : "border-l-4 border-transparent",
       )}
     >
       <button
@@ -833,6 +864,17 @@ function AddressRow({
         aria-pressed={selected}
         className="flex min-w-0 flex-1 items-start gap-3 text-left"
       >
+        <span
+          className={cn(
+            "mt-1 grid size-5 shrink-0 place-items-center rounded-full border-2 transition-colors duration-fast",
+            selected ? "border-action" : "border-border",
+          )}
+          aria-hidden="true"
+        >
+          {selected && (
+            <span className="size-2 rounded-full bg-action" />
+          )}
+        </span>
         <span
           className={cn(
             "flex size-tile shrink-0 items-center justify-center rounded-control",

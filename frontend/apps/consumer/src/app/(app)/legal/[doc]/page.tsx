@@ -90,7 +90,12 @@ export default function LegalPage() {
   }
 
   return (
-    <div className="mx-auto max-w-prose px-4 pt-4 md:px-6 md:pb-12">
+    /* `max-w-prose` in this preset is 320px - sized for empty-state copy, not
+       for a document. Terms and a privacy policy set at that width run to a
+       column of four or five words per line, which is unreadable at length.
+       65ch is the measure long-form text is set at. */
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-[65ch]">
       <Link
         href="/settings"
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
@@ -112,7 +117,7 @@ export default function LegalPage() {
         {doc.sections.map((section, i) => (
           <li
             key={section}
-            className="rounded-card border border-border bg-surface p-4"
+            className="cfc-card p-4"
           >
             <p className="text-small font-medium text-ink">
               <span className="tabular mr-2 text-ink-faint">{i + 1}.</span>
@@ -129,6 +134,7 @@ export default function LegalPage() {
         </Link>
         .
       </p>
+      </div>
     </div>
   );
 }

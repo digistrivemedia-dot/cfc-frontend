@@ -12,16 +12,23 @@ export function initCFCApp() {
   var rupee = function (v) { return '\u20B9' + Math.round(v).toLocaleString('en-IN'); };
   var esc = function (t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
 
-  /* ---- toast ---- */
-  var toast = $('toast');
-  var toastText = $('toastText');
-  var toastTimer = null;
+  /* ---- announcements ----
+     `say()` used to drive this screen's own `#toast` element, which fired
+     alongside Sonner's on every add: two notices for one action, and on a
+     phone this one sat behind the cart bar with its 2.6s timer running out of
+     sight - which is why "Pest control added" looked stuck.
+
+     The element is gone. The remaining callers are a handful of status
+     messages the app has no toast for (the referral code, "add your address
+     first"), so this writes into the live region the shell already renders
+     rather than drawing anything of its own. */
   var say = function (msg) {
-    if (!toast) return;
-    if (toastText) toastText.textContent = msg;
-    toast.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { toast.classList.remove('show'); }, 2600);
+    var region = document.querySelector('[aria-live="polite"][aria-label="Notifications"]');
+    if (!region) return;
+    region.textContent = msg;
+    setTimeout(function () {
+      if (region.textContent === msg) region.textContent = '';
+    }, 4000);
   };
 
   /* ---- sticky header ---- */
@@ -45,7 +52,10 @@ export function initCFCApp() {
   on(document, 'click', function (e) {
     if (acctMenu && !acctMenu.contains(e.target) && e.target !== acctBtn) toggleMenu(false);
   });
-  on(document, 'keydown', function (e) { if (e.key === 'Escape') { toggleMenu(false); openCart(false); } });
+  // `openCart(false)` was called here too. It is gone with the drawer, and
+  // leaving the call would have thrown a ReferenceError on every Escape press
+  // - killing the account menu's own close with it.
+  on(document, 'keydown', function (e) { if (e.key === 'Escape') { toggleMenu(false); } });
 
   /* ---- address capture ---- */
   var addrPanel = $('addrPanel');
@@ -108,175 +118,20 @@ export function initCFCApp() {
     if (addrInput) addrInput.focus();
   });
 
-  /* ---- cart ---- */
-  var cart = [];
-  var cartEl = $('cart');
-  var scrim = $('scrim');
-  var cartBody = $('cartBody');
-  var cartFoot = $('cartFoot');
+  /* The cart, its drawer, its bar and the tab-bar sizing that positioned it
+     all lived here. Removed with the markup they drove.
 
-  var openCart = function (open) {
-    if (!cartEl) return;
-    cartEl.classList.toggle('open', open);
-    if (scrim) scrim.classList.toggle('open', open);
-    cartEl.setAttribute('aria-hidden', open ? 'false' : 'true');
-    document.body.style.overflow = open ? 'hidden' : '';
-  };
-  on($('cartBtn'), 'click', function () { openCart(true); });
-  on($('cartBar'), 'click', function () { openCart(true); });
-  on($('cartClose'), 'click', function () { openCart(false); });
-  on(scrim, 'click', function () { openCart(false); });
+     The cart was `var cart = []` - in memory only, never written to
+     localStorage - while the app's cart lives under `cfc.consumer.cart`. The
+     two could not see each other, so a service added on this screen showed a
+     total no other screen agreed with and disappeared on reload. React owns
+     the cart now (see the AddToCart component in page.tsx), and `CartBar`
+     renders the bar on every screen rather than this one only. */
 
-  var find = function (id) {
-    for (var i = 0; i < cart.length; i++) if (cart[i].id === id) return cart[i];
-    return null;
-  };
-  var count = function () {
-    return cart.reduce(function (a, b) { return a + b.qty; }, 0);
-  };
-  var subtotal = function () {
-    return cart.reduce(function (a, b) { return a + b.price * b.qty; }, 0);
-  };
-  var discount = function () {
-    return Math.min(300, Math.round(subtotal() * 0.2));
-  };
-
-  var add = function (item) {
-    var found = find(item.id);
-    if (found) found.qty += 1;
-    else cart.push({ id: item.id, name: item.name, price: item.price, icon: item.icon, qty: 1 });
-    render();
-    say(item.name + ' added');
-  };
-  var bump = function (id, delta) {
-    var found = find(id);
-    if (!found) return;
-    found.qty += delta;
-    if (found.qty < 1) cart = cart.filter(function (c) { return c.id !== id; });
-    render();
-  };
-
-  var renderCartBody = function () {
-    if (!cartBody) return;
-    if (!cart.length) {
-      cartBody.innerHTML = '<div class="cart-empty">' +
-        '<svg class="ic" aria-hidden="true"><use href="#i-cart"></use></svg>' +
-        '<b>Your cart is empty</b>' +
-        '<p>Add a service and it waits here. You can book several in one visit.</p></div>';
-      if (cartFoot) cartFoot.hidden = true;
-      return;
-    }
-    cartBody.innerHTML = cart.map(function (c) {
-      return '<div class="cart-item">' +
-        '<span class="sug-ic"><svg class="ic" aria-hidden="true"><use href="#' + c.icon + '"></use></svg></span>' +
-        '<div class="ci-main"><b>' + esc(c.name) + '</b><small>' + rupee(c.price) + ' each</small>' +
-        '<div class="ci-row">' +
-        '<span class="qty" data-id="' + c.id + '">' +
-        '<button type="button" data-act="dec" aria-label="Remove one ' + esc(c.name) + '">' +
-        (c.qty > 1
-          ? '<svg class="ic" aria-hidden="true"><use href="#i-minus"></use></svg>'
-          : '<svg class="ic" aria-hidden="true"><use href="#i-trash"></use></svg>') +
-        '</button><b>' + c.qty + '</b>' +
-        '<button type="button" data-act="inc" aria-label="Add one ' + esc(c.name) + '">' +
-        '<svg class="ic" aria-hidden="true"><use href="#i-plus"></use></svg></button></span>' +
-        '<b>' + rupee(c.price * c.qty) + '</b>' +
-        '</div></div></div>';
-    }).join('');
-
-    Array.prototype.forEach.call(cartBody.querySelectorAll('.qty button'), function (b) {
-      b.addEventListener('click', function () {
-        bump(b.parentNode.dataset.id, b.dataset.act === 'inc' ? 1 : -1);
-      });
-    });
-    if (cartFoot) cartFoot.hidden = false;
-  };
-
-  var renderRailButtons = function () {
-    Array.prototype.forEach.call(document.querySelectorAll('.bk'), function (card) {
-      var slot = card.querySelector('.bk-add');
-      if (!slot) return;
-      var id = card.dataset.id;
-      var found = find(id);
-      if (!found) {
-        slot.innerHTML = '<button class="btn btn-ghost btn-sm" type="button" data-act="add">Add</button>';
-      } else {
-        slot.innerHTML = '<span class="qty">' +
-          '<button type="button" data-act="dec" aria-label="Remove one">' +
-          (found.qty > 1
-            ? '<svg class="ic" aria-hidden="true"><use href="#i-minus"></use></svg>'
-            : '<svg class="ic" aria-hidden="true"><use href="#i-trash"></use></svg>') +
-          '</button><b>' + found.qty + '</b>' +
-          '<button type="button" data-act="inc" aria-label="Add one">' +
-          '<svg class="ic" aria-hidden="true"><use href="#i-plus"></use></svg></button></span>';
-      }
-      Array.prototype.forEach.call(slot.querySelectorAll('button'), function (b) {
-        b.addEventListener('click', function (e) {
-          e.stopPropagation();
-          var act = b.dataset.act;
-          if (act === 'add' || act === 'inc') {
-            if (act === 'add') {
-              add({ id: id, name: card.dataset.name, price: Number(card.dataset.price), icon: card.dataset.icon });
-            } else { bump(id, 1); }
-          } else { bump(id, -1); }
-        });
-      });
-    });
-  };
-
-  var render = function () {
-    var n = count();
-    var pip = $('cartPip');
-    if (pip) { pip.textContent = n; pip.classList.toggle('hide', n === 0); }
-
-    var label = $('cartCount');
-    if (label) label.textContent = n ? (n + (n === 1 ? ' service added' : ' services added')) : 'Nothing added yet';
-
-    var bar = $('cartBar');
-    if (bar) {
-      bar.classList.toggle('show', n > 0);
-      var bc = $('cartBarCount'), bt = $('cartBarTotal');
-      if (bc) bc.textContent = n + (n === 1 ? ' service' : ' services');
-      if (bt) bt.textContent = rupee(subtotal() - discount()) + ' after FIRST20';
-    }
-
-    var si = $('sumItems'), sd = $('sumDisc'), st = $('sumTotal');
-    if (si) si.textContent = rupee(subtotal());
-    if (sd) sd.textContent = '\u2212 ' + rupee(discount());
-    if (st) st.textContent = rupee(subtotal() - discount());
-
-    var bookRow = $('setupBook');
-    if (bookRow) {
-      var sub = $('setupBookSub');
-      if (n > 0 && sub) sub.textContent = n + (n === 1 ? ' service in your cart' : ' services in your cart') + '. Pick a slot to finish.';
-      else if (sub) sub.textContent = 'FIRST20 comes off at checkout';
-    }
-
-    renderCartBody();
-    renderRailButtons();
-  };
-
-  on($('checkoutBtn'), 'click', function () {
-    if (!hasAddress) {
-      openCart(false);
-      say('Add your address first, then pick a slot');
-      var el = $('setupAddr');
-      if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-      showAddr(true);
-      return;
-    }
-    say('Next: slot picker. Not built yet.');
-  });
-
-  on($('emptyCta'), 'click', function () {
-    var el = $('services');
-    if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  });
-
-  /* Actually copy, rather than only claiming to. This said "copied" without
-     ever touching the clipboard, so a customer pasted nothing and lost the
-     code. The code is read from the button itself, so it cannot drift from
-     what is on screen. clipboard.writeText needs a secure context and can be
-     refused, so the failure path tells the truth instead of lying twice. */
+  /* The referral code. Actually copies, rather than only claiming to: this
+     said "copied" without touching the clipboard, so a customer pasted
+     nothing and lost the code. Read from the button so it cannot drift from
+     what is on screen, and the failure path tells the truth. */
   on($('referCode'), 'click', function () {
     var el = $('referCode');
     if (!el) return;
@@ -291,23 +146,9 @@ export function initCFCApp() {
     }
   });
 
-  /* ---- tab bar height drives where the cart bar sits ---- */
-  var sizeTabbar = function () {
-    var tb = document.querySelector('.tabbar');
-    var h = tb && getComputedStyle(tb).display !== 'none' ? tb.offsetHeight : 0;
-    document.documentElement.style.setProperty('--tabbar-h', h + 'px');
-    document.body.style.paddingBottom = h ? (h + 64) + 'px' : '';
-  };
-  on(window, 'resize', sizeTabbar);
-  sizeTabbar();
-
-  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) {
-    on(t, 'click', function () {
-      Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (o) {
-        o.removeAttribute('aria-current');
-      });
-      t.setAttribute('aria-current', 'page');
-    });
+  on($('emptyCta'), 'click', function () {
+    var el = $('services');
+    if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
   });
 
   /* ---- search suggestions ---- */
@@ -490,22 +331,22 @@ export function initCFCApp() {
   on(rail, 'pointerup', endDrag);
   on(rail, 'pointercancel', endDrag);
 
-  render();
+  /* `render()` was called here and exposed as `cleanup.refresh`. It painted
+     the Add / quantity control into every `.bk-add` slot by hand, and it was
+     defined inside the cart block that has been removed - so the call threw
+     a ReferenceError and took the rest of this module's setup down with it.
 
+     React renders those controls now (the AddToCart component in page.tsx),
+     so there is nothing left to paint and nothing to refresh when the
+     catalogue resolves. `refresh` stays on the handle as a no-op because
+     page.tsx calls it once the rail mounts. */
   var cleanup = function () {
     off.forEach(function (fn) { fn(); });
     off = [];
-    clearTimeout(toastTimer);
     document.body.style.overflow = '';
-    document.body.style.paddingBottom = '';
   };
 
-  /* The rail is rendered from the catalogue, which resolves after this runs.
-     `render()` is what paints the Add / quantity control into every `.bk-add`
-     slot, so without a second call after the cards mount the whole rail would
-     show prices with no way to add anything. Exposed rather than re-derived:
-     it reparses `.bk` from the DOM and is safe to call any number of times. */
-  cleanup.refresh = render;
+  cleanup.refresh = function () {};
   return cleanup;
 }
 

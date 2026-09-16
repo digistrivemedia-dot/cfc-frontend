@@ -103,8 +103,15 @@ module.exports = {
         // because those utilities resolved to no CSS at all. Fixed dimensions
         // belong in the preset as NAMED values (w-rail, h-bar, size-avatar)
         // where a reviewer can see what each one is for.
+        //
+        // 16, 20 and 24 were REMOVED from this list when 64/80/96px were added
+        // to the preset's spacing scale. They are real steps now, so flagging
+        // them was a false positive on classes that do emit CSS - and the
+        // whole point of this rule is to catch utilities that silently emit
+        // none. Neither Pro nor Admin uses these steps, so nothing there
+        // changes; verify with a grep before editing this list again.
         selector:
-          "JSXAttribute[name.name='className'] Literal[value=/(?<![\\w-])(?:p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap|gap-x|gap-y|space-x|space-y|size|w|h|min-w|min-h|max-w|max-h)-(?:7|9|10|11|13|14|16|20|24|28|32|36|40|44|48|52|56|60|64|72|80|96)(?![\\w-])/]",
+          "JSXAttribute[name.name='className'] Literal[value=/(?<![\\w-])(?:p|px|py|pt|pr|pb|pl|m|mx|my|mt|mr|mb|ml|gap|gap-x|gap-y|space-x|space-y|size|w|h|min-w|min-h|max-w|max-h)-(?:7|9|10|11|13|14|28|32|36|40|44|48|52|56|60|64|72|80|96)(?![\\w-])/]",
         message:
           "This dimension is not on the closed scale and silently generates no CSS. Add a named value to the preset (w-rail, h-bar, size-avatar) rather than reaching for a Tailwind default step.",
       },

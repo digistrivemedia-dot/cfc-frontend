@@ -115,20 +115,15 @@ export default function ForgotPasswordPage() {
         </Button>
       </form>
 
-      {/* divider + link, matching /login and /register so all three read as
-          one flow */}
-      <div className="my-8 flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-small text-ink-muted">or</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
-
-      <div className="text-center text-body text-ink-muted">
+      {/* A rule and one line, matching /login and /register. The "or" divider
+          that was here divided nothing - there is one way through this screen,
+          and what followed was the way back rather than an alternative. */}
+      <div className="mt-6 border-t border-border pt-5 text-center text-small text-ink-muted">
         Remember your account?{" "}
         <button
           id="forgot-go-login"
           type="button"
-          className="font-semibold text-action underline-offset-2 hover:underline"
+          className="font-bold text-action underline-offset-2 hover:underline"
           onClick={() => router.push("/login")}
         >
           Log in

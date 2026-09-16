@@ -100,11 +100,12 @@ function ProfilePageInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-screen-md">
       <h1 className="sr-only">My profile</h1>
 
       {/* Identity. */}
-      <section className="rounded-card border border-border bg-surface p-4">
+      <section className="cfc-card p-4">
         <div className="flex items-start gap-4">
           {/* the mark carries brand colour, as every filled tile in the
               approved design does */}
@@ -156,7 +157,7 @@ function ProfilePageInner() {
 
       {/* Everything else on the account, as one list. A customer looking for
           "my addresses" scans a list; they do not read six cards. */}
-      <nav className="mt-4 overflow-hidden rounded-card border border-border bg-surface">
+      <nav className="mt-4 overflow-hidden cfc-card">
         <ul className="divide-y divide-border-soft">
           <li>
             <RowButton
@@ -213,6 +214,7 @@ function ProfilePageInner() {
         onOpenChange={setAddressesOpen}
         onChanged={load}
       />
+      </div>
     </div>
   );
 }

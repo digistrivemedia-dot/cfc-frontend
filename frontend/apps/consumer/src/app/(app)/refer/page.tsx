@@ -109,8 +109,9 @@ function ReferPageInner() {
   const pending = programme.invited - programme.converted;
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
-      <h1 className="text-title font-bold text-ink">Refer and earn</h1>
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-screen-md">
+      <h1 className="text-section text-ink">Refer and earn</h1>
       <p className="text-small text-ink-muted">
         Share your code. When a friend completes their first booking, you both
         benefit.
@@ -126,11 +127,17 @@ function ReferPageInner() {
       )}
 
       {/* The code. The reason a customer opened this screen, so it leads. */}
-      <section className="mt-4 rounded-card border border-action-line bg-action-subtle p-4 text-center">
-        <p className="text-caption text-ink-muted">Your referral code</p>
-        {/* the code is the thing being shared - teal and extrabold, as the
-            approved offer strip sets FIRST20 */}
-        <p className="tabular mt-1 select-all text-display font-extrabold tracking-wide text-action">
+      {/* ORANGE, and the only orange on this screen.
+
+          A referral code is a promotional offer - the same thing FIRST20 is on
+          the approved home page, where it carries the accent. In teal it was
+          one more teal block on a screen whose buttons, steps and tracker are
+          all already teal. */}
+      <section className="mt-4 rounded-card border-2 border-promo/30 bg-promo-subtle p-5 text-center shadow-sm">
+        <p className="text-caption font-semibold uppercase tracking-wide text-promo">
+          Your referral code
+        </p>
+        <p className="tabular mt-1 select-all text-display font-extrabold tracking-wide text-promo">
           {programme.code}
         </p>
 
@@ -167,7 +174,7 @@ function ReferPageInner() {
       </section>
 
       {/* How it works, in the order it happens. */}
-      <section className="mt-4 rounded-card border border-border bg-surface p-4">
+      <section className="mt-4 cfc-card p-4">
         <h2 className="text-small font-semibold text-ink">How it works</h2>
         <ol className="mt-3 space-y-3">
           <Step
@@ -189,7 +196,7 @@ function ReferPageInner() {
       </section>
 
       {/* Customer 38 — the rewards tracker. */}
-      <section className="mt-4 rounded-card border border-border bg-surface">
+      <section className="mt-4 cfc-card">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           Your referrals
         </h2>
@@ -234,6 +241,7 @@ function ReferPageInner() {
           <Link href="/wallet">See it in your wallet</Link>
         </Button>
       )}
+      </div>
     </div>
   );
 }

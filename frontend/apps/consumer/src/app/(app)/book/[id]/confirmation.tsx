@@ -65,28 +65,36 @@ export function ConfirmationStep({
         moment one accepts.
       </p>
 
-      <div className="mt-6 rounded-card border border-border bg-surface p-4 text-left">
-        <p className="text-caption text-ink-muted">Booking reference</p>
-        {/* Selectable, and tabular so the digits align if it wraps. */}
-        <p className="tabular select-all text-heading font-semibold text-ink">
+      {/* The reference is what a customer screenshots, quotes on the phone and
+          looks for in their email. It was caption-sized grey over a heading -
+          the weakest treatment on the screen for the one string that has to be
+          readable later. Teal head, code at display weight, selectable. */}
+      <div className="cfc-card mt-6 overflow-hidden text-left">
+        <div className="flex items-center gap-2 bg-action px-4 py-3 text-on-action">
+          <Check className="size-4 shrink-0" aria-hidden="true" />
+          <p className="text-body font-bold">Booking reference</p>
+        </div>
+
+        <div className="p-4">
+        <p className="tabular select-all text-title font-extrabold tracking-tight text-ink">
           {reference}
         </p>
 
         <dl className="mt-4 space-y-3 border-t border-border pt-4">
           <div>
-            <dt className="text-caption text-ink-muted">Service</dt>
-            <dd className="text-small text-ink">{service.name}</dd>
+            <dt className="text-caption font-semibold uppercase tracking-wide text-ink-muted">Service</dt>
+            <dd className="mt-0.5 text-body font-semibold text-ink">{service.name}</dd>
           </div>
           <div>
-            <dt className="text-caption text-ink-muted">Arrival window</dt>
-            <dd className="tabular text-small text-ink">
+            <dt className="text-caption font-semibold uppercase tracking-wide text-ink-muted">Arrival window</dt>
+            <dd className="tabular mt-0.5 text-body font-semibold text-ink">
               {formatDayShort(startsAt)}, {formatTime(startsAt)}
             </dd>
           </div>
           {address !== null && (
             <div>
-              <dt className="text-caption text-ink-muted">Address</dt>
-              <dd className="flex items-start gap-1 text-small text-ink">
+              <dt className="text-caption font-semibold uppercase tracking-wide text-ink-muted">Address</dt>
+              <dd className="mt-0.5 flex items-start gap-1 text-body font-semibold text-ink">
                 <MapPin
                   className="mt-px size-3 shrink-0 text-ink-faint"
                   aria-hidden="true"
@@ -99,6 +107,7 @@ export function ConfirmationStep({
             </div>
           )}
         </dl>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">

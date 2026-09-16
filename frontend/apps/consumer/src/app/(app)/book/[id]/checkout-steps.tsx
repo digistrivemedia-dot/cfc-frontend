@@ -8,6 +8,7 @@ import {
   Calendar as CalendarIcon,
   Check,
   CreditCard,
+  IndianRupee,
   MapPin,
   Minus,
   Plus,
@@ -119,7 +120,7 @@ export function OptionsStep({
   return (
     <div className="mt-4 space-y-4">
       {variants.length > 1 && (
-        <section className="rounded-card border border-border bg-surface">
+        <section className="cfc-card">
           <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
             Choose an option
           </h2>
@@ -140,7 +141,7 @@ export function OptionsStep({
 
       {quantityFromCart ? (
         quantity > 1 && (
-          <div className="flex items-baseline justify-between gap-3 rounded-card border border-border bg-surface px-4 py-3">
+          <div className="flex items-baseline justify-between gap-3 cfc-card px-4 py-3">
             <p className="text-small text-ink">
               <span className="tabular font-semibold">{quantity}</span> of this
               service
@@ -164,7 +165,7 @@ export function OptionsStep({
       )}
 
       {addOns.length > 0 && (
-        <section className="rounded-card border border-border bg-surface">
+        <section className="cfc-card">
           <div className="border-b border-border px-4 py-3">
             <h2 className="text-small font-semibold text-ink">
               Add anything else?
@@ -191,7 +192,7 @@ export function OptionsStep({
           that is the slot on the next step, and conflating the two is how a
           customer ends up expecting a 60-minute job to be finished 60 minutes
           after booking. */}
-      <div className="flex items-baseline justify-between gap-3 rounded-card border border-border bg-surface px-4 py-3">
+      <div className="flex items-baseline justify-between gap-3 cfc-card px-4 py-3">
         <div className="min-w-0">
           <p className="text-caption text-ink-muted">
             Estimated time on site
@@ -341,7 +342,7 @@ function QuantityPicker({
   onChange: (next: number) => void;
 }) {
   return (
-    <section className="rounded-card border border-border bg-surface p-4">
+    <section className="cfc-card p-4">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-small font-semibold text-ink">How many?</h2>
@@ -428,7 +429,7 @@ export function SummaryStep({
 }) {
   return (
     <div className="mt-4 space-y-4">
-      <section className="rounded-card border border-border bg-surface">
+      <section className="cfc-card">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           Your booking
         </h2>
@@ -502,7 +503,7 @@ export function SummaryStep({
       </section>
 
       {/* Customer 19 — the coupon entry point. */}
-      <section className="rounded-card border border-border bg-surface p-4">
+      <section className="cfc-card p-4">
         {coupon === null ? (
           <button
             type="button"
@@ -588,8 +589,15 @@ export function PriceBreakdownCard({
   const gstPaise = breakdown.cgstPaise + breakdown.sgstPaise;
 
   return (
-    <section className="rounded-card border border-border bg-surface">
-      <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
+    /* A blue head, as the cart's Estimate panel has.
+
+       This is the money panel on the screen where a customer commits, and it
+       was a white card with a hairline heading - the same weight as the notes
+       around it. Blue marks it without competing with the teal Pay button
+       below. */
+    <section className="cfc-card overflow-hidden">
+      <h2 className="flex items-center gap-2 bg-clock px-4 py-3 text-body font-bold text-on-action">
+        <IndianRupee className="size-4 shrink-0" aria-hidden="true" />
         Payment details
       </h2>
       <dl className="space-y-2 p-4">
@@ -613,8 +621,8 @@ export function PriceBreakdownCard({
         )}
 
         <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
-          <dt className="text-small font-semibold text-ink">Total payable</dt>
-          <dd className="tabular text-heading font-semibold text-ink">
+          <dt className="text-body font-bold text-ink">Total payable</dt>
+          <dd className="cfc-price-lg">
             {formatCurrency(breakdown.totalPaise)}
           </dd>
         </div>
@@ -884,7 +892,7 @@ export function PaymentStep({
 
   return (
     <div className="mt-4 space-y-4">
-      <section className="rounded-card border border-border bg-surface">
+      <section className="cfc-card">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           How would you like to pay?
         </h2>
@@ -897,14 +905,17 @@ export function PaymentStep({
               <label
                 key={id}
                 className={cn(
-                  "flex items-center gap-3 rounded-control border p-3",
-                  "transition-colors duration-fast",
+                  // 44px and a 2px edge. A payment method is the last choice
+                  // before money moves, and these were 3px-padded rows with a
+                  // hairline - the quietest selectable thing in the flow.
+                  "flex min-h-touch items-center gap-3 rounded-control border-2 p-3",
+                  "transition-all duration-fast",
                   disabled
                     ? "cursor-not-allowed border-border-soft bg-disabled"
-                    : "cursor-pointer",
+                    : "cursor-pointer hover:border-action",
                   selected && !disabled
-                    ? "border-action bg-action-subtle"
-                    : "border-border",
+                    ? "border-action bg-action-subtle shadow-sm"
+                    : "border-border bg-surface",
                 )}
               >
                 <input
@@ -919,8 +930,12 @@ export function PaymentStep({
                 <span className="cfc-radio" aria-hidden="true" />
                 <Icon
                   className={cn(
-                    "size-4 shrink-0",
-                    disabled ? "text-disabled-ink" : "text-ink-muted",
+                    "size-5 shrink-0",
+                    disabled
+                      ? "text-disabled-ink"
+                      : selected
+                        ? "text-action"
+                        : "text-ink-muted",
                   )}
                   aria-hidden="true"
                 />

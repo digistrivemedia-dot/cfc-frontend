@@ -130,11 +130,12 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
-      <h1 className="text-title font-bold text-ink">Settings</h1>
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-screen-md">
+      <h1 className="text-section text-ink">Settings</h1>
 
       {/* Notifications — genuinely functional. */}
-      <section className="mt-4 overflow-hidden rounded-card border border-border bg-surface">
+      <section className="mt-4 overflow-hidden cfc-card">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           Notifications
         </h2>
@@ -163,7 +164,7 @@ export default function SettingsPage() {
       </section>
 
       {/* Appearance and language — both pending, both saying so. */}
-      <section className="mt-4 overflow-hidden rounded-card border border-border bg-surface">
+      <section className="mt-4 overflow-hidden cfc-card">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           Appearance and language
         </h2>
@@ -204,7 +205,7 @@ export default function SettingsPage() {
       </section>
 
       {/* Customer 44 — legal, version, and the rating CTA. */}
-      <section className="mt-4 overflow-hidden rounded-card border border-border bg-surface">
+      <section className="mt-4 overflow-hidden cfc-card">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           About
         </h2>
@@ -314,6 +315,7 @@ export default function SettingsPage() {
           </SheetBody>
         </SheetContent>
       </Sheet>
+      </div>
     </div>
   );
 }

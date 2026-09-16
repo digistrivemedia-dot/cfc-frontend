@@ -69,7 +69,10 @@ export default function RegisterPage() {
     >
       <form
         id="register-form"
-        className="space-y-5"
+        // space-y-6, matching /login. At 5 the three fields sat tighter here
+        // than the single field does there, so the two screens had different
+        // rhythms despite being the same form.
+        className="space-y-6"
         onSubmit={handleSubmit}
         noValidate
       >
@@ -144,43 +147,47 @@ export default function RegisterPage() {
         </Button>
       </form>
 
-      {/* Divider, as on /login, so the two screens read as one flow rather
-          than two differently-built forms. */}
-      <div className="my-8 flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-small text-ink-muted">or</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
+      {/* A rule and one line, matching /login exactly. The "or" divider that
+          was here divided nothing: there is one way to register, and what
+          followed was the other screen, not an alternative method.
 
-      <div className="text-center text-body text-ink-muted">
-        Already have an account?{" "}
-        <button
-          id="register-go-login"
-          type="button"
-          className="font-bold text-promo underline-offset-2 hover:underline"
-          onClick={() => router.push("/login")}
-        >
-          Log in
-        </button>
-      </div>
+          Teal, not orange. Orange is the badge colour - on a text link it
+          reads as a label rather than as somewhere to go - and /login's
+          equivalent link is teal. */}
+      <div className="mt-6 border-t border-border pt-5 text-center">
+        <p className="text-small text-ink-muted">
+          Already have an account?{" "}
+          <button
+            id="register-go-login"
+            type="button"
+            className="font-bold text-action underline-offset-2 hover:underline"
+            onClick={() => router.push("/login")}
+          >
+            Log in
+          </button>
+        </p>
 
-      {/* real links - these were teal spans that did nothing */}
-      <p className="mt-8 text-center text-caption text-ink-muted">
-        By registering you agree to our{" "}
-        <Link
-          href="/legal/terms"
-          className="font-semibold text-ink underline-offset-2 hover:text-action hover:underline"
-        >
-          Terms of Service
-        </Link>{" "}
-        and{" "}
-        <Link
-          href="/legal/privacy"
-          className="font-semibold text-ink underline-offset-2 hover:text-action hover:underline"
-        >
-          Privacy Policy
-        </Link>
-      </p>
+        {/* Legal sits inside the same block as the cross-link and one step
+            quieter, matching /login. It was a separate stack with its own
+            margin, which made it a fourth competing item rather than a
+            footnote. */}
+        <p className="mt-3 text-caption leading-relaxed text-ink-faint">
+          By registering you agree to our{" "}
+          <Link
+            href="/legal/terms"
+            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline"
+          >
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link
+            href="/legal/privacy"
+            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline"
+          >
+            Privacy Policy
+          </Link>
+        </p>
+      </div>
     </AuthShell>
   );
 }

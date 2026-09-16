@@ -77,7 +77,7 @@ export default function ProProfilePage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-screen-xl px-4 py-12 md:px-6 lg:px-8">
+      <div className="cfc-wrap py-12">
         <ErrorState
           title="This profile is not available"
           description="The professional may no longer be taking bookings."
@@ -92,7 +92,7 @@ export default function ProProfilePage() {
   // the content it replaces makes the page jump when the data lands.
   if (pro === null) {
     return (
-      <div className="mx-auto max-w-screen-xl px-4 py-6 md:px-6 lg:px-8">
+      <div className="cfc-wrap py-6">
         <div className="grid gap-6 lg:grid-cols-detail">
           <div className="order-2 min-w-0 space-y-4 lg:order-1">
             <Skeleton className="h-block-sm rounded-card" />
@@ -107,7 +107,10 @@ export default function ProProfilePage() {
   }
 
   return (
-    <div className="cfc-band-wash mx-auto min-h-screen max-w-screen-xl px-4 pt-4 md:px-6 md:pb-12 lg:px-8">
+    <div className="cfc-band-wash min-h-screen pt-4 md:pb-12">
+      {/* `cfc-wrap` is the box the app bar and footer use, so the first line of
+          content starts on the same left edge as the logo above it. */}
+      <div className="cfc-wrap">
       <button
         type="button"
         onClick={() => router.back()}
@@ -175,6 +178,7 @@ export default function ProProfilePage() {
         <aside className="order-1 lg:order-2 lg:sticky lg:top-bar-tall">
           <IdentityCard pro={pro} />
         </aside>
+      </div>
       </div>
     </div>
   );

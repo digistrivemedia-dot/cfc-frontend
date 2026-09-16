@@ -65,8 +65,9 @@ function SupportInner() {
   const tab = (params.get("tab") as Tab | null) ?? "help";
 
   return (
-    <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
-      <h1 className="text-title font-bold text-ink">Help and support</h1>
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+      <div className="mx-auto max-w-screen-md">
+      <h1 className="text-section text-ink">Help and support</h1>
 
       {/* The helpline, first. */}
       <a
@@ -135,6 +136,7 @@ function SupportInner() {
       )}
 
       {tab === "assistant" && <AssistantTab />}
+      </div>
     </div>
   );
 }
@@ -170,7 +172,7 @@ function HelpTab() {
         )}
       </section>
 
-      <section className="rounded-card border border-border bg-surface p-4">
+      <section className="cfc-card p-4">
         <h2 className="text-small font-semibold text-ink">
           Still need help?
         </h2>
@@ -219,7 +221,7 @@ function TicketsTab() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-card border border-border bg-surface">
+        <div className="cfc-card">
           <EmptyState
             icon={<MessageSquare />}
             title="No tickets yet"
@@ -234,7 +236,7 @@ function TicketsTab() {
                 type="button"
                 onClick={() => setOpenId(t.id)}
                 className={cn(
-                  "flex w-full items-start gap-3 rounded-card border border-border bg-surface p-4 text-left",
+                  "flex w-full items-start gap-3 cfc-card p-4 text-left",
                   "transition-colors duration-fast hover:border-action-line",
                 )}
               >
@@ -515,7 +517,7 @@ function AssistantTab() {
         </InlineAlert>
       )}
 
-      <div className="rounded-card border border-border bg-surface p-4">
+      <div className="cfc-card p-4">
         <ul className="space-y-3">
           {messages.map((m) => (
             <li

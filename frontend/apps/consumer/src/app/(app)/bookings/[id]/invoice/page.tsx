@@ -88,7 +88,14 @@ function InvoiceInner() {
   }
 
   return (
-    <div className="mx-auto max-w-screen-sm px-4 pt-4 md:px-6 md:pb-12">
+    /* `print:bg-surface` and `print:p-0` on the band.
+
+       The wash is a tinted ground for reading on screen; on paper it either
+       prints as a grey block or is silently dropped by the browser, and the
+       page padding wastes a margin the printer already provides. The screen
+       keeps its ground, the print gets white. */
+    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6 print:min-h-0 print:bg-surface print:p-0">
+      <div className="mx-auto max-w-screen-sm">
       {/* Chrome, hidden when printing — a printed invoice with a "Back" link
           on it looks like a screenshot. */}
       <div className="print:hidden">
@@ -178,6 +185,7 @@ function InvoiceInner() {
         A downloadable PDF arrives with the billing integration. Printing saves
         a PDF on any device today.
       </p>
+      </div>
     </div>
   );
 }

@@ -39,18 +39,6 @@ export function CartBar() {
   const suppressed =
     pathname === "/cart" || pathname.startsWith("/book/");
 
-  /**
-   * A service page carries its own fixed "Book now" bar BELOW `lg`, and two
-   * bars stacked on a phone is a broken screen - so there the service bar
-   * wins, because it is the stronger action for someone reading that page.
-   *
-   * At `lg` and above that bar is `lg:hidden` and simply not there, so the
-   * conflict does not exist. Suppressing the checkout bar at every width was
-   * over-correcting: adding a service on a desktop gave no way forward at all
-   * except noticing the header count, which is the silent-add problem this
-   * bar was built to solve.
-   */
-  const servicePage = pathname.startsWith("/service/");
 
   if (count === 0 || suppressed) return null;
 
@@ -64,9 +52,6 @@ export function CartBar() {
       style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
       className={cn(
         "fixed inset-x-0 z-sticky px-4 md:px-6 lg:px-8",
-        // On a service page the bar appears only where the page's own
-        // "Book now" bar has gone (see `servicePage` above).
-        servicePage && "hidden lg:block",
         // Clearing the mobile tab bar is a BREAKPOINT decision, not an account
         // one, and it used to be neither: the offset was an inline style keyed
         // on `signedIn` alone, so a signed-in customer on a desktop — where the

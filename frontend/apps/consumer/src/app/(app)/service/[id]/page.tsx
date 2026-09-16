@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
-  ArrowRight,
   BadgeCheck,
   Check,
   Clock,
@@ -30,7 +29,6 @@ import {
   cn,
   formatCurrency,
   formatDate,
-  toast,
 } from "@cfc/ui";
 import { useCart } from "@/lib/cart";
 
@@ -89,36 +87,15 @@ export default function ServiceDetailPage() {
 
   React.useEffect(() => load(), [load]);
 
-  /* OPTION C: the sticky bar appears only once the inline booking card has
-     scrolled out of view.
+  /* The booking card renders inline on phones, below the photograph, because
+     there is no right column there for it to sit in. Same component, same
+     controls as the desktop card - only its position differs.
 
-     On a phone there is no right column, so the booking card is rendered
-     inline below the photograph - where a customer can choose a variant and
-     read the price without scrolling past the FAQs and the reviews first,
-     which is where the grid used to push it.
-
-     Showing the bottom bar at the same time would print the price and the
-     Book button twice on one screen. An observer on the inline card solves
-     both: the card is the control while it is visible, the bar takes over the
-     moment it is not. */
-  const inlineCardRef = React.useRef<HTMLDivElement | null>(null);
-  const [inlineCardVisible, setInlineCardVisible] = React.useState(true);
-
-  React.useEffect(() => {
-    const node = inlineCardRef.current;
-    // No node until the service has loaded, and no IntersectionObserver in a
-    // server render - in both cases the bar simply stays hidden, which is the
-    // correct default while the card is at the top of the screen anyway.
-    if (node === null || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(
-      ([entry]) => setInlineCardVisible(entry?.isIntersecting ?? false),
-      // A little bottom margin so the bar arrives as the card leaves rather
-      // than at the exact pixel it clears, which reads as a flicker.
-      { rootMargin: "0px 0px -80px 0px" },
-    );
-    io.observe(node);
-    return () => io.disconnect();
-  }, [service]);
+     There is deliberately NO sticky action bar on this screen any more. The
+     floating checkout bar is the one fixed element, exactly as on desktop:
+     the card is where a customer chooses and books, and the bar appears only
+     once something is in the cart. Two fixed bars competing for the bottom of
+     a phone screen was the whole problem. */
 
   const variants = React.useMemo(
     () => service?.variants.filter((v) => v.active) ?? [],
@@ -232,7 +209,7 @@ export default function ServiceDetailPage() {
 
           {/* The booking card, inline, on phones only. The desktop renders the
               same component in the right column below. */}
-          <div ref={inlineCardRef} className="lg:hidden">
+          <div className="lg:hidden">
             <BookingCard
               variants={variants}
               selectedId={variantId}
@@ -257,7 +234,6 @@ export default function ServiceDetailPage() {
                     ? { imageUrl: service.imageUrls[0] }
                     : {}),
                 });
-                toast.success("Added to cart");
               }}
             />
           </div>
@@ -344,7 +320,6 @@ export default function ServiceDetailPage() {
                   ? { imageUrl: service.imageUrls[0] }
                   : {}),
               });
-              toast.success(`${service.name} added`);
             }}
           />
         </div>
@@ -352,28 +327,6 @@ export default function ServiceDetailPage() {
 
       {/* The phone equivalent of the sticky card: price and one action,
           sitting above the tab bar. */}
-      <MobileActionBar
-        totalPaise={totalPaise}
-        selectedId={variantId}
-        visible={!inlineCardVisible}
-        onBook={() =>
-          router.push(
-            `/book/${service.id}${variantId ? `?variant=${variantId}` : ""}`,
-          )
-        }
-        inCart={has(service.id)}
-        quantity={quantity}
-        onQuantityChange={(next) => setQuantity(service.id, next)}
-        onAdd={() => {
-          add({
-            serviceId: service.id,
-            serviceName: service.name,
-            fromPricePaise: service.basePricePaise,
-            ...(service.imageUrls[0] ? { imageUrl: service.imageUrls[0] } : {}),
-          });
-          toast.success(`${service.name} added`);
-        }}
-      />
       </div>
     </div>
   );
@@ -566,149 +519,6 @@ function BookingCard({
       <p className="mt-3 text-caption text-ink-faint">
         You pay after the job is done. Anything extra is quoted first.
       </p>
-    </div>
-  );
-}
-
-/**
- * The mobile booking bar.
- *
- * Fixed above the tab strip rather than inline, because the decision to book
- * has to be reachable from anywhere on a long page. Hidden at `lg` where the
- * sticky card does the same job with more room.
- */
-function MobileActionBar({
-  totalPaise,
-  selectedId,
-  visible,
-  onBook,
-  onAdd,
-  inCart,
-  quantity,
-  onQuantityChange,
-}: {
-  totalPaise: number;
-  selectedId: string | null;
-  /** False while the inline booking card is on screen - see OPTION C above. */
-  visible: boolean;
-  onBook: () => void;
-  onAdd: () => void;
-  inCart: boolean;
-  quantity: number;
-  onQuantityChange: (next: number) => void;
-}) {
-  return (
-    <div
-      // Clears the iOS home indicator. Padding rather than an offset, so it
-      // does not compete with the `bottom-*` class that positions the bar.
-      style={{ paddingBottom: "max(12px, env(safe-area-inset-bottom))" }}
-      className={cn(
-        "fixed inset-x-0 z-sticky border-t border-border bg-surface lg:hidden",
-        "px-4 pt-3",
-        "flex items-center justify-between gap-3",
-        // OPTION C: slides out of the way while the inline booking card is on
-        // screen, rather than unmounting. A bar that appears instantly on
-        // scroll reads as a glitch; one that slides reads as arriving.
-        "transition-transform duration-base",
-        visible ? "translate-y-0" : "translate-y-full",
-        // Flat on the bottom edge, always.
-        //
-        // This was `signedIn ? "bottom-tab-bar" : "bottom-0"`, lifting the bar
-        // 80px to clear a mobile tab bar. But that tab bar is rendered ONLY by
-        // the signed-in home page (`(home)/home/page.tsx`) - `AppShell`, which
-        // wraps every other screen including this one, has never rendered one.
-        // So on a service page the offset cleared nothing and left the bar
-        // floating 80px up the screen with page content visible underneath it,
-        // which is exactly what it looked like.
-        "bottom-0",
-      )}
-      // Hidden from the tab order and from screen readers while it is off
-      // screen, so a keyboard user does not tab into a bar they cannot see.
-      aria-hidden={!visible}
-      inert={!visible}
-    >
-      <div className="min-w-0">
-        {/* Same fix as the desktop card: this said "Starting at" while showing
-            the SELECTED option's price, so choosing the dearest variant
-            announced it as the cheapest. */}
-        <p className="text-caption text-ink-muted">
-          {selectedId === null ? "Starting at" : "Total"}
-        </p>
-        <p className="tabular text-heading font-semibold text-ink">
-          {formatCurrency(totalPaise)}
-        </p>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {/* A stepper here too, for the same reason as the desktop card. The
-            icon button was disabled once in the basket, which on a phone read
-            as the app having stopped working. */}
-        {inCart ? (
-          <span className="flex h-touch items-center gap-1 rounded-control border border-action-line bg-surface px-1">
-            <button
-              type="button"
-              aria-label="Remove one"
-              onClick={() => onQuantityChange(quantity - 1)}
-              className="flex size-8 items-center justify-center rounded-control text-action transition-colors duration-fast hover:bg-action-subtle focus-visible:outline-none focus-visible:outline-focus"
-            >
-              <Minus className="size-4" aria-hidden="true" />
-            </button>
-            <span
-              className="tabular w-5 text-center text-body font-bold text-ink"
-              aria-live="polite"
-            >
-              {quantity}
-            </span>
-            <button
-              type="button"
-              aria-label="Add another"
-              onClick={() => onQuantityChange(quantity + 1)}
-              className="flex size-8 items-center justify-center rounded-control text-action transition-colors duration-fast hover:bg-action-subtle focus-visible:outline-none focus-visible:outline-focus"
-            >
-              <Plus className="size-4" aria-hidden="true" />
-            </button>
-          </span>
-        ) : (
-          <Button
-            variant="secondary"
-            size="icon-md"
-            onClick={onAdd}
-            aria-label="Add to checkout"
-          >
-            <Plus />
-          </Button>
-        )}
-        {/* Once something is in the cart the customer needs a way THROUGH,
-            not just a way to book this one service again. The desktop gets
-            that from the floating checkout bar, which is suppressed here
-            because this bar already owns the bottom of a phone screen - so
-            the route has to live inside this bar instead.
-
-            Book stays primary: a customer reading a service page is most
-            likely booking that service. Checkout is the secondary path out. */}
-        {inCart ? (
-          <div className="flex shrink-0 items-center gap-2">
-            <Button variant="primary" onClick={onBook}>
-              Book
-            </Button>
-            <Link
-              href="/cart"
-              className={cn(
-                "flex h-touch shrink-0 items-center gap-1 rounded-control px-3",
-                "border border-action bg-surface text-small font-bold text-action",
-                "transition-colors duration-fast hover:bg-action-subtle",
-                "focus-visible:outline-none focus-visible:outline-focus",
-              )}
-            >
-              Checkout
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
-          </div>
-        ) : (
-          <Button variant="primary" onClick={onBook}>
-            Book now
-          </Button>
-        )}
-      </div>
     </div>
   );
 }

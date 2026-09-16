@@ -11,7 +11,6 @@ import {
   Image as ImageIcon,
   Minus,
   Plus,
-  ShieldCheck,
 } from "lucide-react";
 import {
   REVIEWS_ARE_PLACEHOLDER,
@@ -176,6 +175,14 @@ export default function ServiceDetailPage() {
                   {service.warrantyDays}-day warranty
                 </span>
               )}
+              {/* ORANGE, and the only orange on the screen. The approved home
+                  page spends it in four places across 6,000px; this screen
+                  spends it once, on the thing that actually persuades - that
+                  other people book this. A second orange mark would halve the
+                  value of the first. */}
+              {service.reviewCount >= 100 && (
+                <span className="cfc-badge cfc-badge-promo">Most booked</span>
+              )}
             </div>
 
             <p className="mt-3 text-body leading-relaxed text-ink-muted">
@@ -211,16 +218,29 @@ export default function ServiceDetailPage() {
                   </li>
                 ))}
               </ul>
+
+              {/* The trust chips belong to this card.
+
+                  They used to float between two cards, owned by neither, and
+                  read as debris left on the page. They are claims ABOUT what
+                  is included, so they sit under the list they qualify. */}
+              <div className="mt-4 border-t border-border pt-4">
+                <TrustRow />
+              </div>
             </section>
           )}
 
-          <TrustRow warrantyDays={service.warrantyDays} />
-
           {faqs !== null && faqs.length > 0 && (
             <section className="cfc-card cfc-card-pad">
-              <h2 className="mb-2 text-heading font-semibold text-ink md:text-heading-lg">
+              <h2 className="mb-3 text-heading font-semibold text-ink md:text-heading-lg">
                 Common questions
               </h2>
+              {/* S4: the shared Accordion already divides its rows, but it
+                  also draws its own card border - inside ours that is two
+                  frames around one list. The negative margin cancels the
+                  outer padding so the rows run the full width of the card,
+                  and the ring removes the duplicate border. */}
+              <div className="-mx-[18px] -mb-[18px] [&>*]:rounded-none [&>*]:border-0 [&>*]:border-t">
               <Accordion
                 items={faqs.map((f) => ({
                   id: f.id,
@@ -228,6 +248,7 @@ export default function ServiceDetailPage() {
                   answer: f.answer,
                 }))}
               />
+              </div>
             </section>
           )}
 
@@ -326,8 +347,17 @@ function BookingCard({
   onQuantityChange: (next: number) => void;
 }) {
   return (
-    <div className="cfc-card p-4">
-      <p className="text-caption text-ink-muted">Starting at</p>
+    /* P3: a heavier shadow than a content card. This is the most important
+       element on the screen and it had the lightest treatment of anything on
+       it. */
+    <div className="cfc-card p-4 shadow-[0_10px_30px_-14px_rgba(16,41,76,.32)]">
+      {/* C3: "Starting at" is only true before a choice is made. Once an
+          option is selected this shows that option's price - and on the 2-ton
+          window unit, the DEAREST one, it was still labelled "Starting at".
+          The label now follows the number it describes. */}
+      <p className="text-caption text-ink-muted">
+        {selectedId === null ? "Starting at" : "Total"}
+      </p>
       {/* The price is the second thing a customer looks for after the name,
           so it carries the weight the home page's booked rail gives it. */}
       <p className="cfc-price-lg">{formatCurrency(totalPaise)}</p>
@@ -400,7 +430,11 @@ function BookingCard({
           is what sat here — is a dead end: booking two bathroom cleans is a
           real thing, and it forced a trip to the basket to say so. */}
       {inCart ? (
-        <div className="mt-2 hidden items-center justify-between gap-3 rounded-control border border-action p-1 lg:flex">
+        /* S1: "1 added" alone never said added to WHAT. S2: this sat at
+           near-equal weight to the primary Book button, so a customer had to
+           choose between two controls that looked equally important. A hairline
+           border and muted label put it a clear step below. */
+        <div className="mt-2 hidden items-center justify-between gap-3 rounded-control border border-border p-1 lg:flex">
           <button
             type="button"
             aria-label="Remove one"
@@ -413,8 +447,8 @@ function BookingCard({
           >
             <Minus className="size-4" aria-hidden="true" />
           </button>
-          <span className="text-small font-semibold text-action" aria-live="polite">
-            <span className="tabular">{quantity}</span> added
+          <span className="text-small font-medium text-ink-muted" aria-live="polite">
+            In your cart · <span className="tabular font-semibold text-ink">{quantity}</span>
           </span>
           <button
             type="button"
@@ -543,7 +577,7 @@ function MobileActionBar({
 }
 
 /** The three promises, each one a documented rule. */
-function TrustRow({ warrantyDays }: { warrantyDays: number }) {
+function TrustRow() {
   /*
     Three trust claims, and deliberately NOT styled the same.
 
@@ -553,12 +587,10 @@ function TrustRow({ warrantyDays }: { warrantyDays: number }) {
     eye lands on. Flattening all three to one style - which is what this was
     before - spends the contrast and buys nothing.
   */
+  /* The warranty is NOT repeated here. It is stated beside the title, 400px
+     up the same column; saying it twice made the page look padded rather than
+     reassuring. These are the two claims that are not stated anywhere else. */
   const items = [
-    {
-      icon: ShieldCheck,
-      label: warrantyDays > 0 ? `${warrantyDays}-day warranty` : "Warranty included",
-      solid: false,
-    },
     { icon: BadgeCheck, label: "Verified professional", solid: true },
     { icon: Check, label: "Closed with your code", solid: false },
   ];
@@ -623,7 +655,10 @@ function ReviewList({ reviews }: { reviews: Review[] | null }) {
   const shown = expanded ? reviews : reviews.slice(0, INITIAL);
 
   return (
-    <section>
+    /* Reviews was the only major section without a card: it floated on the
+       page background while everything above it sat on white, which made the
+       page look like it had run out halfway down. */
+    <section className="cfc-card cfc-card-pad">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-heading font-semibold text-ink md:text-heading-lg">
           Reviews{" "}
@@ -639,12 +674,11 @@ function ReviewList({ reviews }: { reviews: Review[] | null }) {
           Sample content — real reviews appear once jobs are completed.
         </p>
       )}
-      <ul className="mt-2 space-y-3">
+      {/* Rows divided by a hairline, not nested cards. A bordered box inside
+          a bordered card is two frames around one thing. */}
+      <ul className="mt-3 divide-y divide-border">
         {shown.map((r) => (
-          <li
-            key={r.id}
-            className="rounded-card border border-border bg-surface p-4"
-          >
+          <li key={r.id} className="py-4 first:pt-0 last:pb-0">
             <div className="flex items-center justify-between gap-2">
               <StarRating value={r.rating} starsOnly />
               <span className="text-caption text-ink-faint">

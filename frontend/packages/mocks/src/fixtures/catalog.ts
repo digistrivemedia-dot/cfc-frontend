@@ -357,7 +357,7 @@ export const services: ServiceDetail[] = SERVICE_CATALOG.map(
     // appended per service, falling back to nothing extra (rather than an
     // invented claim) for a service added without copy.
     inclusions: [...UNIVERSAL_INCLUSIONS, ...(SERVICE_INCLUSIONS[name] ?? [])],
-    warrantyDays: pick([15, 30, 60]),
+    warrantyDays: 30,
   }),
 );
 

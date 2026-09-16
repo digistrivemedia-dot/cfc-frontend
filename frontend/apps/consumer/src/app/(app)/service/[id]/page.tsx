@@ -433,22 +433,23 @@ function BookingCard({
              the number and the plus read as three loose controls floating in
              the card rather than one stepper. It also has to hold its own
              beside a solid teal button; a hairline could not. */
-          <div className="flex h-11 shrink-0 items-center rounded-control border-2 border-action bg-action-subtle px-0.5">
+          <div className="flex h-12 shrink-0 items-center gap-1 rounded-control border border-action-line bg-surface px-1">
             <button
               type="button"
               aria-label="Remove one"
               onClick={() => onQuantityChange(quantity - 1)}
               className={cn(
-                "flex size-9 items-center justify-center rounded-[9px] text-action",
-                "transition-colors duration-fast hover:bg-surface",
+                "flex size-8 items-center justify-center rounded-control text-action",
+                "transition-colors duration-fast hover:bg-action-subtle",
                 "focus-visible:outline-none focus-visible:outline-focus",
+                "disabled:opacity-40",
               )}
             >
               <Minus className="size-4" aria-hidden="true" />
             </button>
             {/* The number only. What it means is said by the checkout bar. */}
             <span
-              className="tabular w-7 text-center text-body font-bold text-ink"
+              className="tabular w-5 text-center text-body font-bold text-ink"
               aria-live="polite"
             >
               {quantity}
@@ -458,8 +459,8 @@ function BookingCard({
               aria-label="Add another"
               onClick={() => onQuantityChange(quantity + 1)}
               className={cn(
-                "flex size-9 items-center justify-center rounded-[9px] text-action",
-                "transition-colors duration-fast hover:bg-surface",
+                "flex size-8 items-center justify-center rounded-control text-action",
+                "transition-colors duration-fast hover:bg-action-subtle",
                 "focus-visible:outline-none focus-visible:outline-focus",
               )}
             >
@@ -484,7 +485,15 @@ function BookingCard({
           </Button>
         )}
 
-        <Button variant="primary" className="min-w-0 flex-1" onClick={onBook}>
+        {/* `h-12` to match the stepper exactly: the shared Button preset is
+            44px and the stepper is 48px, so without this the two controls sat
+            at different heights on the same row - the thing that made the pair
+            look unfinished rather than designed. */}
+        <Button
+          variant="primary"
+          className="h-12 min-w-0 flex-1 text-body"
+          onClick={onBook}
+        >
           Book this service
         </Button>
       </div>

@@ -640,7 +640,7 @@ function RankedServiceRow({
     <Link
       href={`/service/${id}`}
       className={cn(
-        "group flex items-center gap-3 rounded-card border border-border bg-surface p-2",
+        "group flex items-center gap-3 cfc-card p-2",
         "transition-all duration-base hover:border-action-line hover:shadow-sm",
         "focus-visible:outline-none focus-visible:outline-focus",
       )}
@@ -724,7 +724,7 @@ function HowItWorks() {
           {STEPS.map(({ n, title, body }, i) => (
             <li
               key={n}
-              className="rounded-card border border-border bg-surface p-5 shadow-sm transition-all duration-fast hover:-translate-y-1 hover:border-action hover:shadow-md"
+              className="cfc-card p-5 shadow-sm transition-all duration-fast hover:-translate-y-1 hover:border-action hover:shadow-md"
             >
               <span
                 className={cn(
@@ -771,7 +771,7 @@ function WhyCfc() {
   ];
 
   return (
-    <section className="mt-16 overflow-hidden rounded-card border border-border bg-surface">
+    <section className="mt-16 overflow-hidden cfc-card">
       <div className="border-b border-border px-6 py-5">
         <h2 className="text-title font-bold tracking-tight text-ink md:text-title-lg">
           Why City Family Care
@@ -839,7 +839,7 @@ function Testimonials({ reviews }: { reviews: Review[] }) {
 
 function TestimonialCard({ review }: { review: Review }) {
   return (
-    <figure className="flex h-full flex-col rounded-card border border-border bg-surface p-5">
+    <figure className="flex h-full flex-col cfc-card p-5">
       <Quote
         className="size-5 shrink-0 text-action-line"
         aria-hidden="true"
@@ -934,7 +934,7 @@ function JoinAsPro() {
  */
 function GetTheApp() {
   return (
-    <section className="mt-16 overflow-hidden rounded-card border border-border bg-surface">
+    <section className="mt-16 overflow-hidden cfc-card">
       <div className="grid items-center gap-6 p-6 md:grid-cols-2 md:p-8">
         <div className="min-w-0">
           <p className="text-caption font-semibold uppercase tracking-wide text-action">

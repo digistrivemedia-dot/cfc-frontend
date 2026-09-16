@@ -191,7 +191,7 @@ export default function ProProfilePage() {
  */
 function IdentityCard({ pro }: { pro: PublicPro }) {
   return (
-    <div className="overflow-hidden rounded-card border border-border bg-surface shadow-sm">
+    <div className="cfc-card overflow-hidden">
       {/* A teal cap so the avatar has something to sit against. It was navy
           carrying a radial gradient - a dark band plus a gradient fill, both
           of which the approved design removed. Flat brand colour instead,
@@ -343,13 +343,13 @@ function ReviewSection({
           ))}
         </div>
       ) : reviews.length === 0 ? (
-        <p className="mt-3 rounded-card border border-border bg-surface p-4 text-small text-ink-muted">
+        <p className="cfc-card mt-3 p-4 text-small text-ink-muted">
           No reviews yet.
         </p>
       ) : (
         <>
           {spread !== null && pro.rating > 0 && (
-            <div className="mt-3 flex flex-col gap-4 rounded-card border border-border bg-surface p-4 sm:flex-row sm:items-center">
+            <div className="cfc-card mt-3 flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
               <div className="shrink-0 text-center sm:w-clock">
                 <p className="tabular text-display font-semibold leading-none text-ink">
                   {pro.rating.toFixed(1)}
@@ -411,7 +411,7 @@ function ReviewSection({
             {reviews.map((r) => (
               <li
                 key={r.id}
-                className="rounded-card border border-border bg-surface p-4"
+                className="cfc-card p-4"
               >
                 <div className="flex items-center justify-between gap-2">
                   <StarRating value={r.rating} starsOnly />

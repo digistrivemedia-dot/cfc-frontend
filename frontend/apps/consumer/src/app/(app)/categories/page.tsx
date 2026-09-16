@@ -278,7 +278,7 @@ function CategoriesInner() {
   }
 
   return (
-    <div className="cfc-band-wash mx-auto min-h-screen max-w-screen-xl px-4 pt-4 md:px-6 md:pb-12 lg:px-8">
+    <div className="cfc-band-wash min-h-screen px-4 pt-4 md:px-6 md:pb-12 lg:px-8 mx-auto max-w-screen-xl">
       <Breadcrumb subName={subName} onGo={go} />
 
       {/* Depth 1 - every sub-category, same ten Home shows. */}
@@ -307,7 +307,11 @@ function CategoriesInner() {
               ))}
             </div>
           ) : (
-            <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            /* The grid sits on white, on the page's wash. Without this the
+               screen was one flat tinted sheet from the header to the footer -
+               the thing that made it read as unfinished next to the home page,
+               which never runs two identical grounds together. */
+            <ul className="cfc-card mt-5 grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 md:p-6 lg:grid-cols-5">
               {browsable.map(({ sub: s, count }, i) => (
                 <li key={s.id}>
                   <SubCategoryCard
@@ -428,7 +432,7 @@ function CategoriesInner() {
                 ))}
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
                 {/* the count leads in teal - it is the answer to "what is in
                     here", which is why the customer opened the category */}
                 <p className="tabular text-small text-ink-muted">
@@ -465,7 +469,7 @@ function CategoriesInner() {
                   </label>
                 )}
               </div>
-              <ul className="mt-2 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+              <ul className="cfc-card mt-3 grid grid-cols-2 gap-3 p-4 md:grid-cols-3 md:p-6 lg:grid-cols-4">
                 {sortedServices.map((s) => (
                   <li key={s.id}>
                     {/* The shop card rather than the plain one: this is the
@@ -566,9 +570,9 @@ function SubCategoryCard({
     <Link
       href={href}
       className={cn(
-        "group flex w-full flex-col items-center gap-3 rounded-card border border-border bg-surface p-5 text-center",
-        "shadow-sm transition-all duration-base",
-        "hover:-translate-y-1 hover:border-action hover:shadow-md",
+        "group flex w-full flex-col items-center gap-3 rounded-card border border-border bg-canvas p-5 text-center",
+        "transition-all duration-base",
+        "hover:-translate-y-1 hover:border-action hover:bg-surface hover:shadow-md",
         "focus-visible:outline-none focus-visible:outline-focus",
       )}
     >

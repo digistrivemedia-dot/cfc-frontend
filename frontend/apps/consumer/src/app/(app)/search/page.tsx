@@ -666,7 +666,7 @@ function Results({
 
   if (rows === null) {
     return (
-      <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+      <div className="cfc-card mt-4 grid grid-cols-2 gap-3 p-4 md:grid-cols-3 md:p-6 lg:grid-cols-4">
         {Array.from({ length: 6 }, (_, i) => (
           <Skeleton key={i} className="h-block-md rounded-card" />
         ))}
@@ -739,7 +739,9 @@ function Results({
         </label>
       </div>
 
-      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
+      {/* Results sit on white, on the page's wash - the same construction as
+          the Categories grid, so the two screens read as one product. */}
+      <ul className="cfc-card grid grid-cols-2 gap-3 p-4 md:grid-cols-3 md:p-6 lg:grid-cols-4">
         {rows.map((service) => (
           <li key={service.id}>
             {/* Results carry an Add button like every other list of services.

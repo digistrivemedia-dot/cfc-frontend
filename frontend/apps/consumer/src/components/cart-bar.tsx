@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { ArrowRight, ShoppingCart } from "lucide-react";
 import { cn, formatCurrency } from "@cfc/ui";
 import { useCart } from "@/lib/cart";
-import { useSession } from "@/lib/session";
 
 /**
  * The checkout bar.
@@ -27,7 +26,6 @@ import { useSession } from "@/lib/session";
  */
 export function CartBar() {
   const { count, subtotalPaise } = useCart();
-  const { signedIn } = useSession();
   const pathname = usePathname();
 
   /**
@@ -81,7 +79,11 @@ export function CartBar() {
         // 56px bar plus its safe-area inset). It applies only while the tab bar
         // is actually rendered: below `md`, and only for a signed-in customer.
         // Everywhere else the bar sits on the bottom edge.
-        signedIn ? "bottom-tab-bar md:bottom-0" : "bottom-0",
+        // Same correction as the service page's bar: the mobile tab bar is
+        // rendered only by the signed-in home page, never by `AppShell`, so
+        // offsetting for it on every other screen floated this bar 80px above
+        // nothing.
+        "bottom-0",
         // No background of its own: the bar is a floating pill, so a page
         // scrolling underneath stays visible rather than being cut off by a
         // full-width band.

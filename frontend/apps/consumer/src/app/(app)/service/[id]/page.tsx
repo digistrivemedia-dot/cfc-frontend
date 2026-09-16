@@ -33,7 +33,6 @@ import {
   toast,
 } from "@cfc/ui";
 import { useCart } from "@/lib/cart";
-import { useSession } from "@/lib/session";
 
 /**
  * Customer 12 — Service detail.
@@ -598,8 +597,6 @@ function MobileActionBar({
   quantity: number;
   onQuantityChange: (next: number) => void;
 }) {
-  const { signedIn } = useSession();
-
   return (
     <div
       // Clears the iOS home indicator. Padding rather than an offset, so it
@@ -614,11 +611,16 @@ function MobileActionBar({
         // scroll reads as a glitch; one that slides reads as arriving.
         "transition-transform duration-base",
         visible ? "translate-y-0" : "translate-y-full",
-        // The tab bar is 56px tall, exists only for a signed-in customer, and
-        // is `md:hidden` — so it is present only below `md`, and only with an
-        // account. This bar is `lg:hidden`, so between `md` and `lg` it is on
-        // screen while the tab bar is NOT.
-        signedIn ? "bottom-tab-bar md:bottom-0" : "bottom-0",
+        // Flat on the bottom edge, always.
+        //
+        // This was `signedIn ? "bottom-tab-bar" : "bottom-0"`, lifting the bar
+        // 80px to clear a mobile tab bar. But that tab bar is rendered ONLY by
+        // the signed-in home page (`(home)/home/page.tsx`) - `AppShell`, which
+        // wraps every other screen including this one, has never rendered one.
+        // So on a service page the offset cleared nothing and left the bar
+        // floating 80px up the screen with page content visible underneath it,
+        // which is exactly what it looked like.
+        "bottom-0",
       )}
       // Hidden from the tab order and from screen readers while it is off
       // screen, so a keyboard user does not tab into a bar they cannot see.

@@ -443,7 +443,12 @@ function BookingCard({
 
           Side by side, the hierarchy is stated by width rather than by order:
           the stepper takes only what it needs, Book takes the rest. */}
-      <div className="mt-4 hidden items-center gap-2 lg:flex">
+      {/* `hidden lg:flex` before: the Add button, the quantity stepper and
+          Book were DESKTOP ONLY, because a separate fixed bar used to carry
+          them on a phone. That bar is gone, so this row has to serve both -
+          and without it a mobile customer saw a price and three variants with
+          no way to add anything at all. */}
+      <div className="mt-4 flex items-center gap-2">
         {inCart && (
           /* A teal edge and a teal wash, matching the selected option rows
              directly above it. `border-border` on `bg-canvas` was a near-white

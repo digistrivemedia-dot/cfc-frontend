@@ -135,8 +135,8 @@ export function CartBar() {
           className={cn(
             "flex h-12 shrink-0 items-center gap-2 rounded-control px-6",
             "bg-action text-body font-bold text-on-action",
-            "shadow-[0_8px_20px_-8px_rgba(2,186,188,.7)]",
-            "transition-[background-color,box-shadow] duration-fast",
+            "shadow-md",
+            "transition duration-fast",
             "group-hover:bg-promo group-hover:shadow-[0_10px_24px_-8px_rgba(244,123,32,.75)]",
           )}
         >

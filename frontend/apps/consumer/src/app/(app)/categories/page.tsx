@@ -351,7 +351,7 @@ function CategoryTile({
       <div
         className={cn(
           "relative grid h-block-sm place-items-center",
-          "transition-[filter] duration-base group-hover:brightness-105",
+          "transition duration-base group-hover:brightness-105",
           isBlue ? "bg-clock-subtle text-clock" : "bg-action-subtle text-action",
         )}
       >
@@ -364,7 +364,7 @@ function CategoryTile({
             values worth adding. */}
         <span
           aria-hidden="true"
-          className="absolute size-[104px] rounded-full bg-[rgba(255,255,255,0.55)]"
+          className="absolute size-tile-lg rounded-full bg-surface opacity-60"
         />
         <Icon
           className="relative size-12"
@@ -930,7 +930,7 @@ function SubCategoryView({
                       <span
                         className={cn(
                           "grid size-tile place-items-center rounded-control text-on-action",
-                          "transition-[filter] duration-base group-hover:brightness-110",
+                          "transition duration-base group-hover:brightness-110",
                           i % 3 === 1 ? "bg-clock" : "bg-action",
                         )}
                       >

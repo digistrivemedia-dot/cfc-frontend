@@ -187,7 +187,7 @@ export default function CartPage() {
                      something to sit on - the same construction the category
                      tiles use - so it reads as artwork rather than as a fault. */
                   <span className="grid size-full place-items-center">
-                    <span className="grid size-touch place-items-center rounded-full bg-[rgba(255,255,255,0.6)] text-clock">
+                    <span className="grid size-touch place-items-center rounded-full bg-surface text-clock">
                       <Sparkles className="size-5" aria-hidden="true" />
                     </span>
                   </span>

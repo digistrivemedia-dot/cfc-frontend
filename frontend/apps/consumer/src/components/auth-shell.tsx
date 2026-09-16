@@ -145,7 +145,7 @@ export function AuthShell({
                   CFC
                 </sup>
               </span>
-              <span className="mt-0.5 block text-[0.5rem] font-semibold uppercase tracking-[0.08em] text-ink-muted">
+              <span className="block text-caption font-semibold uppercase tracking-wider text-ink-muted">
                 Verified home services
               </span>
             </span>
@@ -177,7 +177,7 @@ export function AuthShell({
             // card ended close enough to the login card that the two read as
             // one block with a seam. A little more air separates them without
             // the columns drifting apart.
-            "grid w-full max-w-screen-lg items-start gap-10 lg:gap-14",
+            "grid w-full max-w-screen-lg items-start gap-8 lg:gap-12",
             showAssurance ? "lg:grid-cols-2" : "lg:max-w-md",
           )}
         >
@@ -222,18 +222,19 @@ export function AuthShell({
                   account actually gets them, which is what the screen is
                   asking them to create - and it is the promise the three
                   cards below then back up. */}
-              <h2 className="text-[clamp(1.75rem,1.2rem+1.9vw,2.75rem)] font-extrabold leading-tight tracking-[-0.032em] text-ink">
+              <h2 className="text-section text-ink">
                 Home services,{" "}
                 <span className="text-promo">booked in minutes.</span>
               </h2>
-              {/* An explicit measure. `max-w-prose` in this preset is 320px -
-                  sized for empty-state copy - which is narrower than the
-                  problem it would be fixing. 46ch is the measure the approved
-                  home page uses for its own section straplines. */}
+              {/* `max-w-detail` (640px), NOT `max-w-prose` - that is 320px in
+                  this preset, sized for empty-state copy, and would squeeze
+                  this strapline into a column half the width it needs. The
+                  arbitrary 46ch this replaced is banned by the house lint
+                  rule, which is what failed the production build. */}
               {/* Reworded off the headline. It opened "One account to book…"
                   under a headline ending "booked in minutes", which said the
                   same word twice in two lines. */}
-              <p className="mt-4 max-w-[46ch] text-body leading-relaxed text-ink-muted">
+              <p className="mt-4 max-w-detail text-body leading-relaxed text-ink-muted">
                 One account for every job — track it live, pay after the work
                 is done, and know who is arriving before they knock.
               </p>
@@ -256,7 +257,7 @@ export function AuthShell({
                     key={title}
                     className={cn(
                       "flex gap-3 rounded-card border border-border bg-surface p-4",
-                      "max-w-[30rem] shadow-sm",
+                      "max-w-detail shadow-sm",
                       // Hover: a teal edge and a real lift, matching every
                       // other card in the app. White-on-white gave the cursor
                       // nothing to respond to, so the cards read as inert.
@@ -279,7 +280,7 @@ export function AuthShell({
                     <div className="min-w-0">
                       <h3 className="text-body font-bold text-ink">{title}</h3>
                       {detailedAssurance && (
-                        <p className="mt-0.5 text-small leading-relaxed text-ink-muted">
+                        <p className="mt-1 text-small leading-relaxed text-ink-muted">
                           {body}
                         </p>
                       )}
@@ -311,7 +312,7 @@ export function AuthShell({
 
                   `border-t` on a full-width grid drew a line all the way to
                   the column edge - which on a wide screen ran under the card
-                  and read as overlapping it. `max-w-[30rem]` ends the rule
+                  and read as overlapping it. `max-w-detail` ends the rule
                   where the text above it ends.
 
                   `gap-x-6` also pushed the second column far right of the
@@ -321,7 +322,7 @@ export function AuthShell({
                   a stack of bordered cards would be a fourth edge in the same
                   column - the cards already mark where the list ends. */}
               {showExtras && (
-              <ul className="mt-6 grid max-w-[30rem] grid-cols-2 gap-x-4 gap-y-3 px-1">
+              <ul className="mt-6 grid max-w-detail grid-cols-2 gap-x-4 gap-y-3 px-1">
                 {[
                   { icon: Clock, label: "Same-day slots" },
                   { icon: IndianRupee, label: "Pay after the job" },

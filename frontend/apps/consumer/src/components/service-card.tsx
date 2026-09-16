@@ -97,7 +97,7 @@ export function ServiceCard({
         href={`/service/${id}`}
         className="block focus-visible:outline-none focus-visible:outline-focus"
       >
-        <div className="relative aspect-[16/10] overflow-hidden bg-canvas">
+        <div className="relative aspect-card overflow-hidden bg-canvas">
           {imageUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img

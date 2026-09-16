@@ -83,18 +83,18 @@ export function ConfirmationStep({
         <dl className="mt-4 space-y-3 border-t border-border pt-4">
           <div>
             <dt className="text-caption font-semibold uppercase tracking-wide text-ink-muted">Service</dt>
-            <dd className="mt-0.5 text-body font-semibold text-ink">{service.name}</dd>
+            <dd className="mt-1 text-body font-semibold text-ink">{service.name}</dd>
           </div>
           <div>
             <dt className="text-caption font-semibold uppercase tracking-wide text-ink-muted">Arrival window</dt>
-            <dd className="tabular mt-0.5 text-body font-semibold text-ink">
+            <dd className="tabular mt-1 text-body font-semibold text-ink">
               {formatDayShort(startsAt)}, {formatTime(startsAt)}
             </dd>
           </div>
           {address !== null && (
             <div>
               <dt className="text-caption font-semibold uppercase tracking-wide text-ink-muted">Address</dt>
-              <dd className="mt-0.5 flex items-start gap-1 text-body font-semibold text-ink">
+              <dd className="mt-1 flex items-start gap-1 text-body font-semibold text-ink">
                 <MapPin
                   className="mt-px size-3 shrink-0 text-ink-faint"
                   aria-hidden="true"

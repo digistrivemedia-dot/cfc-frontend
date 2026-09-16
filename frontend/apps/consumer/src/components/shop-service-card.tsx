@@ -112,7 +112,7 @@ export function ShopServiceCard({
             The clamp ends a cut line with an ellipsis rather than breaking a
             word in half - the "lowest-cost job on..." effect - because it cuts
             on the rendered line box, not the character count. */}
-        <p className="mt-1 line-clamp-2 min-h-[2.6em] text-caption leading-relaxed text-ink-muted">
+        <p className="mt-1 line-clamp-2 text-caption leading-relaxed text-ink-muted">
           {description ?? ""}
         </p>
 

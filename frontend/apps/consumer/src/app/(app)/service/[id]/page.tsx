@@ -279,7 +279,7 @@ export default function ServiceDetailPage() {
                   frames around one list. The negative margin cancels the
                   outer padding so the rows run the full width of the card,
                   and the ring removes the duplicate border. */}
-              <div className="-mx-[18px] -mb-[18px] [&>*]:rounded-none [&>*]:border-0 [&>*]:border-t">
+              <div className="-mx-4 -mb-4 [&>*]:rounded-none [&>*]:border-0 [&>*]:border-t">
               <Accordion
                 items={faqs.map((f) => ({
                   id: f.id,
@@ -368,7 +368,7 @@ function BookingCard({
     /* P3: a heavier shadow than a content card. This is the most important
        element on the screen and it had the lightest treatment of anything on
        it. */
-    <div className="cfc-card p-4 shadow-[0_10px_30px_-14px_rgba(16,41,76,.32)]">
+    <div className="cfc-card p-4 shadow-md">
       {/* C3: "Starting at" is only true before a choice is made. Once an
           option is selected this shows that option's price - and on the 2-ton
           window unit, the DEAREST one, it was still labelled "Starting at".
@@ -723,12 +723,12 @@ function ServiceGallery({ images, name }: { images: string[]; name: string }) {
 
                The source stays 1200x900 and is cropped by object-fit, so no
                new artwork is needed for this to work. */
-            className="aspect-card w-full object-cover cfc-md:aspect-[3/2]"
+            className="aspect-card w-full object-cover cfc-md:aspect-banner"
             onError={() => setFailed(true)}
           />
         ) : (
           <div
-            className="flex aspect-card items-center justify-center bg-action-subtle cfc-md:aspect-[3/2]"
+            className="flex aspect-card items-center justify-center bg-action-subtle cfc-md:aspect-banner"
             aria-hidden="true"
           >
             <ImageIcon className="size-8 text-action" />

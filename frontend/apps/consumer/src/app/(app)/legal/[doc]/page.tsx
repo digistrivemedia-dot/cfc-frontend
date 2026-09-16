@@ -95,7 +95,7 @@ export default function LegalPage() {
        column of four or five words per line, which is unreadable at length.
        65ch is the measure long-form text is set at. */
     <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
-      <div className="mx-auto max-w-[65ch]">
+      <div className="mx-auto max-w-detail">
       <Link
         href="/settings"
         className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"

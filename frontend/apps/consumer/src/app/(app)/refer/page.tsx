@@ -110,7 +110,7 @@ function ReferPageInner() {
 
   return (
     <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
-      <h1 className="text-title font-semibold text-ink">Refer and earn</h1>
+      <h1 className="text-title font-bold text-ink">Refer and earn</h1>
       <p className="text-small text-ink-muted">
         Share your code. When a friend completes their first booking, you both
         benefit.
@@ -128,7 +128,9 @@ function ReferPageInner() {
       {/* The code. The reason a customer opened this screen, so it leads. */}
       <section className="mt-4 rounded-card border border-action-line bg-action-subtle p-4 text-center">
         <p className="text-caption text-ink-muted">Your referral code</p>
-        <p className="tabular mt-1 select-all text-display font-semibold tracking-wide text-ink">
+        {/* the code is the thing being shared - teal and extrabold, as the
+            approved offer strip sets FIRST20 */}
+        <p className="tabular mt-1 select-all text-display font-extrabold tracking-wide text-action">
           {programme.code}
         </p>
 

@@ -224,8 +224,8 @@ function CustomerInvoice({ booking }: { booking: ConsumerBooking }) {
       </dl>
 
       <div className="mt-4 flex items-baseline justify-between gap-3 border-t border-border pt-3">
-        <p className="text-small font-semibold text-ink">Total paid</p>
-        <p className="tabular text-title font-semibold text-ink">
+        <p className="text-small font-bold text-ink">Total paid</p>
+        <p className="tabular text-title font-extrabold tracking-tight text-ink md:text-title-lg">
           {formatCurrency(booking.totalPaise)}
         </p>
       </div>
@@ -274,10 +274,10 @@ function TaxInvoice({ booking }: { booking: ConsumerBooking }) {
         </tbody>
         <tfoot>
           <tr className="border-t border-border">
-            <th scope="row" className="py-3 text-left font-semibold text-ink">
+            <th scope="row" className="py-3 text-left font-bold text-ink">
               Total payable
             </th>
-            <td className="tabular py-3 text-right text-heading font-semibold text-ink">
+            <td className="tabular py-3 text-right text-title font-extrabold tracking-tight text-ink">
               {formatCurrency(booking.totalPaise)}
             </td>
           </tr>

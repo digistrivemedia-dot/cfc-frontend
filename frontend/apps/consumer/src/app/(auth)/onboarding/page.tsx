@@ -46,26 +46,34 @@ interface SlideData {
 
 const SLIDES: SlideData[] = [
   {
+    // Solid plates with white glyphs, teal -> blue -> teal. The pale washes
+    // these used are the treatment the client rejected on the category tiles
+    // for looking washed out.
     id: "one-stop",
     icon: Zap,
-    iconBg: "bg-action-subtle",
-    iconColor: "text-action",
+    iconBg: "bg-action",
+    iconColor: "text-on-action",
     title: "One Stop Solution",
     body: "Electrical, cleaning, plumbing, beauty and 20+ more categories — all booked in under 60 seconds. No calls, no haggling.",
   },
   {
+    // Blue, not green. The approved design alternates teal and blue through
+    // any repeating set of coloured objects (.cat, .why-cell, .step, .pstat
+    // all take blue on 3n+2); green is a STATUS colour here and means
+    // "succeeded", which is not what a feature tile is saying.
     id: "verified-pros",
     icon: Shield,
-    iconBg: "bg-success-subtle",
-    iconColor: "text-success",
+    iconBg: "bg-clock",
+    iconColor: "text-on-action",
     title: "Verified Professionals",
     body: "Every pro is background-checked, trained and rated. You see their photo, ID and reviews before they arrive.",
   },
   {
+    // back to teal, completing the teal -> blue -> teal rhythm
     id: "warranty",
     icon: CheckCircle2,
-    iconBg: "bg-gain-subtle",
-    iconColor: "text-gain",
+    iconBg: "bg-action",
+    iconColor: "text-on-action",
     title: "30-Day Warranty",
     body: "Not satisfied with the work? We\u2019ll re-do it — free, within 30 days. No questions asked.",
   },
@@ -119,7 +127,7 @@ function MobileSlide({
       >
         <Icon className={`size-tile ${slide.iconColor}`} />
       </div>
-      <h2 className="text-title font-semibold text-ink">{slide.title}</h2>
+      <h2 className="text-title font-bold text-ink">{slide.title}</h2>
       <p className="mt-3 max-w-xs text-body text-ink-muted">{slide.body}</p>
     </div>
   );
@@ -176,8 +184,13 @@ export default function OnboardingPage() {
           </button>
         </header>
 
-        {/* Hero */}
-        <section className="bg-structure px-panel py-panel-lg">
+        {/* Hero.
+            Was `bg-structure` - a full-bleed dark navy band. That treatment was
+            rejected twice by the client ("the page read as dark") and the
+            approved design has no dark band anywhere: pale grounds, with the
+            colour carried by the objects sitting on them. bg-canvas is #F1FAFB,
+            the approved hero ground. */}
+        <section className="bg-canvas px-panel py-panel-lg">
           <div className="mx-auto max-w-screen-lg">
             <div className="flex items-end justify-between gap-8">
               <div className="max-w-lg">
@@ -187,12 +200,12 @@ export default function OnboardingPage() {
                     Verified professionals, fixed prices
                   </span>
                 </div>
-                <h1 className="text-display font-semibold leading-tight text-on-structure width-expanded">
+                <h1 className="text-display font-extrabold leading-tight tracking-tight text-ink width-expanded md:text-display-lg">
                   Every home service,
                   <br />
                   done right.
                 </h1>
-                <p className="mt-4 text-body text-on-structure-muted">
+                <p className="mt-4 text-body text-ink-muted">
                   Book verified professionals for repairs, cleaning, beauty and
                   more — all with a 30-day service warranty.
                 </p>
@@ -207,26 +220,33 @@ export default function OnboardingPage() {
                     Get started — it&apos;s free
                     <ChevronRight className="size-5" />
                   </Button>
-                  <span className="text-small text-on-structure-muted">
+                  <span className="text-small text-ink-muted">
                     No credit card required
                   </span>
                 </div>
               </div>
 
               {/* Service grid */}
+              {/* White cards on the pale ground, with teal/blue alternating
+                  icon tiles - the approved category-grid treatment (.cat with
+                  .cat-ic, blue on 3n+2). These were navy-on-navy, built for
+                  the dark hero that is now gone. */}
               <div className="grid grid-cols-2 gap-3">
-                {SERVICES.map(({ icon: Icon, label, price }) => (
+                {SERVICES.map(({ icon: Icon, label, price }, i) => (
                   <div
                     key={label}
-                    className="flex flex-col gap-2 rounded-card border border-on-structure-faint bg-structure-raised px-5 py-4"
+                    className="group flex flex-col gap-2 rounded-card border border-border bg-surface px-5 py-4 shadow-sm transition-all duration-fast hover:-translate-y-1 hover:border-action hover:shadow-md"
                   >
-                    <div className="flex size-tile items-center justify-center rounded-control bg-action">
-                      <Icon className="size-5 text-on-structure" />
+                    <div
+                      className={[
+                        "flex size-tile items-center justify-center rounded-control",
+                        i % 3 === 1 ? "bg-clock" : "bg-action",
+                      ].join(" ")}
+                    >
+                      <Icon className="size-5 text-on-action" />
                     </div>
-                    <p className="text-small font-medium text-on-structure">
-                      {label}
-                    </p>
-                    <p className="text-caption text-on-structure-muted">
+                    <p className="text-small font-bold text-ink">{label}</p>
+                    <p className="text-caption font-semibold text-action">
                       {price}
                     </p>
                   </div>
@@ -239,12 +259,20 @@ export default function OnboardingPage() {
         {/* Stats bar */}
         <section className="border-b border-border bg-surface px-panel py-6">
           <div className="mx-auto flex max-w-screen-lg items-center justify-between">
-            {PROMISES.map(({ value, label }) => (
+            {/* The figure carries the colour, alternating teal and blue as the
+                approved trust metrics do. All three in flat navy read as body
+                copy rather than as the three things being promised. */}
+            {PROMISES.map(({ value, label }, i) => (
               <div key={label} className="text-center">
-                <p className="text-title font-semibold text-structure">
+                <p
+                  className={[
+                    "text-title font-extrabold tracking-tight md:text-title-lg",
+                    i === 1 ? "text-clock" : "text-action",
+                  ].join(" ")}
+                >
                   {value}
                 </p>
-                <p className="text-small text-ink-muted">{label}</p>
+                <p className="mt-1 text-small text-ink-muted">{label}</p>
               </div>
             ))}
           </div>
@@ -253,23 +281,27 @@ export default function OnboardingPage() {
         {/* Feature cards */}
         <section className="flex-1 px-panel py-panel-lg">
           <div className="mx-auto max-w-screen-lg">
-            <h2 className="mb-8 text-center text-title font-semibold text-ink">
+            <h2 className="mb-8 text-center text-title font-bold text-ink">
               Why customers choose CFC
             </h2>
             <div className="grid grid-cols-3 gap-6">
               {SLIDES.map((s) => {
                 const Icon = s.icon;
+                // the approved .why-cell: a lift and a teal edge on hover, and
+                // a SOLID icon plate rather than a pale wash - the washes were
+                // the exact "washed-out" treatment the client rejected on the
+                // category tiles
                 return (
                   <div
                     key={s.id}
-                    className="rounded-card border border-border bg-surface p-6 shadow-sm"
+                    className="rounded-card border border-border bg-surface p-6 shadow-sm transition-all duration-fast hover:-translate-y-1 hover:border-action hover:shadow-md"
                   >
                     <div
                       className={`mb-4 inline-flex size-12 items-center justify-center rounded-control ${s.iconBg}`}
                     >
                       <Icon className={`size-6 ${s.iconColor}`} />
                     </div>
-                    <h3 className="text-heading font-semibold text-ink">
+                    <h3 className="text-heading font-bold text-ink">
                       {s.title}
                     </h3>
                     <p className="mt-2 text-body text-ink-muted">{s.body}</p>

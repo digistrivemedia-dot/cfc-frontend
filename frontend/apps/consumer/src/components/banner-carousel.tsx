@@ -107,22 +107,26 @@ export function BannerCarousel({ banners }: { banners: Banner[] }) {
               loading={current === 0 ? "eager" : "lazy"}
               className="absolute inset-0 size-full object-cover"
             />
-            {/* Gradient so text reads over any artwork */}
+            {/* A scrim over a photograph is legibility work, not decoration,
+                so it stays - but in the approved ink (#0E2A47) rather than the
+                superseded navy, so it matches every other overlay in the app. */}
             <span
               className="absolute inset-0"
               style={{
                 background:
-                  "linear-gradient(to right, rgba(14,31,61,0.8), rgba(14,31,61,0.4), transparent)",
+                  "linear-gradient(to right, rgba(16,41,76,0.86), rgba(16,41,76,0.45), transparent)",
               }}
               aria-hidden="true"
             />
             <span className="relative p-4 md:p-6">
-              <span className="block text-heading font-semibold text-on-structure md:text-title"
+              <span
+                className="block text-heading font-extrabold tracking-tight text-on-action md:text-title"
                 style={{ maxWidth: "280px" }}
               >
                 {banner.title}
               </span>
-              <span className="mt-1 inline-flex items-center gap-1 text-small font-medium text-on-structure-muted">
+              {/* reads as a control, not as grey caption text */}
+              <span className="mt-3 inline-flex items-center gap-1 rounded-pill bg-surface px-3 py-2 text-caption font-bold text-action shadow-sm">
                 View offer →
               </span>
             </span>

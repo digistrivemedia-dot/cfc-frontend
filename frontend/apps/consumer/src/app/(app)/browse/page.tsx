@@ -438,7 +438,7 @@ export default function HomePage() {
               <p className="text-caption font-semibold uppercase tracking-wide text-action">
                 {group.eyebrow}
               </p>
-              <h2 className="mt-1 text-title font-semibold tracking-tight text-ink md:text-title-lg">
+              <h2 className="mt-1 text-title font-bold tracking-tight text-ink md:text-title-lg">
                 {group.title}
               </h2>
               <p className="mt-1 text-small text-ink-muted">
@@ -541,12 +541,16 @@ function Band({
 }) {
   return (
     <section className="mt-12">
-      <div className="mb-4">
-        <h2 className="text-title font-semibold tracking-tight text-ink md:text-title-lg">
-          {title}
-        </h2>
+      {/* `text-section` is the fluid heading scale from brand.css (24px ->
+          36px, weight 700). The old `text-title md:text-title-lg` step tops
+          out at 30px, which left every section heading noticeably smaller
+          than the same heading on the approved home page. */}
+      <div className="mb-5">
+        <h2 className="text-section text-ink">{title}</h2>
         {description && (
-          <p className="mt-1 text-small text-ink-muted">{description}</p>
+          <p className="mt-2 max-w-screen-sm text-body text-ink-muted">
+            {description}
+          </p>
         )}
       </div>
       {children}
@@ -702,42 +706,36 @@ function HowItWorks() {
   ];
 
   return (
-    <section className="relative isolate mt-12 overflow-hidden rounded-card bg-structure">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 130% at 12% 0%, rgba(0,184,196,0.22) 0%, transparent 62%)",
-        }}
-      />
-
+    /* Was a dark navy panel carrying a radial teal gradient. The approved
+       design forbids both: no dark band anywhere (rejected twice as "the page
+       reads as dark"), and no gradient on any fill (cfccolors-spec.md §1).
+       This is the home page's own "How it works" treatment instead - a pale
+       panel with white step cards, numbers alternating teal and blue. */
+    <section className="mt-20 overflow-hidden rounded-card bg-canvas">
       <div className="p-6 md:p-panel">
-        <p className="text-caption font-semibold uppercase tracking-wide text-brand-bright">
+        <p className="text-caption font-bold uppercase tracking-wide text-action">
           How it works
         </p>
-        <h2 className="mt-2 max-w-screen-sm text-title font-semibold tracking-tight text-on-structure md:text-title-lg">
+        <h2 className="mt-2 max-w-screen-sm text-title font-extrabold tracking-tight text-ink md:text-title-lg">
           Three steps, no phone calls, no haggling.
         </h2>
 
-        <ol className="mt-8 grid gap-6 md:grid-cols-3">
+        <ol className="mt-8 grid gap-4 md:grid-cols-3">
           {STEPS.map(({ n, title, body }, i) => (
-            <li key={n} className="relative">
-              {/* A hairline joining the steps, so they read as a sequence
-                  rather than three unrelated boxes. */}
-              {i < STEPS.length - 1 && (
-                <span
-                  aria-hidden="true"
-                  className="absolute left-0 top-6 hidden h-px w-full bg-structure-muted md:block"
-                />
-              )}
-              <span className="relative flex size-tile items-center justify-center rounded-full bg-brand text-caption font-semibold text-structure">
+            <li
+              key={n}
+              className="rounded-card border border-border bg-surface p-5 shadow-sm transition-all duration-fast hover:-translate-y-1 hover:border-action hover:shadow-md"
+            >
+              <span
+                className={cn(
+                  "flex size-tile items-center justify-center rounded-control text-body font-extrabold text-on-action",
+                  i === 1 ? "bg-clock" : "bg-action",
+                )}
+              >
                 {n}
               </span>
-              <p className="mt-4 text-body font-semibold text-on-structure">
-                {title}
-              </p>
-              <p className="mt-2 text-small leading-relaxed text-on-structure-muted">
+              <p className="mt-4 text-body font-bold text-ink">{title}</p>
+              <p className="mt-2 text-small leading-relaxed text-ink-muted">
                 {body}
               </p>
             </li>
@@ -773,9 +771,9 @@ function WhyCfc() {
   ];
 
   return (
-    <section className="mt-12 overflow-hidden rounded-card border border-border bg-surface">
+    <section className="mt-16 overflow-hidden rounded-card border border-border bg-surface">
       <div className="border-b border-border px-6 py-5">
-        <h2 className="text-title font-semibold tracking-tight text-ink md:text-title-lg">
+        <h2 className="text-title font-bold tracking-tight text-ink md:text-title-lg">
           Why City Family Care
         </h2>
         <p className="mt-1 text-small text-ink-muted">
@@ -814,9 +812,9 @@ function WhyCfc() {
  */
 function Testimonials({ reviews }: { reviews: Review[] }) {
   return (
-    <section className="mt-12">
+    <section className="mt-16">
       <div className="mb-4">
-        <h2 className="text-title font-semibold tracking-tight text-ink md:text-title-lg">
+        <h2 className="text-title font-bold tracking-tight text-ink md:text-title-lg">
           What customers say
         </h2>
         {REVIEWS_ARE_PLACEHOLDER ? (
@@ -886,26 +884,21 @@ function TestimonialCard({ review }: { review: Review }) {
  */
 function JoinAsPro() {
   return (
-    <section className="relative isolate mt-12 overflow-hidden rounded-card bg-structure">
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 130% at 88% 100%, rgba(0,184,196,0.22) 0%, transparent 62%)",
-        }}
-      />
-
+    /* Pale panel, per the approved pro band - which was itself a saturated
+       teal slab until the client said it "breaks the flow", and is now
+       #EEF4FC with the colour carried by the objects on it. Dark navy plus a
+       radial gradient breaks both of that section's rules at once. */
+    <section className="mt-20 overflow-hidden rounded-card bg-clock-subtle">
       <div className="flex flex-col items-start gap-6 p-6 md:flex-row md:items-center md:justify-between md:p-panel">
         <div className="min-w-0">
-          <p className="flex items-center gap-1 text-caption font-semibold uppercase tracking-wide text-brand-bright">
+          <p className="flex items-center gap-1 text-caption font-bold uppercase tracking-wide text-promo">
             <Sparkles className="size-4" aria-hidden="true" />
             For professionals
           </p>
-          <h2 className="mt-2 max-w-screen-sm text-title font-semibold tracking-tight text-on-structure">
+          <h2 className="mt-2 max-w-screen-sm text-title font-extrabold tracking-tight text-ink">
             Good at a trade? Get matched with paying jobs near you.
           </h2>
-          <p className="mt-2 max-w-screen-sm text-small leading-relaxed text-on-structure-muted">
+          <p className="mt-2 max-w-screen-sm text-small leading-relaxed text-ink-muted">
             Set your own hours, get paid after every job, and grow with a
             platform that verifies you once and vouches for you every time.
           </p>
@@ -917,9 +910,11 @@ function JoinAsPro() {
         <Link
           href="/register?role=pro"
           className={cn(
-            "flex h-touch shrink-0 items-center gap-2 rounded-control bg-brand px-6",
-            "text-small font-semibold text-structure",
-            "transition-colors duration-fast hover:bg-brand-bright",
+            // white label on teal, as every primary button in the approved
+            // design - navy-on-teal was built for the dark panel
+            "flex h-touch shrink-0 items-center gap-2 rounded-control bg-action px-6",
+            "text-small font-bold text-on-action shadow-sm",
+            "transition-all duration-fast hover:bg-action-hover hover:shadow-md",
             "focus-visible:outline-none focus-visible:outline-focus",
           )}
         >
@@ -939,13 +934,13 @@ function JoinAsPro() {
  */
 function GetTheApp() {
   return (
-    <section className="mt-12 overflow-hidden rounded-card border border-border bg-surface">
+    <section className="mt-16 overflow-hidden rounded-card border border-border bg-surface">
       <div className="grid items-center gap-6 p-6 md:grid-cols-2 md:p-8">
         <div className="min-w-0">
           <p className="text-caption font-semibold uppercase tracking-wide text-action">
             Coming soon
           </p>
-          <h2 className="mt-2 text-title font-semibold tracking-tight text-ink md:text-title-lg">
+          <h2 className="mt-2 text-title font-bold tracking-tight text-ink md:text-title-lg">
             Book on the go
           </h2>
           <p className="mt-2 max-w-screen-sm text-small leading-relaxed text-ink-muted">

@@ -66,7 +66,7 @@ function SupportInner() {
 
   return (
     <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
-      <h1 className="text-title font-semibold text-ink">Help and support</h1>
+      <h1 className="text-title font-bold text-ink">Help and support</h1>
 
       {/* The helpline, first. */}
       <a

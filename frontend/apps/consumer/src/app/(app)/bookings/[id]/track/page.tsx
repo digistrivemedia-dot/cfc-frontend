@@ -110,7 +110,7 @@ function TrackPageInner() {
         Booking details
       </Link>
 
-      <h1 className="mt-3 text-title font-semibold text-ink">
+      <h1 className="mt-3 text-title font-bold text-ink">
         {travelling
           ? "On the way"
           : onSite
@@ -317,15 +317,17 @@ function Eta({ minutes }: { minutes: number | null }) {
     >
       {left > 0 ? (
         <>
-          <p className="tabular text-display font-semibold text-ink">
+          {/* The countdown is the reason this screen is open. Teal and
+              extrabold, as the approved hero sets its own live ETA. */}
+          <p className="tabular text-display font-extrabold tracking-tight text-action">
             {left} min
           </p>
-          <p className="text-caption text-ink-muted">
+          <p className="mt-1 text-caption text-ink-muted">
             Estimated arrival · about {formatTime(new Date(Date.now() + left * 60_000))}
           </p>
         </>
       ) : (
-        <p className="text-heading font-semibold text-live-ink">
+        <p className="text-heading font-extrabold text-live-ink">
           Arriving any moment now
         </p>
       )}

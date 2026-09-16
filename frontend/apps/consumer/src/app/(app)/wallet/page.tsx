@@ -105,7 +105,7 @@ function WalletInner() {
 
   return (
     <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
-      <h1 className="text-title font-semibold text-ink">Wallet</h1>
+      <h1 className="text-title font-bold text-ink">Wallet</h1>
 
       {/* Balance. The one number this screen exists for, so it gets the room. */}
       <section className="mt-3 rounded-card border border-action-line bg-action-subtle p-4">
@@ -113,7 +113,7 @@ function WalletInner() {
         {balance === null ? (
           <Skeleton className="mt-1 h-8 w-line-md" />
         ) : (
-          <p className="tabular text-display font-semibold text-ink">
+          <p className="tabular text-display font-extrabold tracking-tight text-action">
             {formatCurrency(balance)}
           </p>
         )}

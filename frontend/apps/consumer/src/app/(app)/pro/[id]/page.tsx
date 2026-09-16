@@ -192,18 +192,11 @@ export default function ProProfilePage() {
 function IdentityCard({ pro }: { pro: PublicPro }) {
   return (
     <div className="overflow-hidden rounded-card border border-border bg-surface shadow-sm">
-      {/* A navy cap so the avatar has something to sit against. Without it the
-          photograph floated on white and the card had no top. */}
-      <div className="relative h-block-xs bg-structure">
-        <div
-          aria-hidden="true"
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse 80% 140% at 20% 0%, rgba(0,184,196,0.28) 0%, transparent 60%)",
-          }}
-        />
-      </div>
+      {/* A teal cap so the avatar has something to sit against. It was navy
+          carrying a radial gradient - a dark band plus a gradient fill, both
+          of which the approved design removed. Flat brand colour instead,
+          which also ties the card to the rest of the app. */}
+      <div className="h-block-xs bg-action" />
 
       <div className="px-4 pb-4">
         {/* Pulled up over the navy cap. */}
@@ -218,7 +211,7 @@ function IdentityCard({ pro }: { pro: PublicPro }) {
         </Avatar>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <h1 className="text-title font-semibold tracking-tight text-ink">
+          <h1 className="text-title font-bold tracking-tight text-ink">
             {pro.name}
           </h1>
           {/* The badge means KYC cleared, which is a real check the platform

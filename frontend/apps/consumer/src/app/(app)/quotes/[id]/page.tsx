@@ -137,7 +137,7 @@ function QuotationPageInner() {
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-title font-semibold text-ink">
+          <h1 className="text-title font-bold text-ink">
             {accepted ? "Work approved" : "Extra work needed"}
           </h1>
           <p className="text-small text-ink-muted">{quote.serviceName}</p>
@@ -250,8 +250,9 @@ function QuotationPageInner() {
           )}
           <Line label="Labour" value={quote.laborPaise} />
           <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
-            <dt className="text-small font-semibold text-ink">Quotation total</dt>
-            <dd className="tabular text-heading font-semibold text-ink">
+            <dt className="text-small font-bold text-ink">Quotation total</dt>
+            {/* the figure the customer is deciding on - set like money */}
+            <dd className="tabular text-title font-extrabold tracking-tight text-ink">
               {formatCurrency(quote.totalPaise)}
             </dd>
           </div>

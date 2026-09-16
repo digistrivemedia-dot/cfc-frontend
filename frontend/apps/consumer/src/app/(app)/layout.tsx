@@ -1,47 +1,36 @@
 /**
  * Authenticated app route group layout.
  *
- * Desktop: sticky top nav bar + sub-nav links.
- * Mobile:  top bar with location + sticky bottom tab bar.
- * Content area is padded so it never hides behind either.
+ * Every screen behind a sign-in renders the SAME chrome as the signed-in home:
+ * the approved app bar, the icon sprite it depends on, and the approved
+ * footer. `AppShell` carries all three.
+ *
+ * This used to assemble its own: `ConsumerTopBar`, `ConsumerMobileTopBar`,
+ * `ConsumerBottomNav` and `ConsumerFooter`, all built in Tailwind and all
+ * visibly different from the home screen's. Those components have been
+ * deleted rather than left beside the shared ones, so there is no second
+ * implementation to drift.
  */
 import * as React from "react";
-import {
-  ConsumerTopBar,
-  ConsumerMobileTopBar,
-  ConsumerBottomNav,
-} from "@/components/consumer-nav";
-import { ConsumerFooter } from "@/components/consumer-footer";
+import { AppShell } from "@/app/(home)/app-shell";
 import { ScenarioHook } from "@/components/scenario-hook";
-import { AppMain } from "@/components/app-main";
 import { CartBar } from "@/components/cart-bar";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
+    // The flex column is what keeps the footer at the bottom on a short page
+    // instead of floating it up under the content. The old layout had this and
+    // I dropped it when swapping in AppShell.
     <div className="flex min-h-screen flex-col bg-canvas">
       {/* Console helpers for reviewing empty / error / slow states.
           Development only; renders nothing. */}
       <ScenarioHook />
 
-      {/* Desktop top nav */}
-      <ConsumerTopBar />
+      <AppShell>{children}</AppShell>
 
-      {/* Mobile top bar */}
-      <ConsumerMobileTopBar />
-
-      {/* Main content — bottom padding on mobile leaves room for the tab bar */}
-      {/* `flex-1` so a short page still pushes the footer to the bottom of
-          the viewport rather than leaving it floating mid-screen. */}
-      <AppMain>{children}</AppMain>
-
-      <ConsumerFooter />
-
-      {/* Mobile bottom tab bar */}
       {/* Appears the moment the basket has something in it, on every screen
           except the basket and the booking flow. */}
       <CartBar />
-
-      <ConsumerBottomNav />
     </div>
   );
 }

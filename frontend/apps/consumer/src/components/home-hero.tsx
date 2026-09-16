@@ -58,7 +58,7 @@ export function HomeHero({
     <section className="bg-canvas">
       <div className="mx-auto max-w-screen-xl px-4 pb-6 pt-6 md:px-6 md:pt-8 lg:px-8">
         <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-          <h1 className="text-title font-semibold tracking-tight text-ink md:text-title-lg">
+          <h1 className="text-title font-bold tracking-tight text-ink md:text-title-lg">
             What can we help you with?
           </h1>
           {area && (
@@ -72,25 +72,12 @@ export function HomeHero({
           )}
         </div>
 
-        <div className="relative isolate overflow-hidden rounded-card bg-structure">
-          {/* Two light sources at opposite corners give the card a diagonal
-              fall-off rather than a flat field of navy. */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 -z-10"
-            style={{
-              background:
-                "radial-gradient(ellipse 70% 120% at 5% 0%, rgba(0,184,196,0.22) 0%, transparent 58%)",
-            }}
-          />
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 -z-10"
-            style={{
-              background:
-                "radial-gradient(ellipse 80% 120% at 95% 100%, rgba(37,99,235,0.34) 0%, transparent 62%)",
-            }}
-          />
+        {/* Pale, not navy. This was a dark card lit by two radial gradients -
+            the exact treatment the approved home page removed, twice over: the
+            client rejected the dark reading, and cfccolors-spec.md §1 forbids
+            a gradient on any fill. The approved hero is flat #F1FAFB and lets
+            the copy and the photograph carry the screen. */}
+        <div className="overflow-hidden rounded-card border border-border bg-canvas">
 
           {/* The copy comes first in the DOM — it is the substance, and a
               screen reader should reach the headline before a decorative
@@ -99,17 +86,25 @@ export function HomeHero({
               order can differ without duplicating the markup. */}
           <div className="flex flex-col lg:grid lg:grid-cols-2 lg:items-center">
             <div className="order-2 p-5 md:p-8 lg:order-1">
-              <h2 className="text-display font-semibold leading-tight tracking-tight text-on-structure lg:text-display-lg">
+              {/* `text-hero` is the fluid display scale from brand.css - it
+                  carries its own size clamp (34px -> 60px), weight 800 and
+                  tracking, which is why no font/tracking utility is paired
+                  with it. It was defined when the approved design language
+                  landed but never actually used, so this hero was still
+                  rendering at the old 32/44px step while the approved home
+                  page next to it ran to 60px. That size gap is most of why
+                  the two felt like different products. */}
+              <h2 className="text-hero text-ink">
                 The price you see is{" "}
-                <span className="text-brand-bright">the price you pay.</span>
+                <span className="text-action">the price you pay.</span>
               </h2>
 
-              <p className="mt-3 max-w-screen-sm text-body leading-relaxed text-on-structure-muted">
+              <p className="mt-3 max-w-screen-sm text-body leading-relaxed text-ink-muted">
                 Repairs, cleaning, beauty and care
                 {startingPricePaise !== null && (
                   <>
                     {" from "}
-                    <span className="font-semibold text-on-structure">
+                    <span className="font-bold text-ink">
                       {formatCurrency(startingPricePaise)}
                     </span>
                   </>
@@ -131,8 +126,8 @@ export function HomeHero({
                   href="/categories"
                   className={cn(
                     "flex h-touch flex-1 items-center justify-center gap-2 rounded-control",
-                    "bg-brand px-5 text-small font-semibold text-structure",
-                    "transition-colors duration-fast hover:bg-brand-bright",
+                    "bg-action px-5 text-small font-bold text-on-action shadow-sm",
+                    "transition-all duration-fast hover:bg-action-hover hover:shadow-md",
                     "focus-visible:outline-none focus-visible:outline-focus",
                     "sm:flex-none",
                   )}
@@ -150,9 +145,11 @@ export function HomeHero({
                   href={topServiceId ? `/book/${topServiceId}` : "/categories"}
                   className={cn(
                     "flex h-touch flex-1 items-center justify-center gap-2 rounded-control",
-                    "border border-on-structure-faint px-5",
-                    "text-small font-semibold text-on-structure",
-                    "transition-colors duration-fast hover:bg-structure-raised",
+                    // the approved .btn-ghost: white fill, ink label, teal edge
+                    // on hover with a small neutral lift
+                    "border border-border bg-surface px-5",
+                    "text-small font-bold text-ink",
+                    "transition-all duration-fast hover:border-action hover:text-action hover:shadow-sm",
                     "focus-visible:outline-none focus-visible:outline-focus",
                     "sm:flex-none",
                   )}
@@ -166,15 +163,13 @@ export function HomeHero({
                   <li
                     key={label}
                     className={cn(
-                      "flex items-center gap-2 rounded-pill border border-structure-muted",
-                      "bg-structure-raised px-3 py-1",
-                      "text-caption font-medium text-on-structure",
+                      // pale teal pills, as the approved design sets every
+                      // small reassurance
+                      "flex items-center gap-2 rounded-pill bg-action-subtle px-3 py-2",
+                      "text-caption font-semibold text-action",
                     )}
                   >
-                    <Icon
-                      className="size-3 shrink-0 text-brand-bright"
-                      aria-hidden="true"
-                    />
+                    <Icon className="size-3 shrink-0" aria-hidden="true" />
                     {label}
                   </li>
                 ))}

@@ -45,18 +45,12 @@ export default function SplashPage() {
 
   return (
     <div
-      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-structure"
+      // Pale ground with the mark carrying the colour, as everywhere else in
+      // the approved design. It was dark navy under a blue radial gradient -
+      // a dark band and a gradient fill, both of which that design removed.
+      className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-canvas"
       aria-label="City Family Care splash screen"
     >
-      {/* Decorative radial glow behind the logo */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 55% at 50% 42%, rgba(37,99,235,0.22) 0%, transparent 70%)",
-        }}
-      />
 
       {/* Logo lockup */}
       <div
@@ -76,17 +70,18 @@ export default function SplashPage() {
             fill="none"
             aria-hidden
           >
-            {/* Shield body */}
+            {/* Shield body. Solid teal: these fills were translucent white
+                over the old navy ground and would be invisible on the pale
+                one. The white house inside now reads against brand colour,
+                which is how the mark is drawn everywhere else. */}
             <path
               d="M48 4 L88 20 L88 56 C88 80 66 100 48 108 C30 100 8 80 8 56 L8 20 Z"
-              fill="rgba(255,255,255,0.12)"
-              stroke="rgba(255,255,255,0.35)"
-              strokeWidth="2"
+              fill="var(--color-action)"
             />
             {/* Inner shield highlight */}
             <path
               d="M48 14 L80 27 L80 56 C80 76 62 94 48 101 C34 94 16 76 16 56 L16 27 Z"
-              fill="rgba(37,99,235,0.28)"
+              fill="var(--color-action-press)"
             />
             {/* House silhouette */}
             <g transform="translate(24, 30)">
@@ -115,17 +110,14 @@ export default function SplashPage() {
 
         {/* Wordmark */}
         <div className="flex flex-col items-center gap-1 text-center">
-          <p
-            className="text-display font-semibold tracking-wide text-on-structure width-expanded"
-          >
+          {/* CFC in orange, as the approved lockup sets the superscript */}
+          <p className="text-display font-extrabold tracking-wide text-promo width-expanded">
             CFC
           </p>
-          <p className="text-heading font-medium text-on-structure">
-            City Family Care
+          <p className="text-heading font-extrabold tracking-tight text-ink">
+            CityFamilyCare
           </p>
-          <p className="mt-1 text-body text-on-structure-muted">
-            Trusted Home Services
-          </p>
+          <p className="mt-1 text-body text-ink-muted">Trusted Home Services</p>
         </div>
       </div>
 

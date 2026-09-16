@@ -288,7 +288,7 @@ function CodeStep({
             aria-invalid={error !== null}
             className={cn(
               "tabular h-touch-lg w-full min-w-0 rounded-control border text-center",
-              "text-title font-semibold text-ink",
+              "text-title font-bold text-ink",
               "transition-colors duration-fast",
               "focus:outline-none focus-visible:outline-focus",
               "disabled:bg-neutral-subtle",

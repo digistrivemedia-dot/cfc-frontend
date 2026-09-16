@@ -99,7 +99,7 @@ export default function LegalPage() {
         Settings
       </Link>
 
-      <h1 className="mt-3 text-title font-semibold text-ink">{doc.title}</h1>
+      <h1 className="mt-3 text-title font-bold text-ink">{doc.title}</h1>
 
       <div className="mt-4">
         <InlineAlert tone="clock" title="Awaiting the final wording">

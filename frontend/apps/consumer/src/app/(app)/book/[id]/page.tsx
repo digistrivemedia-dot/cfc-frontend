@@ -1066,8 +1066,9 @@ function AddressSheet({
               type="checkbox"
               checked={makeDefault}
               onChange={(e) => setMakeDefault(e.target.checked)}
-              className="size-4 accent-action"
+              className="sr-only"
             />
+            <span className="cfc-check" aria-hidden="true" />
             Use this as my default address
           </label>
         </SheetBody>

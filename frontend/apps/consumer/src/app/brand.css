@@ -49,17 +49,184 @@
   specificity regardless of where the bundler puts it.
 */
 html:root {
-  /* The Figma teal. Fills only — see the note above. */
-  --color-action: #00b8c4;
+  /* NOTE ON THE EARLIER FIGMA TEAL (#00b8c4)
+     ----------------------------------------
+     This file previously set the action colour to #00b8c4, from an earlier
+     Figma. It has been superseded by #0fb3a6 below - the teal in the handoff
+     prototype the client signed off. The old declarations are removed rather
+     than left above the new ones: two values for one token in the same block
+     resolves only by source order, which silently breaks the moment anyone
+     reorders the file.
 
-  /* Hover and press, derived from the new base so the interaction still reads
-     as "pressing down". Without these the button would hover DARKER than its
-     own resting state by a large jump, which feels like a different control. */
-  --color-action-hover: #00a4b0;
-  --color-action-press: #00909b;
+     The contrast trade-off recorded above still applies, and is slightly
+     better now: white on #0fb3a6 measures 2.9:1 against #00b8c4's 2.43:1.
+     Both are below the 4.5:1 WCAG floor for body text. The cheapest fix
+     remains the label colour, not the teal. */
 
-  /* The tint used behind hovered rows and subtle chips, lifted to sit with the
-     brighter base rather than against it. */
-  --color-action-subtle: #eafafb;
-  --color-action-line: #b7e9ee;
+  /* ═══════════════════════════════════════════════════════════════════════
+     THE APPROVED DESIGN LANGUAGE
+     Ported from cfc-handoff/reference (the two pages the client signed off).
+
+     CONSUMER ONLY. This file is imported by apps/consumer/src/app/layout.tsx
+     and by nothing else - Pro and Admin load `@cfc/ui/styles.css` alone, so
+     they cannot be reached by anything below. That is a property of the
+     import graph, not a convention, which is why no shared file is edited.
+
+     Every value here redefines a token the 42 existing screens ALREADY
+     resolve through - 908 utility classes across the app read these
+     variables. Changing them here repaints every consumer screen without
+     editing a single component.
+     ═══════════════════════════════════════════════════════════════════════ */
+
+  /* ── Colour ─────────────────────────────────────────────────────────────
+     Rationed, not few. The discipline is the point: a page built from a small
+     palette used with restraint reads expensive; ten hues read like a template.
+
+     NOTE: this block used to end "No orange, per the client." That is no longer
+     true and was left over from the handoff prototype. The client subsequently
+     supplied a pixel-sampled palette (final/cfccolors-spec.md) that includes
+     orange, and the approved home page spends it in four places - HOT badges,
+     the "most booked" badge, the pro-band eyebrow and the live-ETA pill - plus
+     yellow for rating stars. Both are defined below. */
+
+  /* Teal is the brand and the only accent. */
+  /* UNIFIED WITH THE APPROVED HOME PAGE (2026-09-15).
+     ------------------------------------------------
+     These were #0fb3a6, the handoff prototype's teal. The client then supplied
+     a pixel-sampled palette (final/cfccolors-spec.md) and approved the home
+     page built from it, which uses #02BABC - a visibly different teal. The two
+     stylesheets were therefore rendering different brand colours: the home page
+     from home-pages.css, and the other 43 screens from this file.
+
+     Changing this one variable repaints all 43 - 248 utility usages across 37
+     files resolve through it, with no component edits.
+
+     `hover` is now LIGHTER than the base, not darker. The approved design's
+     rule (cfccolors-spec.md spec 3) is that a coloured control lightens and
+     gains a coloured glow on hover; the old #07837a darkened it, which is the
+     one thing that spec forbids outright. */
+  --color-action: #02BABC;
+  --color-action-hover: #07D2CE;
+  --color-action-press: #01A09E;
+  --color-action-subtle: #E2F7F7;
+  --color-action-line: #B6E5E6;
+
+  --color-brand: #02BABC;
+  --color-brand-bright: #07D2CE;
+  --color-brand-deep: #01A09E;
+
+  /* Navy carries all text and every dark band. Warmer and slightly lighter
+     than the shared #0f1728. */
+  /* the approved page's navy: --ink / --ink-2 / --muted in home-pages.css */
+  --color-ink: #0E2A47;
+  --color-ink-muted: #6A83A0;
+  --color-ink-faint: #8fa3b8;
+  --color-structure: #0E2A47;
+  --color-structure-raised: #143252;
+
+  /* Paper separates sections; white is the card surface. The prototype
+     alternates the two down the page, which is what stops a long scroll
+     reading as one flat sheet. */
+  --color-canvas: #F1FAFB;
+  --color-surface: #ffffff;
+  --color-neutral-subtle: #f5f8fa;
+  --color-border: #E3ECF4;
+  --color-border-soft: #eef3f7;
+
+  /* Blue is a TINT, not a second brand: every third icon plate and one promo
+     card. It exists so a twelve-tile grid is not monotone. Nothing else. */
+  --color-clock: #2464D0;
+  --color-clock-subtle: #E9F0FC;
+  --color-clock-ink: #2464D0;
+
+  /* ── Promotional accent and rating stars ────────────────────────────────
+     Both come from the client's approved palette (final/cfccolors-spec.md)
+     and both are used on the finished home page. Neither existed as a
+     consumer value before, so badges and star ratings could not be built on
+     the other 43 screens without inventing a raw hex - which the house lint
+     rule rightly forbids.
+
+     ORANGE IS RATIONED. Four uses on the whole home page. It marks what must
+     not read as teal; spending it more widely destroys the signal.
+
+     `--color-star` is redefined here rather than in packages/tokens because
+     Pro and Admin use the shared #b98218 (8 usages between them) and must
+     keep it. This override reaches the consumer app alone. */
+  --color-promo: #F47B20;
+  --color-promo-bright: #FF9440;
+  --color-promo-subtle: #FDF0E6;
+  --color-star: #F5A623;
+
+  /* ── Shape ──────────────────────────────────────────────────────────────
+     The shared scale is 5/6/8px - correct for an admin console, wrong for a
+     shopfront. `--radius-control` also drives the shared Button primitive,
+     so buttons become pill-shaped here without that component being touched.
+
+     Button HEIGHT deliberately stays at the shared 44px: the prototype's
+     46px is a 2px difference nobody perceives, 44px is the accessibility
+     floor for a touch target, and reaching it would mean editing the shared
+     preset. Not worth the risk to Pro and Admin. */
+  --radius-pill: 9999px;
+  --radius-control: 14px;
+  --radius-card: 20px;
+
+  /* ── Depth ──────────────────────────────────────────────────────────────
+     Two layers each - a tight contact shadow plus a wide ambient one. That
+     construction is what makes a card look placed on the page rather than
+     outlined on it. The shared 5%-alpha shadows are below the perceptual
+     threshold at these blurs. */
+  /* The approved page's three tiers, to the value. These were tuned against
+     the superseded navy rgba(11,34,57); the shipped palette's ink is #0E2A47,
+     i.e. rgba(16,41,76), so every shadow in the app was cast in a slightly
+     different colour from the home page's. Neutral at rest - colour appears
+     only in a hover glow (cfccolors-spec.md spec 3).
+
+     sm = --shadow-card  (resting cards)
+     md = --shadow-lift  (menus, popovers, raised surfaces)
+     lg = --shadow-float (drawers, dialogs, the floating hero card) */
+  --shadow-sm: 0 2px 10px rgba(16, 41, 76, .06);
+  --shadow-md: 0 10px 30px -14px rgba(16, 41, 76, .32);
+  --shadow-lg: 0 22px 48px -22px rgba(16, 41, 76, .38);
+}
+
+/*
+  The typeface.
+
+  `font-sans` in the shared preset is hardcoded to `var(--font-archivo)` - it
+  is not routed through an overridable variable, so unlike every colour and
+  radius above it cannot be swapped by redefining a token. The options were to
+  edit the shared preset (which would reach Pro and Admin) or to override the
+  resolved property here. This is the second.
+
+  `html:root body` rather than `body`: Tailwind emits its own `body` rule from
+  `@layer base`, and matching its specificity is not enough to win reliably
+  once the bundler decides source order. The extra element selector settles it.
+*/
+html:root body {
+  font-family: var(--font-jakarta), var(--font-archivo), system-ui, sans-serif;
+}
+
+/*
+  Display type.
+
+  `clamp()` is the prototype's own mechanism - the headline scales continuously
+  with the viewport instead of jumping at breakpoints, which is why its hero
+  never needs a `md:` variant. These are plain classes rather than preset
+  entries for the same reason as the font: the preset is shared.
+
+  Tracking tightens as size grows. At 60px the default letter-spacing looks
+  slack, and every premium marketplace sets its display type tight.
+*/
+html:root .text-hero {
+  font-size: clamp(2.1rem, 1.15rem + 3.1vw, 3.75rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+
+html:root .text-section {
+  font-size: clamp(1.5rem, 1.05rem + 1.5vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  line-height: 1.14;
 }

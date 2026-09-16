@@ -129,7 +129,7 @@ function BookingDetailPageInner() {
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-title font-semibold text-ink">
+          <h1 className="text-title font-bold text-ink">
             {booking.serviceName}
           </h1>
           {booking.variantName !== null && (

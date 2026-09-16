@@ -131,7 +131,7 @@ export default function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
-      <h1 className="text-title font-semibold text-ink">Settings</h1>
+      <h1 className="text-title font-bold text-ink">Settings</h1>
 
       {/* Notifications — genuinely functional. */}
       <section className="mt-4 overflow-hidden rounded-card border border-border bg-surface">

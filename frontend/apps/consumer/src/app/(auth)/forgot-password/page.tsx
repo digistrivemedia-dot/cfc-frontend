@@ -17,6 +17,12 @@ function normalisePhone(raw: string): string {
   return raw.replace(/\D/g, "").slice(0, 10);
 }
 
+/** `80000 00000`, matching /login. Display only - state stays raw digits. */
+function formatPhone(digits: string): string {
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)} ${digits.slice(5)}`;
+}
+
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const [phone, setPhone] = React.useState("");
@@ -48,10 +54,14 @@ export default function ForgotPasswordPage() {
       backHref="/login"
       backLabel="Back to login"
     >
-      {/* Informational callout */}
-      <div className="mb-6 rounded-control border border-border bg-warning-subtle px-4 py-3">
-        <p className="text-small text-warning">
-          <span className="font-medium">{"Note\u00a0\u2014\u00a0"}</span>
+      {/* Informational, not a warning. Nothing has gone wrong - this explains
+          that the platform has no passwords at all. It was amber-on-amber,
+          which reads as an error and is the wrong signal for the first thing
+          on the screen. Teal wash with a left rule: the approved design's
+          treatment for a quiet aside. */}
+      <div className="mb-6 rounded-control border-l-4 border-action bg-action-subtle px-4 py-3">
+        <p className="text-small text-ink-muted">
+          <span className="font-bold text-promo">{"Note\u00a0\u2014\u00a0"}</span>
           {"CFC uses mobile OTP for login. There\u2019s no separate password."}
         </p>
       </div>
@@ -64,8 +74,9 @@ export default function ForgotPasswordPage() {
       >
         <FormField label="Registered mobile number" required>
           <div className="relative">
+            {/* matches /login and /register */}
             <span
-              className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-body font-medium text-ink-muted"
+              className="pointer-events-none absolute inset-y-px left-px flex items-center rounded-l-control border-r border-border bg-action-subtle px-3 text-body font-bold text-action"
               aria-hidden
             >
               +91
@@ -75,11 +86,11 @@ export default function ForgotPasswordPage() {
               type="tel"
               inputMode="numeric"
               placeholder="98765 43210"
-              value={phone}
+              value={formatPhone(digits)}
               onChange={(e) => setPhone(e.target.value)}
-              maxLength={10}
+              maxLength={11}
               autoComplete="tel-national"
-              className="pl-12"
+              className="pl-16 text-body font-semibold tracking-wide"
               aria-label="Registered mobile number"
             />
           </div>
@@ -104,15 +115,25 @@ export default function ForgotPasswordPage() {
         </Button>
       </form>
 
-      <button
-        id="forgot-go-login"
-        type="button"
-        className="mt-4 w-full text-center text-small text-ink-muted hover:text-ink"
-        onClick={() => router.push("/login")}
-      >
+      {/* divider + link, matching /login and /register so all three read as
+          one flow */}
+      <div className="my-8 flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-small text-ink-muted">or</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <div className="text-center text-body text-ink-muted">
         Remember your account?{" "}
-        <span className="font-medium text-action">Log in</span>
-      </button>
+        <button
+          id="forgot-go-login"
+          type="button"
+          className="font-semibold text-action underline-offset-2 hover:underline"
+          onClick={() => router.push("/login")}
+        >
+          Log in
+        </button>
+      </div>
     </AuthShell>
   );
 }

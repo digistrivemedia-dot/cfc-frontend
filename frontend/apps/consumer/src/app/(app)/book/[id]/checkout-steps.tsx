@@ -202,7 +202,9 @@ export function OptionsStep({
         </div>
         <div className="shrink-0 text-right">
           <p className="text-caption text-ink-muted">Subtotal</p>
-          <p className="tabular text-heading font-semibold text-ink">
+          {/* the running total is what the customer is tracking through the
+              flow, so it is set like money rather than like a heading */}
+          <p className="tabular text-title font-extrabold tracking-tight text-ink">
             {formatCurrency(runningTotalPaise)}
           </p>
         </div>
@@ -234,11 +236,17 @@ function VariantRow({
   onSelect: () => void;
 }) {
   return (
+    /* A radio CARD, not a radio row. This is the choice the whole price
+       depends on, and at p-3 with a hairline it read as a list item. Selected
+       gains a teal edge, the wash and a shadow so the current choice is
+       obvious at a glance. */
     <label
       className={cn(
-        "flex cursor-pointer items-center gap-3 rounded-control border p-3",
-        "transition-colors duration-fast",
-        selected ? "border-action bg-action-subtle" : "border-border",
+        "flex cursor-pointer items-center gap-3 rounded-card border-2 p-4",
+        "transition-all duration-fast",
+        selected
+          ? "border-action bg-action-subtle shadow-sm"
+          : "border-border hover:border-action",
       )}
     >
       <input
@@ -247,17 +255,18 @@ function VariantRow({
         value={variant.id}
         checked={selected}
         onChange={onSelect}
-        className="size-4 shrink-0 accent-action"
+        className="sr-only"
       />
+      <span className="cfc-radio" aria-hidden="true" />
       <span className="min-w-0 flex-1">
-        <span className="block text-small font-medium text-ink">
+        <span className="block text-body font-bold text-ink">
           {variant.name}
         </span>
         <span className="tabular block text-caption text-ink-muted">
           About {formatDuration(variant.durationMinutes)}
         </span>
       </span>
-      <span className="tabular shrink-0 text-small font-semibold text-ink">
+      <span className="tabular shrink-0 text-heading font-extrabold tracking-tight text-ink">
         {formatCurrency(basePricePaise + variant.priceDeltaPaise)}
       </span>
     </label>
@@ -285,10 +294,11 @@ function AddOnRow({
         type="checkbox"
         checked={checked}
         onChange={onToggle}
-        className="mt-px size-4 shrink-0 accent-action"
+        className="sr-only"
       />
+      <span className="cfc-check mt-px" aria-hidden="true" />
       <span className="min-w-0 flex-1">
-        <span className="block text-small font-medium text-ink">
+        <span className="block text-small font-bold text-ink">
           {addOn.name}
         </span>
         <span className="mt-px block text-caption text-ink-muted">
@@ -298,8 +308,10 @@ function AddOnRow({
           Adds about {formatDuration(addOn.durationMinutes)}
         </span>
       </span>
-      <span className="tabular shrink-0 text-small font-semibold text-ink">
-        {formatCurrency(addOn.pricePaise)}
+      {/* teal, because an add-on price is money being ADDED - it should read
+          as a consequence of ticking the box, not as neutral metadata */}
+      <span className="tabular shrink-0 text-small font-extrabold text-action">
+        +{formatCurrency(addOn.pricePaise)}
       </span>
     </label>
   );
@@ -902,8 +914,9 @@ export function PaymentStep({
                   checked={selected}
                   disabled={disabled}
                   onChange={() => onMethodChange(id)}
-                  className="size-4 shrink-0 accent-action"
+                  className="sr-only"
                 />
+                <span className="cfc-radio" aria-hidden="true" />
                 <Icon
                   className={cn(
                     "size-4 shrink-0",

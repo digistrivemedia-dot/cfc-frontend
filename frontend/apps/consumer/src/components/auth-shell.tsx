@@ -64,6 +64,8 @@ export function AuthShell({
   const router = useRouter();
 
   return (
+    // bg-canvas is #F1FAFB, the approved hero ground, so the plane the card
+    // sits on is the same one the home page opens with.
     <div className="flex min-h-screen flex-col bg-canvas">
       {/* The mark is a link home. Someone who reached a login page by accident
           — or who wants to look around before committing — must be able to
@@ -72,14 +74,24 @@ export function AuthShell({
         <Link
           href="/"
           className={cn(
-            "flex items-center gap-2 rounded-control",
+            "flex items-center gap-3 rounded-control",
             "transition-opacity duration-fast hover:opacity-80",
             "focus-visible:outline-none focus-visible:outline-focus",
           )}
         >
-          <Logo className="size-mark text-action" />
-          <span className="text-heading font-semibold tracking-tight text-ink">
-            City Family Care
+          {/* The approved lockup, matching the home page header: the mark on a
+              filled teal tile, the wordmark set tight as one word, and CFC as a
+              true orange superscript. It was a bare teal glyph beside "City
+              Family Care" in three words - a different brand presentation on
+              the screen a customer reaches directly from that header. */}
+          <span className="grid size-touch place-items-center rounded-control bg-action text-on-action shadow-sm">
+            <Logo className="size-5" />
+          </span>
+          <span className="text-heading font-extrabold tracking-tight text-ink">
+            CityFamilyCare
+            <sup className="ml-px align-super text-caption font-extrabold tracking-wider text-promo">
+              CFC
+            </sup>
           </span>
         </Link>
       </header>
@@ -103,33 +115,53 @@ export function AuthShell({
               </button>
             )}
 
-            {/* The card. A border and a small shadow, not a floating slab —
-                the page behind it is plain canvas, so it does not need to
-                fight for separation. */}
-            <div className="rounded-card border border-border bg-surface p-6 shadow-sm md:p-8">
-              <h1 className="text-title font-semibold tracking-tight text-ink">
-                {heading}
-              </h1>
-              {subheading && (
-                <p className="mt-2 text-small leading-relaxed text-ink-muted">
-                  {subheading}
-                </p>
-              )}
+            {/* The card, given the weight the approved design gives its
+                floating surfaces. It was a flat white rectangle with a hairline
+                and a near-invisible shadow: correct tokens, no presence. The
+                home page lifts anything that floats above the page plane
+                (--shadow-float on the hero card, the cart, the popovers), and
+                this card is the only object on the screen. */}
+            <div className="overflow-hidden rounded-card border border-border bg-surface shadow-lg">
+              {/* A teal hairline across the top, echoing the filled mark above
+                  it, so the card is anchored to the brand rather than floating
+                  as a neutral box. */}
+              <div className="h-1 bg-action" aria-hidden="true" />
 
-              <div className="mt-6">{children}</div>
+              <div className="p-6 md:p-8">
+                <h1 className="text-title font-extrabold tracking-tight text-ink md:text-title-lg">
+                  {heading}
+                </h1>
+                {subheading && (
+                  <p className="mt-2 text-small leading-relaxed text-ink-muted">
+                    {subheading}
+                  </p>
+                )}
+
+                <div className="mt-6">{children}</div>
+              </div>
             </div>
 
+            {/* A SOLID blue glyph plate on a white pill, which is how the
+                approved home page makes a small object read as bright: colour
+                goes on the object, not behind the text.
+
+                These were pale-blue text on a #E9F0FC wash - a near-white
+                ground under low-contrast type, which is exactly why the row
+                looked dull and washed out. The label now sits in full ink on
+                white, and the colour does its work in the plate beside it. */}
             {showAssurance && (
-              <ul className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+              <ul className="mt-6 flex flex-wrap items-center justify-center gap-2">
                 {ASSURANCES.map(({ icon: Icon, label }) => (
                   <li
                     key={label}
-                    className="flex items-center gap-2 text-caption text-ink-muted"
+                    className={cn(
+                      "flex items-center gap-2 rounded-pill border border-border bg-surface",
+                      "py-1 pl-1 pr-4 text-caption font-bold text-ink shadow-sm",
+                    )}
                   >
-                    <Icon
-                      className="size-4 shrink-0 text-action"
-                      aria-hidden="true"
-                    />
+                    <span className="grid size-6 shrink-0 place-items-center rounded-full bg-clock text-on-action">
+                      <Icon className="size-4" aria-hidden="true" />
+                    </span>
                     {label}
                   </li>
                 ))}

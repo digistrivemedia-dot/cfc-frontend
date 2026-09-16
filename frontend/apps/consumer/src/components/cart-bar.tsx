@@ -127,7 +127,17 @@ export function CartBar() {
           </span>
         </span>
 
-        <span className="flex shrink-0 items-center gap-1 rounded-control bg-action px-3 py-2 text-small font-semibold text-on-action">
+        {/* ORANGE, and this is the right place to spend it.
+
+            The bar sits on a page whose every other action is teal - the Book
+            button, the Add stepper, the selected option. A teal Checkout on a
+            teal-edged white card was one more teal thing among several, and
+            the one control that must be found instantly read as the quietest.
+
+            Orange is the app's "this is the thing" colour (the HOT badge, the
+            most-booked mark). Nothing else on a service page is orange, so
+            this cannot be missed. */}
+        <span className="flex shrink-0 items-center gap-1.5 rounded-control bg-promo px-4 py-2.5 text-small font-bold text-white shadow-[0_6px_16px_-6px_rgba(244,123,32,.7)]">
           Checkout
           <ArrowRight className="size-4" aria-hidden="true" />
         </span>

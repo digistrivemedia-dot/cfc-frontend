@@ -43,7 +43,11 @@ export function ConfirmationStep({
     <div className="mx-auto mt-8 max-w-screen-sm text-center">
       <span
         className={cn(
-          "inline-flex size-tile-lg items-center justify-center rounded-full bg-live-subtle text-live-ink",
+          // Teal, matching the approved hero's own confirmation tick
+          // (.done-mark is var(--teal) on a solid fill). A pale green circle
+          // was the one green thing in the consumer app and read as a system
+          // status rather than as CFC confirming the job.
+          "inline-flex size-tile-lg items-center justify-center rounded-full bg-action text-on-action shadow-md",
           // The animation is decoration. Anyone who has asked their system to
           // stop moving things gets the tick without the bounce.
           !reducedMotion && "animate-in",
@@ -53,7 +57,7 @@ export function ConfirmationStep({
         <Check className="size-8" />
       </span>
 
-      <h1 className="mt-4 text-title font-semibold text-ink">
+      <h1 className="mt-4 text-title font-extrabold tracking-tight text-ink md:text-title-lg">
         Your booking is confirmed
       </h1>
       <p className="mt-1 text-small text-ink-muted">

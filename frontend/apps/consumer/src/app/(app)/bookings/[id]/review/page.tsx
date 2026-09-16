@@ -120,12 +120,14 @@ function ReviewPageInner() {
     return (
       <div className="mx-auto max-w-screen-sm px-4 py-12 text-center md:px-6">
         <span
-          className="inline-flex size-tile-lg items-center justify-center rounded-full bg-live-subtle text-live-ink"
+          // teal confirmation tick, as on the booking confirmation and the
+          // approved hero's own .done-mark
+          className="inline-flex size-tile-lg items-center justify-center rounded-full bg-action text-on-action shadow-md"
           aria-hidden="true"
         >
           <Check className="size-8" />
         </span>
-        <h1 className="mt-4 text-title font-semibold text-ink">
+        <h1 className="mt-4 text-title font-bold text-ink">
           {done ? "Thank you" : "Already rated"}
         </h1>
         <p className="mt-1 text-small text-ink-muted">
@@ -150,7 +152,7 @@ function ReviewPageInner() {
         Booking details
       </Link>
 
-      <h1 className="mt-3 text-title font-semibold text-ink">How was it?</h1>
+      <h1 className="mt-3 text-title font-bold text-ink">How was it?</h1>
       <p className="text-small text-ink-muted">
         {booking.serviceName}
         {booking.pro !== null ? ` with ${booking.pro.name}` : ""}

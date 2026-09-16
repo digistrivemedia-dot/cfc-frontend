@@ -588,3 +588,94 @@
     gap: 6px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   12. RADIO AND CHECKBOX — replacing the browser's own control
+   ═══════════════════════════════════════════════════════════════════════
+   `accent-color` recolours the DOT of a native radio and the TICK of a native
+   checkbox. It does not touch the ring around either, which stays the
+   browser's dark grey - the black ring that showed on every unselected option
+   across the booking flow.
+
+   There is no CSS property that changes it. The only fix is to hide the
+   native control and draw the whole thing, which is what these do.
+
+   The input itself stays in the DOM as `sr-only`: still focusable, still in
+   the tab order, still announced, still keyboard-operable, still submitted
+   with a form. Only its appearance is replaced. */
+
+.cfc-radio,
+.cfc-check {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: var(--white, #fff);
+  border: 1.5px solid var(--line, #E3ECF4);
+  transition:
+    border-color 0.18s,
+    background 0.18s,
+    box-shadow 0.18s;
+}
+
+.cfc-radio {
+  border-radius: 50%;
+}
+
+.cfc-check {
+  border-radius: 6px;
+}
+
+/* Hover belongs to the whole row, not the 20px control - a customer aims at
+   the label, not the dot. */
+label:hover > .cfc-radio,
+label:hover > .cfc-check {
+  border-color: var(--teal, #02BABC);
+}
+
+/* CHECKED — driven by the sibling input, so no JS and no class juggling. */
+input:checked + .cfc-radio {
+  border-color: var(--teal, #02BABC);
+  box-shadow: inset 0 0 0 1px var(--teal, #02BABC);
+}
+
+input:checked + .cfc-radio::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--teal, #02BABC);
+}
+
+input:checked + .cfc-check {
+  border-color: var(--teal, #02BABC);
+  background: var(--teal, #02BABC);
+}
+
+/* The tick is drawn, not a glyph: a font tick sits differently in every
+   typeface and cannot be centred reliably. */
+input:checked + .cfc-check::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  margin-top: -2px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* FOCUS — the native ring is invisible on an `sr-only` input, so without
+   this a keyboard user tabbing a payment-method list has no idea where they
+   are. */
+input:focus-visible + .cfc-radio,
+input:focus-visible + .cfc-check {
+  outline: 2.5px solid var(--teal-deep, #01A09E);
+  outline-offset: 3px;
+}
+
+input:disabled + .cfc-radio,
+input:disabled + .cfc-check {
+  opacity: 0.45;
+  border-color: var(--line, #E3ECF4);
+}

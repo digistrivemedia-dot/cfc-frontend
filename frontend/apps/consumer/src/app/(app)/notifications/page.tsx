@@ -108,7 +108,7 @@ function NotificationsInner() {
   return (
     <div className="mx-auto max-w-screen-md px-4 pt-4 md:px-6 md:pb-12">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-title font-semibold text-ink">Notifications</h1>
+        <h1 className="text-title font-bold text-ink">Notifications</h1>
         {unread > 0 && (
           <Button
             variant="ghost"

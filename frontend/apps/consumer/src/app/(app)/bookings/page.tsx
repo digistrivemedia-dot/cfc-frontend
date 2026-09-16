@@ -86,7 +86,7 @@ function BookingsInner() {
 
   return (
     <div className="mx-auto max-w-screen-lg px-4 pt-4 md:px-6 md:pb-12 lg:px-8">
-      <h1 className="text-title font-semibold text-ink">My bookings</h1>
+      <h1 className="text-title font-bold text-ink">My bookings</h1>
 
       {/* Scrolls on a phone: four tabs with counts do not fit at 390px. */}
       <div
@@ -186,8 +186,9 @@ function BookingCard({ booking }: { booking: ConsumerBooking }) {
     <Link
       href={`/bookings/${booking.id}`}
       className={cn(
-        "block rounded-card border border-border bg-surface p-4",
-        "transition-colors duration-fast hover:border-action-line",
+        "block rounded-card border border-border bg-surface p-4 shadow-sm",
+        // the approved card hover: a lift and a teal edge
+        "transition-all duration-fast hover:-translate-y-1 hover:border-action hover:shadow-md",
       )}
     >
       <div className="flex items-start gap-3">
@@ -201,7 +202,7 @@ function BookingCard({ booking }: { booking: ConsumerBooking }) {
             )}
           </div>
 
-          <p className="mt-2 text-small font-semibold text-ink">
+          <p className="mt-2 text-body font-bold text-ink">
             {booking.serviceName}
           </p>
           {booking.variantName !== null && (
@@ -221,7 +222,7 @@ function BookingCard({ booking }: { booking: ConsumerBooking }) {
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-1">
-          <span className="tabular text-small font-semibold text-ink">
+          <span className="tabular text-heading font-extrabold tracking-tight text-ink">
             {formatCurrency(booking.totalPaise)}
           </span>
           <ChevronRight className="size-4 text-ink-faint" aria-hidden="true" />

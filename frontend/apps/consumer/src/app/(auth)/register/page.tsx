@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { Button, FormField, Input, toast } from "@cfc/ui";
@@ -18,6 +19,12 @@ function normalisePhone(raw: string): string {
   return raw.replace(/\D/g, "").slice(0, 10);
 }
 
+/** `80000 00000`, matching /login. Display only - state stays raw digits. */
+function formatPhone(digits: string): string {
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)} ${digits.slice(5)}`;
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const { signedIn } = useSession();
@@ -26,6 +33,7 @@ export default function RegisterPage() {
   // Sent home rather than shown a screen that asks them to prove who they
   // already are.
   React.useEffect(() => {
+    // `/` renders the signed-in home for a signed-in customer.
     if (signedIn) router.replace("/");
   }, [signedIn, router]);
   const [name, setName] = React.useState("");
@@ -79,8 +87,10 @@ export default function RegisterPage() {
 
         <FormField label="Mobile number" required>
           <div className="relative">
+            {/* matches /login: a divided cell, not grey text floating inside
+                the field - the code is fixed and cannot be edited away */}
             <span
-              className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-body font-medium text-ink-muted"
+              className="pointer-events-none absolute inset-y-px left-px flex items-center rounded-l-control border-r border-border bg-action-subtle px-3 text-body font-bold text-action"
               aria-hidden
             >
               +91
@@ -90,11 +100,11 @@ export default function RegisterPage() {
               type="tel"
               inputMode="numeric"
               placeholder="98765 43210"
-              value={phone}
+              value={formatPhone(digits)}
               onChange={(e) => setPhone(e.target.value)}
-              maxLength={10}
+              maxLength={11}
               autoComplete="tel-national"
-              className="pl-12"
+              className="pl-16 text-body font-semibold tracking-wide"
               aria-label="Mobile number"
             />
           </div>
@@ -134,22 +144,42 @@ export default function RegisterPage() {
         </Button>
       </form>
 
-      <div className="mt-8 text-center text-body text-ink-muted">
+      {/* Divider, as on /login, so the two screens read as one flow rather
+          than two differently-built forms. */}
+      <div className="my-8 flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+        <span className="text-small text-ink-muted">or</span>
+        <div className="h-px flex-1 bg-border" />
+      </div>
+
+      <div className="text-center text-body text-ink-muted">
         Already have an account?{" "}
         <button
           id="register-go-login"
           type="button"
-          className="font-medium text-action hover:text-action-hover"
+          className="font-bold text-promo underline-offset-2 hover:underline"
           onClick={() => router.push("/login")}
         >
           Log in
         </button>
       </div>
 
-      <p className="mt-6 text-center text-caption text-ink-muted">
+      {/* real links - these were teal spans that did nothing */}
+      <p className="mt-8 text-center text-caption text-ink-muted">
         By registering you agree to our{" "}
-        <span className="text-action">Terms of Service</span> and{" "}
-        <span className="text-action">Privacy Policy</span>
+        <Link
+          href="/legal/terms"
+          className="font-semibold text-ink underline-offset-2 hover:text-action hover:underline"
+        >
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link
+          href="/legal/privacy"
+          className="font-semibold text-ink underline-offset-2 hover:text-action hover:underline"
+        >
+          Privacy Policy
+        </Link>
       </p>
     </AuthShell>
   );

@@ -108,6 +108,9 @@ function OtpInner() {
       if (from === "forgot-password") {
         toast.success("Verified — you're signed in.");
       }
+      // `/` now resolves by session - it renders the signed-in home for a
+      // signed-in customer - so this lands on their own screen while keeping
+      // one canonical address for "home".
       router.replace("/");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Invalid OTP. Please try again.");
@@ -169,26 +172,50 @@ function OtpInner() {
                 // and `flex-1` grows from that floor rather than shrinking
                 // below it, so six boxes forced the row far wider than its
                 // container and pushed a horizontal scrollbar onto the page.
-                "h-touch min-w-0 flex-1 rounded-control border text-center",
-                "text-heading font-semibold text-ink",
+                // Taller, rounder and heavier than a text field. These six
+                // boxes ARE the screen - at h-touch with heading text they
+                // read as six small inputs rather than as the one thing being
+                // asked for. touch-lg is the existing 56px step.
+                "h-touch-lg min-w-0 flex-1 rounded-card border-2 text-center",
+                "text-title font-extrabold tabular-nums text-ink",
                 // `outline-focus` rather than a ring: it is the token the rest
                 // of the app focuses with, so the focus state here matches
                 // every other field. (`ring-action` does compile — unlike
                 // `ring-focus`, which has no ring colour defined at all.)
                 "transition-all duration-150 focus:outline-none focus-visible:outline-focus",
+                // a filled box gains the teal wash AND a shadow, so progress
+                // through the code is visible at a glance
                 digit
-                  ? "border-action bg-action-subtle"
+                  ? "border-action bg-action-subtle shadow-sm"
                   : "border-border bg-surface",
               ].join(" ")}
             />
           ))}
         </div>
 
-        {/* Status hint */}
-        <p className="text-center text-small text-ink-muted" aria-live="polite">
-          {isComplete
-            ? "Code ready \u2014 tap Verify to continue"
-            : "Waiting for auto-fill\u2026"}
+        {/* Status, as a pill rather than a grey line. It changes as the code
+            arrives, so it is a state indicator - the approved design puts
+            those in tinted pills (.eyebrow, the live-ETA chip), and a filled
+            code turning the pill teal confirms the step is done. */}
+        <p className="flex justify-center" aria-live="polite">
+          <span
+            className={[
+              "inline-flex items-center gap-2 rounded-pill px-3 py-2 text-caption font-semibold",
+              isComplete
+                ? "bg-action-subtle text-action"
+                : "bg-neutral-subtle text-ink-muted",
+            ].join(" ")}
+          >
+            {isComplete ? (
+              <>
+                Code ready &mdash; tap{" "}
+                <span className="font-extrabold text-promo">Verify</span> to
+                continue
+              </>
+            ) : (
+              "Waiting for auto-fill…"
+            )}
+          </span>
         </p>
 
         <Button
@@ -208,15 +235,17 @@ function OtpInner() {
         {resendSeconds > 0 ? (
           <p className="text-small text-ink-muted">
             Resend OTP in{" "}
-            <span className="font-medium text-ink tabular-nums">
+            <span className="font-extrabold text-promo tabular-nums">
               0:{resendSeconds.toString().padStart(2, "0")}
             </span>
           </p>
         ) : (
+          // an outlined control once it is live, not a text link: it is the
+          // only way out of a screen where the code never arrived
           <button
             id="otp-resend"
             type="button"
-            className="inline-flex items-center gap-1 text-small font-medium text-action hover:text-action-hover disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-pill border border-border bg-surface px-4 py-2 text-small font-semibold text-action transition-all hover:border-action hover:shadow-sm disabled:opacity-50"
             onClick={handleResend}
             disabled={resending}
           >

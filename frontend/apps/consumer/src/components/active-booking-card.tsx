@@ -39,16 +39,12 @@ export function ActiveBookingCard({ booking }: { booking: ConsumerBooking }) {
   return (
     <section
       aria-label="Your current booking"
-      className="relative isolate overflow-hidden rounded-card bg-structure"
+      // Pale panel with a teal edge, not a dark navy card under a blue
+      // radial gradient. This sits at the top of the signed-in home, so it
+      // was the first thing a returning customer saw - in the one treatment
+      // the approved design removed.
+      className="overflow-hidden rounded-card border-l-4 border-action bg-canvas shadow-sm"
     >
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 -z-10"
-        style={{
-          background:
-            "radial-gradient(ellipse 70% 140% at 88% 50%, rgba(37,99,235,0.32) 0%, transparent 70%)",
-        }}
-      />
 
       <div className="flex flex-wrap items-center justify-between gap-4 p-5 md:p-6">
         <div className="min-w-0 flex-1">
@@ -61,16 +57,16 @@ export function ActiveBookingCard({ booking }: { booking: ConsumerBooking }) {
               )}
               aria-hidden="true"
             />
-            <span className="text-caption font-semibold uppercase tracking-wide text-on-structure-muted">
+            <span className="text-caption font-semibold uppercase tracking-wide text-ink-muted">
               {status.label}
             </span>
           </p>
 
-          <h2 className="mt-2 text-title font-semibold tracking-tight text-on-structure">
+          <h2 className="mt-2 text-title font-extrabold tracking-tight text-ink">
             {booking.serviceName}
           </h2>
 
-          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-on-structure-muted">
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-ink-muted">
             <span className="tabular">{booking.reference}</span>
             <span className="flex items-center gap-1">
               <MapPin className="size-3 shrink-0" aria-hidden="true" />
@@ -85,9 +81,9 @@ export function ActiveBookingCard({ booking }: { booking: ConsumerBooking }) {
 
           {pro && (
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <span className="flex items-center gap-2 text-small text-on-structure">
+              <span className="flex items-center gap-2 text-small text-ink">
                 <span className="font-medium">{pro.name}</span>
-                <span className="flex items-center gap-1 text-on-structure-muted">
+                <span className="flex items-center gap-1 text-ink-muted">
                   <Star
                     className="size-3 text-star"
                     fill="currentColor"
@@ -99,9 +95,9 @@ export function ActiveBookingCard({ booking }: { booking: ConsumerBooking }) {
               <a
                 href={`tel:${pro.phone}`}
                 className={cn(
-                  "flex items-center gap-2 rounded-control border border-on-structure-faint px-3 py-1",
-                  "text-small font-medium text-on-structure",
-                  "transition-colors duration-fast hover:bg-structure-raised",
+                  "flex items-center gap-2 rounded-control border border-border bg-surface px-3 py-1",
+                  "text-small font-medium text-ink",
+                  "transition-colors duration-fast hover:bg-action-subtle",
                   "focus-visible:outline-none focus-visible:outline-focus",
                 )}
               >
@@ -113,9 +109,9 @@ export function ActiveBookingCard({ booking }: { booking: ConsumerBooking }) {
 
           {/* The completion code, shown only once there is one to show. */}
           {booking.completionOtp && (
-            <p className="mt-4 text-small text-on-structure-muted">
+            <p className="mt-4 text-small text-ink-muted">
               Share this code when the work is done:{" "}
-              <span className="tabular text-heading font-semibold tracking-wide text-on-structure">
+              <span className="tabular text-heading font-semibold tracking-wide text-ink">
                 {booking.completionOtp}
               </span>
             </p>

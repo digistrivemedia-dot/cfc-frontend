@@ -50,9 +50,11 @@ export function ShopServiceCard({
       className={cn(
         "group flex h-full flex-col overflow-hidden rounded-card border bg-surface",
         "transition-all duration-base",
+        // the approved card hover: a real lift and a teal edge, not just a
+        // slightly stronger shadow
         inCart
           ? "border-action shadow-md"
-          : "border-border shadow-sm hover:border-action-line hover:shadow-md",
+          : "border-border shadow-sm hover:-translate-y-1 hover:border-action hover:shadow-md",
       )}
     >
       <Link
@@ -77,7 +79,10 @@ export function ShopServiceCard({
           {/* The sub-category, as a label on the image. It tells a customer
               scanning a mixed grid what kind of work this is without adding a
               line of text under every card. */}
-          <span className="absolute left-2 top-2 rounded-pill bg-structure px-2 py-1 text-caption font-semibold uppercase tracking-wide text-on-structure">
+          {/* Teal, not navy. The approved badges sit in brand colour on the
+              media panel (.bk-badge); a navy pill on a photograph is the dark
+              treatment the client rejected. */}
+          <span className="absolute left-2 top-2 rounded-pill bg-action px-2 py-1 text-caption font-bold uppercase tracking-wide text-on-action shadow-sm">
             {subCategoryName}
           </span>
         </div>
@@ -87,7 +92,8 @@ export function ShopServiceCard({
         <Link
           href={`/service/${id}`}
           className={cn(
-            "rounded-control text-small font-semibold text-ink",
+            // 15px bold, not 13px semibold: the name is what a customer scans
+            "rounded-control text-body font-bold leading-snug text-ink",
             "transition-colors duration-fast hover:text-action",
             "focus-visible:outline-none focus-visible:outline-focus",
           )}
@@ -101,11 +107,20 @@ export function ShopServiceCard({
           </p>
         )}
 
+        {/* A filled pill, as the approved rail sets a rating (.bk-rate) - a
+            grey line with a tiny glyph read as metadata rather than as a score
+            worth trusting. */}
         {rating !== undefined && rating > 0 && (
           <p className="mt-2 flex items-center gap-1 text-caption text-ink-muted">
-            <Star className="size-3 text-star" fill="currentColor" aria-hidden="true" />
-            <span className="tabular font-medium text-ink">
-              {rating.toFixed(1)}
+            <span className="inline-flex items-center gap-1 rounded-pill bg-neutral-subtle px-2 py-1">
+              <Star
+                className="size-3 text-star"
+                fill="currentColor"
+                aria-hidden="true"
+              />
+              <span className="tabular font-bold text-ink">
+                {rating.toFixed(1)}
+              </span>
             </span>
             {reviewCount !== undefined && reviewCount > 0 && (
               <span className="tabular">({reviewCount})</span>
@@ -116,9 +131,13 @@ export function ShopServiceCard({
         {/* Price and action share the last line, pinned to the bottom so cards
             of different text lengths still line up. */}
         <div className="mt-auto flex items-end justify-between gap-2 pt-3">
+          {/* The price leads. It was text-body at font-semibold AND
+              width-condensed - the most important number on the card set
+              narrower than the words around it. The approved design sets
+              prices large, heavy and teal (.bk-price). */}
           <span className="min-w-0">
             <span className="block text-caption text-ink-muted">from</span>
-            <span className="tabular block text-body font-semibold text-ink width-condensed">
+            <span className="tabular block text-heading font-extrabold tracking-tight text-ink">
               {formatCurrency(fromPricePaise)}
             </span>
           </span>
@@ -174,9 +193,11 @@ export function ShopServiceCard({
                 toast.success(`${name} added`);
               }}
               className={cn(
-                "flex h-8 shrink-0 items-center gap-1 rounded-control border border-action px-3",
-                "text-small font-semibold text-action",
-                "transition-colors duration-fast hover:bg-action hover:text-on-action",
+                // Solid, not outlined. This is the card's primary action and
+                // the approved rail gives it a filled teal button ("Book Now").
+                "flex h-touch shrink-0 items-center gap-1 rounded-control bg-action px-4",
+                "text-small font-bold text-on-action shadow-sm",
+                "transition-all duration-fast hover:bg-action-hover hover:shadow-md",
                 "focus-visible:outline-none focus-visible:outline-focus",
               )}
             >

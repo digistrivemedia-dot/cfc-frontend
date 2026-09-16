@@ -57,7 +57,7 @@ export function RequireAccount({
           <LogIn className="size-6" aria-hidden="true" />
         </span>
 
-        <h1 className="mt-4 text-title font-semibold tracking-tight text-ink">
+        <h1 className="mt-4 text-title font-bold tracking-tight text-ink">
           {title}
         </h1>
         <p className="mt-2 max-w-screen-sm text-body leading-relaxed text-ink-muted">

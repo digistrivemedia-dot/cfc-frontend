@@ -33,9 +33,9 @@ export function SubCategoryTile({
       href={href}
       className={cn(
         "group relative flex aspect-card flex-col justify-end overflow-hidden rounded-card",
-        "border border-border bg-structure shadow-sm",
+        "border border-border bg-surface shadow-sm",
         "transition-all duration-base",
-        "hover:border-action-line hover:shadow-md",
+        "hover:-translate-y-1 hover:border-action hover:shadow-md",
         "focus-visible:outline-none focus-visible:outline-focus",
       )}
     >
@@ -47,23 +47,25 @@ export function SubCategoryTile({
         className="absolute inset-0 size-full object-cover transition-transform duration-base group-hover:scale-105"
       />
 
-      {/* Legibility scrim. A photograph alone cannot guarantee contrast for
-          the label, and the label is the part that has to be readable. */}
+      {/* A light scrim only, since the label now has its own plate. The old
+          one ran to 88% navy at the foot, which is what made these tiles read
+          as dark. */}
       <div
         aria-hidden="true"
         className="absolute inset-0"
         style={{
           background:
-            "linear-gradient(to top, rgba(23,26,60,0.88) 0%, rgba(23,26,60,0.35) 40%, rgba(23,26,60,0) 72%)",
+            "linear-gradient(to top, rgba(16,41,76,0.28) 0%, rgba(16,41,76,0) 55%)",
         }}
       />
 
-      <div className="relative p-3">
-        <p className="text-small font-semibold leading-tight text-on-structure">
-          {name}
-        </p>
+      {/* The label sits on a white plate rather than directly on the scrim, so
+          it reads as a card caption rather than as text floating over a dark
+          photograph - the treatment the approved design replaced. */}
+      <div className="relative m-2 rounded-control bg-surface p-3 shadow-sm">
+        <p className="text-small font-bold leading-tight text-ink">{name}</p>
         {serviceCount !== undefined && serviceCount > 1 && (
-          <p className="mt-px text-caption text-on-structure-muted">
+          <p className="mt-px text-caption text-ink-muted">
             {serviceCount} services
           </p>
         )}

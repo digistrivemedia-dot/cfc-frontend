@@ -1,3 +1,4 @@
+import { Plus_Jakarta_Sans } from "next/font/google";
 import localFont from "next/font/local";
 
 /**
@@ -26,6 +27,29 @@ export const archivo = localFont({
     { path: "../fonts/archivo-latin-ext.woff2", weight: "100 900", style: "normal" },
   ],
   variable: "--font-archivo",
+  display: "swap",
+  fallback: ["system-ui", "sans-serif"],
+});
+
+/**
+ * Plus Jakarta Sans - the consumer app's face.
+ *
+ * Archivo above stays the platform face and is what Pro and Admin use. The
+ * consumer app moved to Jakarta because it is what the client approved in the
+ * handoff prototype, and it is the better fit for a shopfront: geometric,
+ * high contrast at display sizes, and it ships a real 800 weight, which is
+ * what lets a hero headline read as a headline rather than a large heading.
+ *
+ * `next/font/google` downloads and self-hosts at BUILD time - no runtime
+ * request to fonts.googleapis.com. That matters because the Archivo note
+ * above is explicit that no third party should be able to alter this app's
+ * typography at page load, and the prototype's `@import` of a Google
+ * stylesheet would give up exactly that property.
+ */
+export const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-jakarta",
   display: "swap",
   fallback: ["system-ui", "sans-serif"],
 });

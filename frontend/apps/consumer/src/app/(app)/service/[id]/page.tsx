@@ -397,7 +397,7 @@ function BookingCard({
                     onChange={() => onSelect(v.id)}
                     className="sr-only"
                   />
-                  <span className="cfc-row-dot" aria-hidden="true" />
+                  <span className="cfc-radio" aria-hidden="true" />
                   <span className="min-w-0 flex-1">
                     <span className="block text-small font-semibold text-ink">
                       {v.name}
@@ -430,11 +430,14 @@ function BookingCard({
           is what sat here — is a dead end: booking two bathroom cleans is a
           real thing, and it forced a trip to the basket to say so. */}
       {inCart ? (
-        /* S1: "1 added" alone never said added to WHAT. S2: this sat at
-           near-equal weight to the primary Book button, so a customer had to
-           choose between two controls that looked equally important. A hairline
-           border and muted label put it a clear step below. */
-        <div className="mt-2 hidden items-center justify-between gap-3 rounded-control border border-border p-1 lg:flex">
+        /* A quantity stepper, not a second call to action.
+
+           Full-width with a border, directly under "Book this service", it
+           read as a rival button - two controls of equal size where only one
+           is the decision. It is now a small centred control: the customer
+           has already added, so this only exists to change how many, and the
+           checkout bar at the foot of the page carries the way forward. */
+        <div className="mx-auto mt-3 hidden w-fit items-center gap-1 rounded-pill border border-border bg-canvas p-0.5 lg:flex">
           <button
             type="button"
             aria-label="Remove one"
@@ -447,13 +450,12 @@ function BookingCard({
           >
             <Minus className="size-4" aria-hidden="true" />
           </button>
-          {/* Just the count. Saying "in your cart" here duplicated the
-              checkout bar that now appears at the foot of the page the moment
-              anything is added - the bar is where a customer is told what
-              happened and given the way on, which is the marketplace pattern
-              this stepper was standing in for. */}
-          <span className="text-small font-semibold text-ink" aria-live="polite">
-            <span className="tabular">{quantity}</span> in cart
+          {/* The number only. What it means is said by the checkout bar. */}
+          <span
+            className="tabular min-w-touch text-center text-small font-bold text-ink"
+            aria-live="polite"
+          >
+            {quantity}
           </span>
           <button
             type="button"

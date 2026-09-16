@@ -86,7 +86,7 @@ export default function CartPage() {
   if (lines.length === 0) {
     return (
       <div className="mx-auto max-w-screen-md px-4 py-8 md:px-6 lg:px-8">
-        <h1 className="text-title font-semibold tracking-tight text-ink">
+        <h1 className="text-title font-bold tracking-tight text-ink">
           Checkout
         </h1>
         <div className="mt-4 rounded-card border border-border bg-surface">
@@ -106,7 +106,7 @@ export default function CartPage() {
 
   return (
     <div className="mx-auto max-w-screen-lg px-4 py-8 md:px-6 lg:px-8">
-      <h1 className="text-title font-semibold tracking-tight text-ink">
+      <h1 className="text-title font-bold tracking-tight text-ink">
         Checkout
       </h1>
       <p className="mt-1 text-small text-ink-muted">
@@ -146,7 +146,7 @@ export default function CartPage() {
                 <Link
                   href={`/service/${line.serviceId}`}
                   className={cn(
-                    "block truncate rounded-control text-small font-semibold text-ink",
+                    "block truncate rounded-control text-body font-bold text-ink",
                     "transition-colors duration-fast hover:text-action",
                     "focus-visible:outline-none focus-visible:outline-focus",
                   )}
@@ -155,7 +155,7 @@ export default function CartPage() {
                 </Link>
                 <p className="mt-1 text-caption text-ink-muted">
                   from{" "}
-                  <span className="tabular font-medium text-ink">
+                  <span className="tabular text-small font-extrabold text-ink">
                     {formatCurrency(line.fromPricePaise)}
                   </span>
                 </p>
@@ -240,14 +240,18 @@ export default function CartPage() {
 
         {/* ── Summary ────────────────────────────────────────────────── */}
         <div className="rounded-card border border-border bg-surface p-4 lg:sticky lg:top-bar-tall">
-          <h2 className="text-heading font-semibold text-ink">Estimate</h2>
+          <h2 className="text-heading font-bold text-ink">Estimate</h2>
 
+          {/* The figure leads. It was text-small font-medium - identical
+              weight to its own label, on the one screen where the number is
+              the entire point. The approved design sets money large, heavy
+              and tight (.price-amt b). */}
           <dl className="mt-3 space-y-2">
             <div className="flex items-baseline justify-between gap-2">
               <dt className="text-small text-ink-muted">
                 Services ({count})
               </dt>
-              <dd className="tabular text-small font-medium text-ink">
+              <dd className="tabular text-title font-extrabold tracking-tight text-ink">
                 {formatCurrency(subtotalPaise)}
               </dd>
             </div>

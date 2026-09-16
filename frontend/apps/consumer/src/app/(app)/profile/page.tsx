@@ -106,14 +106,16 @@ function ProfilePageInner() {
       {/* Identity. */}
       <section className="rounded-card border border-border bg-surface p-4">
         <div className="flex items-start gap-4">
+          {/* the mark carries brand colour, as every filled tile in the
+              approved design does */}
           <Avatar className="size-tile-lg shrink-0">
-            <AvatarFallback className="text-heading">
+            <AvatarFallback className="bg-action text-heading font-extrabold text-on-action">
               {initials(profile.name)}
             </AvatarFallback>
           </Avatar>
 
           <div className="min-w-0 flex-1">
-            <p className="text-heading font-semibold text-ink">
+            <p className="text-heading font-extrabold tracking-tight text-ink">
               {profile.name}
             </p>
             {/* Formatted for reading, not as stored. E.164 is right for a

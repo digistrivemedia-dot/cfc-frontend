@@ -49,6 +49,7 @@ import { HomeHero } from "@/components/home-hero";
 import { ShopServiceCard } from "@/components/shop-service-card";
 import { SubCategoryTile } from "@/components/subcategory-tile";
 import { useSession } from "@/lib/session";
+import { PRO_APP_URL } from "@/lib/links";
 
 /**
  * Customer 7 — Home. Served at `/`, the site's front door.
@@ -909,11 +910,12 @@ function JoinAsPro() {
           </p>
         </div>
 
-        {/* Same destination as the footer's "Work with us as a
-            professional" link — one route for the one signup flow, not a
-            second guessed-at domain. */}
-        <Link
-          href="/register?role=pro"
+        {/* The Pro app, not the consumer's own /register. `?role=pro` was a
+            query string nothing read: it landed a would-be professional on the
+            CUSTOMER signup form, which has no trade, no service area and no
+            document upload. A plain <a> because it crosses origins. */}
+        <a
+          href={PRO_APP_URL}
           className={cn(
             // white label on teal, as every primary button in the approved
             // design - navy-on-teal was built for the dark panel
@@ -925,7 +927,7 @@ function JoinAsPro() {
         >
           Join as a professional
           <ArrowRight className="size-4" aria-hidden="true" />
-        </Link>
+        </a>
       </div>
     </section>
   );

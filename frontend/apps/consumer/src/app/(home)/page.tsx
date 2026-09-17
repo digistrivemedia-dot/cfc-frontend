@@ -8,6 +8,7 @@ import { useCatalogue, useRevealLateContent } from './use-catalogue';
 import { useSession } from '@/lib/session';
 import { SiteFooter } from './site-footer';
 import { CfcSprite } from './cfc-sprite';
+import { PRO_APP_URL } from '@/lib/links';
 import SignedInHomePage from './home/page';
 
 /**
@@ -89,11 +90,12 @@ function MarketingHomePage() {
             <a href="#services">Services</a>
             <a href="#how">How it works</a>
             <a href="#care">Offers</a>
-            {/* The Pro app is a separate Next app on 3001. Absolute URL and a
-                plain <a>, not <Link>: it is a different origin in dev and will
-                be a different domain in production, so client-side routing
-                cannot carry it. Swap the host when the real domain exists. */}
-            <a href="http://localhost:3001">Join as Pro</a>
+            {/* The Pro app is a separate deployment on its own domain, so this
+                is a plain <a> with an absolute URL - client-side routing
+                cannot carry a visitor across origins. The host lives in
+                lib/links.ts; it was hardcoded to localhost:3001 here, which
+                pointed at the visitor's own machine in production. */}
+            <a href={PRO_APP_URL}>Join as Pro</a>
           </nav>
 
           <div className="hdr-actions">
@@ -117,7 +119,7 @@ function MarketingHomePage() {
         <a className="sheet-item" href="#booked">Most booked <svg className="ic" aria-hidden="true"><use href="#i-arr-r"></use></svg></a>
         <a className="sheet-item" href="#how">How it works <svg className="ic" aria-hidden="true"><use href="#i-arr-r"></use></svg></a>
         <a className="sheet-item" href="#care">Offers <svg className="ic" aria-hidden="true"><use href="#i-arr-r"></use></svg></a>
-        <a className="sheet-item" href="http://localhost:3001">Join as Pro <svg className="ic" aria-hidden="true"><use href="#i-arr-r"></use></svg></a>
+        <a className="sheet-item" href={PRO_APP_URL}>Join as Pro <svg className="ic" aria-hidden="true"><use href="#i-arr-r"></use></svg></a>
         <a className="sheet-item" href="#faq">Common questions <svg className="ic" aria-hidden="true"><use href="#i-arr-r"></use></svg></a>
         <Link className="btn btn-primary" href="/categories">Book Now</Link>
         <Link className="btn btn-ghost" href="/login">Log in</Link>
@@ -501,8 +503,8 @@ function MarketingHomePage() {
                     <Link>: it is a separate origin in dev and a separate domain
                     in production, so client-side routing cannot carry it.
                     Swap the host in all three places when the domain exists. */}
-                <a className="btn btn-primary" href="http://localhost:3001">Join as a professional</a>
-                <a className="btn btn-clear" href="http://localhost:3001">See how earnings work</a>
+                <a className="btn btn-primary" href={PRO_APP_URL}>Join as a professional</a>
+                <a className="btn btn-clear" href={PRO_APP_URL}>See how earnings work</a>
               </div>
             </div>
             <div className="pro-stats">

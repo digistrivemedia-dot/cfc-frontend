@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import type { CategoryTile } from './use-catalogue';
+import { PRO_APP_URL } from '@/lib/links';
 
 /**
  * The approved footer, extracted verbatim from the signed-out home page so
@@ -52,7 +53,7 @@ export function SiteFooter({ tiles }: { tiles: CategoryTile[] }) {
             <h4>Company</h4>
             <ul>
               <li><Link href="/">About CFC</Link></li>
-              <li><a href="http://localhost:3001">Join as Pro</a></li>
+              <li><a href={PRO_APP_URL}>Join as Pro</a></li>
               <li><Link href="/refer">Offers</Link></li>
               <li><Link href="/support">For apartments</Link></li>
               <li><Link href="/support">Careers</Link></li>

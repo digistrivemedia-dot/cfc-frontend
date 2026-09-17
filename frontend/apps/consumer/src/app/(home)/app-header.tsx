@@ -1,7 +1,11 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getConsumerProfile } from "@cfc/mocks";
+import type { ConsumerProfile } from "@cfc/types";
+import { initials } from "@cfc/ui";
 import { useSession } from "@/lib/session";
 import { useArea } from "@/lib/area";
 import { useCart } from "@/lib/cart";
@@ -28,6 +32,37 @@ export function AppHeader() {
   const { signedIn, signOut } = useSession();
   const { area, ready } = useArea();
   const { count } = useCart();
+
+  /* The account control shows the REAL customer.
+
+     Name, initials and phone were hardcoded to "Aarthi Subramanian" / "AS",
+     while /profile read `getConsumerProfile()` and showed a different person
+     entirely. Two parts of the same app naming the customer differently is
+     the kind of thing a client notices immediately.
+
+     Fetched here the way every other screen does it rather than through a new
+     provider - the mock holds the profile as module state, so an edit on
+     Customer 34 already propagates to this header on its next read. */
+  const [profile, setProfile] = React.useState<ConsumerProfile | null>(null);
+  React.useEffect(() => {
+    if (signedIn !== true) {
+      setProfile(null);
+      return;
+    }
+    let live = true;
+    getConsumerProfile()
+      .then((p) => {
+        if (live) setProfile(p);
+      })
+      .catch(() => {
+        // The header must still render. It falls back to a neutral avatar.
+      });
+    return () => {
+      live = false;
+    };
+  }, [signedIn]);
+
+  const avatar = profile ? initials(profile.name) : "";
 
   return (
     <header className="appbar" id="appbar">
@@ -81,10 +116,24 @@ export function AppHeader() {
         </div>
 
         <div className="appbar-actions">
-          <Link className="icon-btn" href="/notifications" aria-label="Notifications">
-            <svg className="ic" aria-hidden="true"><use href="#i-bell"></use></svg>
-            <span className="pip dot" aria-hidden="true"></span>
-          </Link>
+          {/* Notifications belong to an ACCOUNT.
+
+              This rendered unconditionally, complete with the unread dot, and
+              pointed a signed-out visitor at /notifications - a route behind
+              `RequireAccount`, so the only thing the dot could lead to was a
+              sign-in wall. It is the same fault as the hardcoded name: a
+              personal control offered to somebody who has no account.
+
+              Removing it also buys back width the header genuinely needs. The
+              signed-out bar carries a 76px "Sign in" button where the
+              signed-in one has a 40px avatar, and that 36px was coming out of
+              the address label - "Add your address" needs 111px and had 78. */}
+          {signedIn === true && (
+            <Link className="icon-btn" href="/notifications" aria-label="Notifications">
+              <svg className="ic" aria-hidden="true"><use href="#i-bell"></use></svg>
+              <span className="pip dot" aria-hidden="true"></span>
+            </Link>
+          )}
           {/* A Link, not a button. This was `<button id="cartBtn">` bound by
               interactions.js to a slide-out drawer - and that drawer was
               removed, so nothing was listening: the cart icon did nothing on
@@ -113,20 +162,38 @@ export function AppHeader() {
               the control is held back until the answer is known. */}
           {signedIn === true && (
             <>
-              <button className="acct-btn" type="button" id="acctBtn" aria-haspopup="menu" aria-expanded="false">
-                <span className="avatar">AS</span>
+              <button
+                className="acct-btn"
+                type="button"
+                id="acctBtn"
+                aria-haspopup="menu"
+                aria-expanded="false"
+                aria-label={
+                  profile ? `Account menu for ${profile.name}` : "Account menu"
+                }
+              >
+                <span className="avatar">{avatar}</span>
                 <svg className="ic" aria-hidden="true"><use href="#i-chev"></use></svg>
               </button>
 
               <div className="menu" id="acctMenu" role="menu">
-                <div className="menu-id">
-                  <span className="avatar">AS</span>
+                {/* The identity block doubles as the way INTO the profile.
+
+                    There was no "My profile" entry anywhere in this menu, so
+                    /profile - the screen carrying the customer's details,
+                    their stats and the route to every sub-screen - could only
+                    be reached by typing the URL. */}
+                <Link className="menu-id" href="/profile" role="menuitem">
+                  <span className="avatar">{avatar}</span>
                   <div>
-                    <b>Aarthi Subramanian</b>
-                    <span>+91 98xxx xx190</span>
+                    <b>{profile ? profile.name : "My account"}</b>
+                    <span>
+                      {profile ? displayPhone(profile.phone) : "View profile"}
+                    </span>
                   </div>
-                </div>
+                </Link>
                 <hr />
+                <Link href="/profile" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-user"></use></svg>My profile</Link>
                 <Link href="/bookings" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-receipt"></use></svg>My bookings</Link>
                 <Link href="/addresses" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-pin"></use></svg>Saved addresses</Link>
                 <Link href="/wallet" role="menuitem"><svg className="ic" aria-hidden="true"><use href="#i-card"></use></svg>Wallet</Link>
@@ -168,4 +235,14 @@ export function AppHeader() {
       </div>
     </header>
   );
+}
+
+/** "+919876543210" reads as "+91 98765 43210" - the same masking /profile uses. */
+function displayPhone(e164: string): string {
+  const digits = e164.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) {
+    const local = digits.slice(2);
+    return `+91 ${local.slice(0, 5)} ${local.slice(5)}`;
+  }
+  return e164;
 }

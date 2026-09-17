@@ -288,7 +288,8 @@ function Chip({
       href={href}
       aria-current={current ? "page" : undefined}
       className={cn(
-        "shrink-0 whitespace-nowrap rounded-pill border px-4 py-2",
+        // M2 - measured 120x36 at 360px.
+        "shrink-0 whitespace-nowrap rounded-pill border px-4 py-2 coarse:h-touch coarse:inline-flex coarse:items-center",
         "text-small font-bold transition-all duration-fast",
         "focus-visible:outline-none focus-visible:outline-focus",
         current
@@ -456,7 +457,8 @@ function CategoryMenu({ names }: { names: string[] }) {
         aria-haspopup="menu"
         aria-expanded={open}
         className={cn(
-          "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-pill border px-4 py-2",
+          // M2 - same pill, second instance.
+          "flex shrink-0 items-center gap-2 whitespace-nowrap rounded-pill border px-4 py-2 coarse:h-touch",
           "text-small font-bold transition-all duration-fast",
           "focus-visible:outline-none focus-visible:outline-focus",
           open

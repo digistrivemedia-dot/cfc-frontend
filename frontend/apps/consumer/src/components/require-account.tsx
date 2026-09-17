@@ -78,6 +78,11 @@ export function RequireAccount({
           onClick={() => router.push("/categories")}
           className={cn(
             "mt-4 rounded-control text-small font-medium text-action",
+            // M2 - measured 150x18 on six routes. A bare text button has no
+            // box of its own, so its hit area is the glyph height. `coarse:`
+            // is a POINTER query, so a narrow desktop window keeps the tight
+            // spacing and only a finger gets the 44px.
+            "coarse:inline-flex coarse:h-touch coarse:items-center coarse:justify-center coarse:px-3",
             "transition-colors duration-fast hover:text-action-hover",
             "focus-visible:outline-none focus-visible:outline-focus",
           )}

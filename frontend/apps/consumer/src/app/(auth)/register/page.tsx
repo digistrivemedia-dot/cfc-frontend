@@ -160,7 +160,14 @@ export default function RegisterPage() {
           <button
             id="register-go-login"
             type="button"
-            className="font-bold text-action underline-offset-2 hover:underline"
+            className={
+              // M2 - measured 37x18 on /register, the smallest target in the
+              // app and the only route back to Log in. It sits INSIDE a
+              // sentence, so it cannot become a 44px block without breaking
+              // the line; vertical padding grows the hit box instead and
+              // `inline-block` makes that padding count.
+              "font-bold text-action underline-offset-2 hover:underline coarse:inline-block coarse:py-3"
+            }
             onClick={() => router.push("/login")}
           >
             Log in
@@ -175,14 +182,14 @@ export default function RegisterPage() {
           By registering you agree to our{" "}
           <Link
             href="/legal/terms"
-            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline"
+            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline coarse:inline-block coarse:py-2"
           >
             Terms of Service
           </Link>{" "}
           and{" "}
           <Link
             href="/legal/privacy"
-            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline"
+            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline coarse:inline-block coarse:py-2"
           >
             Privacy Policy
           </Link>

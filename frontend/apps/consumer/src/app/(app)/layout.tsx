@@ -15,6 +15,7 @@ import * as React from "react";
 import { AppShell } from "@/app/(home)/app-shell";
 import { ScenarioHook } from "@/components/scenario-hook";
 import { CartBar } from "@/components/cart-bar";
+import { AssistantWidget } from "@/components/assistant-widget";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -31,6 +32,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Appears the moment the basket has something in it, on every screen
           except the basket and the booking flow. */}
       <CartBar />
+
+      {/* Customer 42. A floating control rather than a tab on /support: the
+          agreement asks the assistant for "service discovery and booking
+          help", and neither of those questions is asked on the support
+          screen. It suppresses itself there and through checkout. */}
+      <AssistantWidget />
     </div>
   );
 }

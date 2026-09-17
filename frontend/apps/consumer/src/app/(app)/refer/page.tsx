@@ -197,7 +197,7 @@ function ReferPageInner() {
 
       {/* Customer 38 — the rewards tracker. */}
       <section className="mt-4 cfc-card">
-        <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
+        <h2 className="border-b border-border bg-canvas px-4 py-3 text-body font-bold text-ink">
           Your referrals
         </h2>
 
@@ -286,7 +286,9 @@ function Tracker({
   return (
     <div className="bg-surface p-3 text-center">
       <span
-        className="mx-auto mb-1 flex size-4 items-center justify-center text-ink-faint [&>svg]:size-4"
+        // Teal, not `ink-faint`. At 2.6:1 grey the icon was the faintest mark
+        // on the card, and these are the three facts the section exists for.
+        className="mx-auto mb-1 flex size-4 items-center justify-center text-action [&>svg]:size-4"
         aria-hidden="true"
       >
         {icon}

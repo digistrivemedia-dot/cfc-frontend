@@ -239,17 +239,28 @@ function Stat({
   icon?: React.ReactNode | undefined;
 }) {
   return (
-    <div className="bg-surface p-3 text-center">
+    <div className="bg-surface p-4 text-center">
       {icon !== undefined && (
+        // Teal, not `ink-faint`. A stat is a fact worth reading; at 2.6:1 grey
+        // the icon was the faintest mark on the card.
         <span
-          className="mx-auto mb-1 flex size-4 items-center justify-center text-ink-faint [&>svg]:size-4"
+          className="mx-auto mb-2 flex size-5 items-center justify-center text-action [&>svg]:size-5"
           aria-hidden="true"
         >
           {icon}
         </span>
       )}
-      <dd className="tabular text-small font-semibold text-ink">{value}</dd>
-      <dt className="text-caption leading-tight text-ink-muted">{label}</dt>
+      {/* `text-body` on a phone, `text-heading` from `sm`.
+
+          These cells are a third of the screen - about 110px at 360px - and a
+          wallet balance like "₹12,500.00" at heading size overflows that. It
+          steps up once there is room. */}
+      <dd className="tabular text-body font-extrabold tracking-tight text-ink sm:text-heading">
+        {value}
+      </dd>
+      <dt className="mt-1 text-caption leading-tight text-ink-muted">
+        {label}
+      </dt>
     </div>
   );
 }
@@ -306,17 +317,26 @@ function RowBody({
 }) {
   return (
     <>
+      {/* A tinted plate, not a bare grey glyph.
+
+          These rows were a 20px muted icon beside small ink text - eleven
+          greys against one saturated fill on the whole screen, which is what
+          made the profile read as a settings list rather than as part of a
+          consumer product. The plate is the same construction the category
+          tiles and the assurance cards use. */}
       <span
-        className="flex size-5 shrink-0 items-center justify-center text-ink-muted [&>svg]:size-4"
+        className="grid size-tile shrink-0 place-items-center rounded-control bg-action-subtle text-action [&>svg]:size-4"
         aria-hidden="true"
       >
         {icon}
       </span>
-      <span className="min-w-0 flex-1 text-small text-ink">{label}</span>
+      <span className="min-w-0 flex-1 text-body font-semibold text-ink">
+        {label}
+      </span>
       {detail !== undefined && (
-        <span className="shrink-0 text-caption text-ink-muted">{detail}</span>
+        <span className="shrink-0 text-small text-ink-muted">{detail}</span>
       )}
-      <ChevronRight className="size-4 shrink-0 text-ink-faint" aria-hidden="true" />
+      <ChevronRight className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />
     </>
   );
 }

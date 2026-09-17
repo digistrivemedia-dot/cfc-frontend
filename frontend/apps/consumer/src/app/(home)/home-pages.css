@@ -35,6 +35,26 @@
   .cfc-page .hero-art { min-height: 400px; max-width: 520px; }
   .cfc-page .nav, .cfc-page .hdr-actions .btn { display: none; }
   .cfc-page .burger { display: grid; margin-left: auto; }
+  /* M1.1 - the burger was pushed 44px OFF the right edge, and because the
+     header is the widest thing on the page it dragged the whole document
+     sideways: `header scrollW=404` against `clientW=360`. It was the only
+     horizontal scroll in the app.
+
+     Cause: with `.nav` hidden, `.hdr-actions` is the last flex child but had
+     no `margin-left: auto`, while `.logo` sat at a rigid 190px under
+     `flex-shrink: 0` and `.loc` at 134px. 190 + 134 + gaps + padding is wider
+     than 360, and since neither would give up a pixel, `.hdr-actions` simply
+     started past the edge at x=362.
+
+     `.hdr-actions` is pinned right and made unshrinkable so the burger is
+     always reachable; the logo and the location pill become the flexible
+     ones, which is the correct priority - a tappable menu matters more than
+     a full-width wordmark. */
+  .cfc-page .hdr-actions { margin-left: auto; flex-shrink: 0; }
+  .cfc-page .logo { min-width: 0; flex-shrink: 1; }
+  .cfc-page .logo-text { min-width: 0; }
+  .cfc-page .logo-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cfc-page .loc { min-width: 0; flex-shrink: 1; }
   .cfc-page .promo-row { grid-template-columns: 1fr; }
   /* One column of cards. The old rules here turned .step into a 40px/1fr grid
      so the number sat beside the copy - that was written for bare text, and
@@ -307,6 +327,19 @@
   background: var(--teal-wash); color: var(--teal-ink);
 }
 .cfc-page .menu a:hover .ic, .cfc-page .menu button.menu-item:hover .ic { color: var(--teal-ink); }
+/* The identity block is now a LINK to /profile, so it falls under the generic
+   `.menu a` rule below - which is later in the file at equal specificity and
+   was overriding this block's own padding and radius. Restated AFTER that rule, so the header keeps its plate proportions. */
+.cfc-page a.menu-id {
+  padding: 12px; border-radius: 12px; gap: 11px;
+  text-decoration: none; color: var(--ink);
+  transition: background .14s var(--ease);
+}
+.cfc-page a.menu-id:hover { background: var(--teal-wash); }
+/* The name stays ink on hover - the teal the other rows take would fight the
+   teal avatar sitting next to it. */
+.cfc-page a.menu-id:hover b { color: var(--ink); }
+.cfc-page a.menu-id:hover span { color: var(--teal-ink); }
 .cfc-page .menu .ic { width: 17px; height: 17px; color: var(--muted); flex-shrink: 0; transition: color .14s; }
 .cfc-page .menu .out { color: #b4242f; }
 .cfc-page .menu .out .ic { color: #b4242f; }
@@ -564,11 +597,120 @@
 @media (max-width: 620px) {
   .cfc-page .welcome { padding-top: 26px; }
   /* the app bar has to hold address, alerts, cart and account on a 390px screen */
+  /* M1.3 - the wordmark stays hidden on the SIGNED-IN bar, and that is a
+     considered decision rather than the oversight it looked like.
+
+     Measured at 360px: `.appbar-actions` (alerts, cart, account) needs 118px
+     and the logo mark 38px. Restoring the wordmark took 92px more and left
+     `.addr-btn` - which is `flex: 1 1 0%`, so it lives on what is left over -
+     with 50px of box and SIX pixels of text. That trades a missing brand name
+     for an unusable address control, which is the worse of the two.
+
+     The signed-out header has no cart, no alerts and no account chip, so it
+     keeps its wordmark (see the .logo-tag rule above). Here the mark alone
+     carries the brand and the address button gets the width. */
   .cfc-page .appbar-in > .logo .logo-text { display: none; }
+  .cfc-page .appbar-in > .logo { flex-shrink: 0; }
   .cfc-page .appbar-in { gap: 8px; }
   .cfc-page .addr-btn { min-width: 0; flex: 1; padding: 6px 8px; }
   .cfc-page .addr-btn .addr-text { min-width: 0; }
   .cfc-page .addr-btn b, .cfc-page .addr-btn span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* M1.2 - the address button had 52px of text room for an 111px label, so
+     it rendered as "Add your a..." over "Set your locati...". Two truncated
+     lines carry less than one readable one, so the sub-line goes and the
+     title takes the height. `.addr-btn > .ic-dn` goes with it: a caret on a
+     control whose label is already ellipsised is spending width on nothing. */
+  .cfc-page .addr-btn span#addrSub, .cfc-page .addr-btn .addr-text span { display: none; }
+  .cfc-page .addr-btn b { font-size: .8125rem; }
+  .cfc-page .addr-btn > .ic-dn { display: none; }
+  /* 3px short of "Add your address" at 111px. Taken from the pin's gap rather
+     than the label: shrinking the type to fit is how the header ended up
+     unreadable in the first place. */
+  .cfc-page .addr-btn { gap: 6px; }
+  .cfc-page .addr-btn > .ic { width: 16px; height: 16px; }
+
+  /* ============================================================
+     M2 - touch targets.
+     WCAG 2.5.5 and both platform guidelines want 44px. Measured at 360px,
+     the prototype's controls came in at 18-39px. These are mobile-only
+     overrides: the approved desktop density is untouched.
+     ============================================================ */
+
+  /* `.btn-sm` at 38px - "Book Now", "Add", "Add address", "Sign in",
+     "How it works". The single most-tapped control class in the app. */
+  .cfc-page .btn-sm { height: 44px; padding: 0 18px; }
+
+  /* The address button at 30px. It is the header's primary control on a
+     phone and was the shortest thing in the bar. */
+  .cfc-page .addr-btn { min-height: 44px; }
+
+  /* "See all 16 services" at 25px - a bare underlined link, repeated once
+     per section. Padding rather than font-size: the type is correct, only
+     the hit area was wrong. */
+  .cfc-page .sec-link { display: inline-flex; align-items: center; min-height: 44px; }
+
+  /* The category chips at 36px. */
+  .cfc-page .chip { min-height: 44px; }
+
+  /* The city picker rows at 37-39px. */
+  .cfc-page .loc-opt, .cfc-page .loc-detect { min-height: 44px; }
+
+  /* Footer links at 18px, sitting in a tight column where a mistap lands on
+     the neighbour. Vertical padding opens the rows without moving the type. */
+  .cfc-page .foot-grid ul a { display: inline-flex; align-items: center; min-height: 40px; }
+  /* The legal row at the very bottom - Privacy / Terms / Safety at 20px. */
+  .cfc-page .foot-bar .links a { display: inline-flex; align-items: center; min-height: 40px; }
+  /* The city pill in the signed-out header at 38px. */
+  .cfc-page .loc { min-height: 44px; }
+  /* The logo mark is 38px and is a link to home. Height only - adding
+     horizontal padding would take width back from the address label that
+     M1.2 just finished recovering. */
+  .cfc-page .appbar-in > .logo, .cfc-page .hdr-in > .logo { min-height: 44px; }
+  /* The footer's own logo link - a separate, wider instance carrying the full
+     wordmark, so the header rule above does not reach it. */
+  .cfc-page .foot .logo { display: inline-flex; align-items: center; min-height: 44px; }
+
+  /* ============================================================
+     M3 - legibility.
+     Nothing readable should sit under ~11.5px on a phone. Measured at
+     360px, the prototype ran 8-11px in thirteen places. Mobile-only: the
+     approved desktop sizes are not touched.
+     ============================================================ */
+
+  /* Prices at 10px. Measured "From ₹799" under each category tile. Money is
+     never the smallest text on a screen - it is the number the customer came
+     to read, and the one that decides whether they tap. */
+  .cfc-page .cat p { font-size: .75rem; }
+
+  /* The earned badges at 9-10px - "HOT", "#1 this week", "MOST BOOKED".
+     These carry the trust signal the orange was rationed for; unreadable,
+     they are decoration spending the accent for nothing. */
+  .cfc-page .cat-tag { font-size: .75rem; padding: 3px 9px; }
+  .cfc-page .bk-rank { font-size: .75rem; }
+  /* The live-tracking card's label row - "AC service & repair" at 10px above
+     the price the card exists to show. */
+  .cfc-page .card-price h4 { font-size: .75rem; }
+
+  /* "onwards, taxes included" at 11px - the qualifier that stops the price
+     above it reading as the final bill. */
+  .cfc-page .bk-foot small { font-size: .75rem; }
+
+  /* The live tracking labels at 9-10px: the pro caption and the step labels
+     that carry the ETA. The most time-sensitive text in the app was the
+     smallest. */
+  .cfc-page .pro-cap { font-size: .75rem; }
+  .cfc-page .pro-steps em { font-size: .75rem; }
+
+  /* "We are live in these cities" at 11px, inside the city picker. */
+  .cfc-page .loc-pop h4 { font-size: .75rem; }
+
+  /* The "CFC" superscript at 8px, on every screen.
+
+     It is a mark beside the wordmark rather than text anyone reads as a
+     sentence, so it does not need the 11.5px floor the rules above do - but
+     8px is small enough to turn to mush on a phone screen. 9px keeps it
+     subordinate to "CityFamilyCare" while staying a legible shape. */
+  .cfc-page .logo-text sup { font-size: .5625rem; }
   .cfc-page .appbar-actions { gap: 0; }
   .cfc-page .icon-btn { width: 38px; height: 38px; }
   .cfc-page .acct-btn { padding: 3px; margin-left: 2px; }

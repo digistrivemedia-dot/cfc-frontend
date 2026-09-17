@@ -73,19 +73,25 @@ function SupportInner() {
       <a
         href={`tel:${SUPPORT_PHONE}`}
         className={cn(
-          "mt-3 flex items-center gap-3 rounded-card border border-action-line bg-action-subtle p-4",
-          "transition-opacity duration-fast hover:opacity-90",
+          // The fastest route out of a problem, so it reads as the strongest
+          // thing on the screen: a 2px edge, a lift on hover, and the number
+          // at body weight rather than as caption metadata.
+          "mt-4 flex items-center gap-3 rounded-card border-2 border-action-line bg-action-subtle p-4 shadow-sm",
+          "transition-all duration-base hover:-translate-y-1 hover:border-action hover:shadow-md",
         )}
       >
-        <span className="flex size-tile shrink-0 items-center justify-center rounded-control bg-action text-on-action">
-          <Phone className="size-4" aria-hidden="true" />
+        <span className="flex size-tile-lg shrink-0 items-center justify-center rounded-control bg-action text-on-action">
+          <Phone className="size-5" aria-hidden="true" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-small font-semibold text-ink">
+          <span className="block text-body font-bold text-ink">
             Call our team
           </span>
-          <span className="tabular block text-caption text-ink-muted">
-            {SUPPORT_HOURS} · {displayPhone(SUPPORT_PHONE)}
+          <span className="tabular block text-small font-semibold text-action">
+            {displayPhone(SUPPORT_PHONE)}
+          </span>
+          <span className="block text-caption text-ink-muted">
+            {SUPPORT_HOURS}
           </span>
         </span>
       </a>

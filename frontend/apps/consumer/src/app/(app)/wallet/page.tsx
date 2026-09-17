@@ -130,7 +130,17 @@ function WalletInner() {
             <Plus />
             Add money
           </Button>
-          <Button variant="secondary" className="flex-1" asChild>
+          {/* ORANGE, and the only orange on this screen - but SOLID.
+              A pale wash with tinted orange type beside a solid teal button
+              read as a disabled control rather than a second action, which is
+              the washed-out treatment the colour spec rejects outright. Solid
+              fill, white glyphs, and the same lighten-on-hover the teal button
+              uses. */}
+          <Button
+            variant="secondary"
+            className="flex-1 border-promo bg-promo font-bold text-on-action shadow-sm transition duration-fast hover:bg-promo-bright hover:shadow-[0_10px_24px_-8px_rgba(244,123,32,.6)]"
+            asChild
+          >
             <Link href="/refer">
               <Gift />
               Earn by referring

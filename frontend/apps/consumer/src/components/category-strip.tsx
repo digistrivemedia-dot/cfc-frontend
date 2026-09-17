@@ -135,7 +135,9 @@ function Chip({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        "flex h-field shrink-0 items-center gap-2 rounded-pill border px-4",
+        // M2 - `h-field` is 36px. Raised to the 44px touch minimum on a
+        // finger only; the desktop field height is unchanged.
+        "flex h-field coarse:h-touch shrink-0 items-center gap-2 rounded-pill border px-4",
         "text-small font-medium",
         "transition-colors duration-fast",
         "focus-visible:outline-none focus-visible:outline-focus",

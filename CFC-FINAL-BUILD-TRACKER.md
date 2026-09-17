@@ -172,13 +172,35 @@ correct the tokens are.
 Typecheck · lint · build on all three apps · Pro and Admin verified unchanged ·
 commits and push **only on explicit approval**.
 
+## Post-phase pass
+
+| Item | Status |
+|---|---|
+| **AI assistant → widget** (42) | ✅ Floating control on every signed-in screen; suppressed on /support and through checkout; lifts clear of the checkout bar |
+| **Profile colour pass** | ✅ Icon plates on rows, teal stat icons, greys 11 → 9 |
+| **Settings colour pass** | ✅ Icon plates (teal + blue), stronger section heads, greys 10 → 8 |
+| **Wallet orange** | ✅ "Earn by referring" — SOLID `bg-promo` with white glyphs. The first pass used `bg-promo-subtle` + `text-promo`, which beside a solid teal button read as disabled — the exact treatment §1.8.1 rejects |
+| **Profile reachable** | ✅ The account menu had no "My profile" entry at all; /profile could only be reached by typing the URL. Added, and the identity plate is itself a link |
+| **One customer, one name** | ✅ Header and signed-in home hardcoded "Aarthi Subramanian"/"AS" while /profile read `getConsumerProfile()` — two screens naming the customer differently. Both now read the mock's module state |
+| **Support strengthened** | ✅ Helpline card at 2px edge with the number at body weight |
+| **Refer tracker** | ✅ Icons off `ink-faint` (2.6:1) onto teal |
+| **Mobile overflow** | ✅ Profile stat values step `text-body` → `text-heading` at `sm`; a wallet balance overflowed a 110px cell at 360px |
+| **Mobile sweep M1-M3** | ✅ Measured at 360x740 in a real mobile browser across 17 routes, not read off class names. Horizontal scroll 1 → 0 routes; clipped text 30 → 0; tap targets under 44px ~120 → 4; text under 11.5px 13 → 1. See `CFC-MOBILE-RESPONSIVE-PLAN.md` |
+| **Notifications bell gated** | ✅ Rendered to signed-out visitors, unread dot and all, pointing at a route behind `RequireAccount` — same fault class as the hardcoded name |
+
+**Still short of the standard:** Profile sits at 9 greys / 2 fills and Refer at
+6 / 2. Both are improved but neither clears the §1.7 test. They are list
+screens with genuinely little to colour — worth a second look rather than
+forcing fills that are not earned.
+
 ## Parked — decisions, not inventions
 
-| Item | Why |
+| Item | Status |
 |---|---|
-| AI assistant (42) | PDF says "integrated progressively" — screen or widget unstated |
+| Invoice PDF (32) | ⏸ Awaiting confirmation |
+| Dark mode (43) | ⏸ Awaiting confirmation |
+| Splash + onboarding (1, 2) | ❌ Not on web — confirmed |
 | Support ticket thread (41) | May be FAQ + helpline only |
-| Dark mode (43) | In scope; no palette exists for it |
 | Transaction history (37) | Confirm it covers refunds and non-wallet payments |
 
 ---

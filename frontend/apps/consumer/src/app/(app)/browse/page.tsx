@@ -397,6 +397,8 @@ export default function HomePage() {
                   href="/categories"
                   className={cn(
                     "mt-4 flex items-center gap-1 rounded-control text-small font-semibold text-action",
+                    // M2 - measured 328x18.
+                    "coarse:h-touch",
                     "transition-colors duration-fast hover:text-action-hover",
                     "focus-visible:outline-none focus-visible:outline-focus",
                   )}
@@ -424,7 +426,9 @@ export default function HomePage() {
               type="button"
               onClick={() => setFilter(null)}
               className={cn(
-                "inline-flex h-field shrink-0 items-center gap-1 rounded-pill",
+                // M2 - `h-field` is 36px. Raised to the touch minimum on a
+                // finger only; the desktop field height is unchanged.
+                "inline-flex h-field shrink-0 items-center gap-1 rounded-pill coarse:h-touch",
                 "border border-action bg-surface px-3 text-small font-semibold text-action",
                 "transition-colors duration-fast hover:bg-action hover:text-on-action",
                 "focus-visible:outline-none focus-visible:outline-focus",

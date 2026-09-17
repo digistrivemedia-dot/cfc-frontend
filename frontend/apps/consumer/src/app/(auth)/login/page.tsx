@@ -153,7 +153,11 @@ export default function LoginPage() {
         <button
           id="login-forgot-password"
           type="button"
-          className="text-small font-semibold text-ink underline-offset-2 hover:text-action hover:underline"
+          className={
+            // M2 - measured 170x18. Standalone on its own line, so it can
+            // take a full 44px box.
+            "text-small font-semibold text-ink underline-offset-2 hover:text-action hover:underline coarse:inline-flex coarse:h-touch coarse:items-center coarse:justify-center coarse:px-3"
+          }
           onClick={() => router.push("/forgot-password")}
         >
           Can&rsquo;t access your number?
@@ -166,7 +170,14 @@ export default function LoginPage() {
           <button
             id="login-go-register"
             type="button"
-            className="font-bold text-action underline-offset-2 hover:underline"
+            className={
+              // M2 - measured 37x18 on /register, the smallest target in the
+              // app and the only route back to Log in. It sits INSIDE a
+              // sentence, so it cannot become a 44px block without breaking
+              // the line; vertical padding grows the hit box instead and
+              // `inline-block` makes that padding count.
+              "font-bold text-action underline-offset-2 hover:underline coarse:inline-block coarse:py-3"
+            }
             onClick={() => router.push("/register")}
           >
             Create an account
@@ -180,14 +191,14 @@ export default function LoginPage() {
           By continuing you agree to our{" "}
           <Link
             href="/legal/terms"
-            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline"
+            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline coarse:inline-block coarse:py-2"
           >
             Terms of Service
           </Link>{" "}
           and{" "}
           <Link
             href="/legal/privacy"
-            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline"
+            className="font-semibold text-ink-muted underline-offset-2 hover:text-action hover:underline coarse:inline-block coarse:py-2"
           >
             Privacy Policy
           </Link>

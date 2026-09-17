@@ -142,7 +142,8 @@ export default function ServiceDetailPage() {
       <div className="cfc-wrap">
       <Link
         href="/categories"
-        className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action"
+        // M2 - measured 137x16. The only way back to the category.
+        className="inline-flex items-center gap-1 text-caption text-ink-muted hover:text-action coarse:h-touch"
       >
         <ArrowLeft className="size-3" aria-hidden="true" />
         {service.categoryName}
@@ -649,6 +650,8 @@ function ReviewList({ reviews }: { reviews: Review[] | null }) {
           onClick={() => setExpanded((v) => !v)}
           className={cn(
             "mt-3 rounded-control text-small font-semibold text-action",
+            // M2 - measured 113x18.
+            "coarse:inline-flex coarse:h-touch coarse:items-center coarse:px-3",
             "transition-colors duration-fast hover:text-action-hover",
             "focus-visible:outline-none focus-visible:outline-focus",
           )}

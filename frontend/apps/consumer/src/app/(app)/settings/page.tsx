@@ -136,7 +136,7 @@ export default function SettingsPage() {
 
       {/* Notifications — genuinely functional. */}
       <section className="mt-4 overflow-hidden cfc-card">
-        <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
+        <h2 className="border-b border-border bg-canvas px-4 py-3 text-body font-bold text-ink">
           Notifications
         </h2>
         <ul className="divide-y divide-border-soft">
@@ -165,15 +165,23 @@ export default function SettingsPage() {
 
       {/* Appearance and language — both pending, both saying so. */}
       <section className="mt-4 overflow-hidden cfc-card">
-        <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
+        <h2 className="border-b border-border bg-canvas px-4 py-3 text-body font-bold text-ink">
           Appearance and language
         </h2>
 
         <div className="flex items-start justify-between gap-4 border-b border-border-soft p-4">
           <span className="min-w-0">
             <span className="flex items-center gap-2">
-              <Moon className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />
-              <span className="text-small font-medium text-ink">Dark mode</span>
+              {/* A tinted plate, as the profile rows carry. A bare grey glyph
+                  beside small ink text is what made this screen ten greys
+                  against one saturated fill. */}
+              <span
+                className="grid size-tile shrink-0 place-items-center rounded-control bg-action-subtle text-action"
+                aria-hidden="true"
+              >
+                <Moon className="size-4" />
+              </span>
+              <span className="text-body font-semibold text-ink">Dark mode</span>
               <Badge tone="clock">Coming soon</Badge>
             </span>
             <span className="mt-px block text-caption text-ink-muted">
@@ -193,20 +201,25 @@ export default function SettingsPage() {
           onClick={() => setLangOpen(true)}
           className="flex min-h-touch w-full items-center gap-3 p-4 text-left transition-colors duration-fast hover:bg-canvas"
         >
-          <Globe className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />
+          <span
+            className="grid size-tile shrink-0 place-items-center rounded-control bg-clock-subtle text-clock"
+            aria-hidden="true"
+          >
+            <Globe className="size-4" />
+          </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-small font-medium text-ink">
+            <span className="block text-body font-semibold text-ink">
               Language
             </span>
-            <span className="block text-caption text-ink-muted">English</span>
+            <span className="block text-small text-ink-muted">English</span>
           </span>
-          <ChevronRight className="size-4 shrink-0 text-ink-faint" aria-hidden="true" />
+          <ChevronRight className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />
         </button>
       </section>
 
       {/* Customer 44 — legal, version, and the rating CTA. */}
       <section className="mt-4 overflow-hidden cfc-card">
-        <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
+        <h2 className="border-b border-border bg-canvas px-4 py-3 text-body font-bold text-ink">
           About
         </h2>
         <ul className="divide-y divide-border-soft">

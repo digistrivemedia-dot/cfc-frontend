@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { getConsumerProfile } from '@cfc/mocks';
+import type { ConsumerProfile } from '@cfc/types';
 import { initCFCApp, type CFCAppHandle } from './interactions';
 import { useCatalogue, useRevealLateContent } from '../use-catalogue';
 import { SiteFooter } from '../site-footer';
@@ -27,6 +29,28 @@ export default function SignedInHomePage() {
   // Same real catalogue the signed-out home reads, so the two screens can
   // never quote different prices for the same work.
   const { tiles, booked, serviceCount, loading } = useCatalogue(6);
+
+  // The greeting and the "signed in with" line named a customer who does not
+  // exist in the data - /profile reads `getConsumerProfile()` and showed a
+  // different person. Both now read the one source of truth.
+  const [profile, setProfile] = useState<ConsumerProfile | null>(null);
+  useEffect(() => {
+    let live = true;
+    getConsumerProfile()
+      .then((p) => {
+        if (live) setProfile(p);
+      })
+      .catch(() => {
+        // The greeting falls back to a name-free welcome.
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // "Ramasamy Chandrasekar" greets as "Ramasamy" - a full legal name in a
+  // welcome line reads like a bank letter, not a greeting.
+  const firstName = profile ? (profile.name.split(" ")[0] ?? "") : "";
   useRevealLateContent(!loading);
 
   // The rail cards arrive after `initCFCApp` has already run, and it is
@@ -54,13 +78,19 @@ export default function SignedInHomePage() {
                   sets "verified pro" in orange. A flat navy line was the
                   dullest possible greeting on a screen that is meant to feel
                   personal. */}
-              <h1>Welcome to CFC, <em>Aarthi</em>.</h1>
+              <h1>
+                {firstName ? (
+                  <>Welcome to CFC, <em>{firstName}</em>.</>
+                ) : (
+                  <>Welcome to CFC.</>
+                )}
+              </h1>
               <p className="hello">You have not booked anything yet. Add the address we should come to, and the rest takes about a minute.</p>
 
               <div className="setup">
                 <div className="setup-row done">
                   <span className="setup-mark"><svg className="ic" aria-hidden="true"><use href="#i-check"></use></svg></span>
-                  <div><b>Account created</b><small>Signed in with +91 98xxx xx190</small></div>
+                  <div><b>Account created</b><small>{profile ? `Signed in with ${maskPhone(profile.phone)}` : "Signed in"}</small></div>
                 </div>
 
                 <div className="setup-row" id="setupAddr">
@@ -399,4 +429,14 @@ function AddToCart({
       </button>
     </span>
   );
+}
+
+/** "+919876543210" masks to "+91 98xxx xx210" for a screen anyone may glance at. */
+function maskPhone(e164: string): string {
+  const digits = e164.replace(/\D/g, "");
+  if (digits.length === 12 && digits.startsWith("91")) {
+    const local = digits.slice(2);
+    return `+91 ${local.slice(0, 2)}xxx xx${local.slice(-3)}`;
+  }
+  return e164;
 }

@@ -693,3 +693,15 @@ input:disabled + .cfc-check {
   opacity: 0.45;
   border-color: var(--line, #E3ECF4);
 }
+
+/* ============================================================
+   M3 - legibility on a phone.
+
+   `.cfc-badge` is 11px, which is the floor on a desktop monitor and under it
+   on a handset. These badges carry the earned trust marks - "30-day
+   warranty", "Most booked", "Top rated" - so they are the last thing that
+   should be hard to read. Mobile only; the desktop size is unchanged.
+   ============================================================ */
+@media (max-width: 620px) {
+  .cfc-badge { font-size: 0.75rem; padding: 4px 10px; }
+}

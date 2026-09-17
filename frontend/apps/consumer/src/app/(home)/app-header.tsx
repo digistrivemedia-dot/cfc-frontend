@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
 import { useArea } from "@/lib/area";
+import { useCart } from "@/lib/cart";
 
 /**
  * The signed-in app bar — one component, rendered by every screen behind a
@@ -26,6 +27,7 @@ export function AppHeader() {
   const router = useRouter();
   const { signedIn, signOut } = useSession();
   const { area, ready } = useArea();
+  const { count } = useCart();
 
   return (
     <header className="appbar" id="appbar">
@@ -83,10 +85,21 @@ export function AppHeader() {
             <svg className="ic" aria-hidden="true"><use href="#i-bell"></use></svg>
             <span className="pip dot" aria-hidden="true"></span>
           </Link>
-          <button className="icon-btn" type="button" id="cartBtn" aria-label="Open cart">
+          {/* A Link, not a button. This was `<button id="cartBtn">` bound by
+              interactions.js to a slide-out drawer - and that drawer was
+              removed, so nothing was listening: the cart icon did nothing on
+              every screen in the app. `/cart` is the real basket route. */}
+          <Link className="icon-btn" href="/cart" id="cartBtn" aria-label="Open cart">
             <svg className="ic" aria-hidden="true"><use href="#i-cart"></use></svg>
-            <span className="pip hide" id="cartPip">0</span>
-          </button>
+            {/* The real basket count. This was static markup - `0` with a
+                `hide` class - and interactions.js never touched it, so the
+                badge showed nothing however many services were added. */}
+            {count > 0 && (
+              <span className="pip" id="cartPip">
+                {count}
+              </span>
+            )}
+          </Link>
           {/* The account control follows the SESSION.
 
               This block used to render unconditionally: a signed-out visitor

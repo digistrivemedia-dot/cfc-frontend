@@ -15,6 +15,7 @@
  * future route imports it by accident the other screens stay intact.
  */
 import * as React from "react";
+import { CartBar } from "@/components/cart-bar";
 import "./home-pages.css";
 
 export default function HomeLayout({
@@ -22,5 +23,14 @@ export default function HomeLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {/* The checkout bar was rendered only by the `(app)` layout, so adding a
+          service from the HOME page - the screen most people add from - gave
+          no way to reach the basket. The bar hides itself when the cart is
+          empty and on /cart and /book/, so rendering it here is safe. */}
+      <CartBar />
+    </>
+  );
 }

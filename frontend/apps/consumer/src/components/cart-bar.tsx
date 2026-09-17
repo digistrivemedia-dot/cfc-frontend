@@ -1,8 +1,9 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowRight, ShoppingCart } from "lucide-react";
+import { ArrowRight, ShoppingCart, X } from "lucide-react";
 import { cn, formatCurrency } from "@cfc/ui";
 import { useCart } from "@/lib/cart";
 
@@ -29,6 +30,22 @@ export function CartBar() {
   const pathname = usePathname();
 
   /**
+   * Dismissed for this basket only.
+   *
+   * The bar covers the foot of every screen, and on a phone that is a real
+   * amount of the page - a customer part-way through browsing could not read
+   * what was underneath it. Dismissing hides it without touching the basket:
+   * the header cart icon still carries the count, and /cart is still one tap
+   * away, so nothing is lost by closing it.
+   *
+   * Keyed to the count rather than a flag, so adding ANOTHER service brings
+   * the bar back. That is the moment the customer has acted again and the
+   * running total has changed, which is exactly when it is worth showing.
+   */
+  const [dismissedAt, setDismissedAt] = React.useState<number | null>(null);
+  const dismissed = dismissedAt === count;
+
+  /**
    * Screens that already own the bottom of the viewport.
    *
    * `/cart` and the booking flow carry the same action on the page itself, and
@@ -40,7 +57,7 @@ export function CartBar() {
     pathname === "/cart" || pathname.startsWith("/book/");
 
 
-  if (count === 0 || suppressed) return null;
+  if (count === 0 || suppressed || dismissed) return null;
 
   return (
     <div
@@ -75,8 +92,13 @@ export function CartBar() {
         "pointer-events-none",
       )}
     >
-      <Link
-        href="/cart"
+      {/* The card is a plain container, not the link.
+
+          It used to be one big <Link> wrapping everything, which left nowhere
+          to put a dismiss control: a <button> inside an <a> is invalid HTML
+          and the two clicks compete. The Link now wraps only the part that
+          should navigate, and the close button is its sibling. */}
+      <div
         className={cn(
           // Matches the page container (`max-w-screen-xl`) rather than the
           // 768px it used before, which left the pill visibly narrower than —
@@ -91,10 +113,16 @@ export function CartBar() {
           // selected-tab state) is teal-on-white; this now matches that
           // language instead of introducing a fourth colour scheme of its own.
           "rounded-card border border-action-line bg-surface px-4 py-3 shadow-lg",
-          "transition-colors duration-fast hover:bg-action-subtle",
-          "focus-visible:outline-none focus-visible:outline-focus",
         )}
       >
+        <Link
+          href="/cart"
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-3 rounded-control",
+            "transition-colors duration-fast",
+            "focus-visible:outline-none focus-visible:outline-focus",
+          )}
+        >
         <span className="relative flex size-tile shrink-0 items-center justify-center rounded-control bg-action-subtle text-action">
           <ShoppingCart className="size-4" aria-hidden="true" />
           <span
@@ -106,13 +134,18 @@ export function CartBar() {
         </span>
 
         <span className="min-w-0 flex-1">
-          <span className="block text-small font-semibold text-ink">
+          {/* `truncate` matters here: the row now carries an icon, two lines
+              of text, Checkout and a close button, and on a 360px screen
+              "2 services added" is what gives way rather than pushing the
+              buttons off the edge. */}
+          <span className="block truncate text-small font-semibold text-ink">
             {count} {count === 1 ? "service" : "services"} added
           </span>
           <span className="tabular block text-caption text-ink-muted">
             {formatCurrency(subtotalPaise)} estimated
           </span>
         </span>
+        </Link>
 
         {/* Teal at rest, orange on hover.
 
@@ -131,19 +164,42 @@ export function CartBar() {
             hover, never darkens; orange satisfies that and does something more
             useful besides - it is the app's "this is the thing" colour, so the
             button confirms itself under the cursor at the moment of decision. */}
-        <span
+        <Link
+          href="/cart"
           className={cn(
-            "flex h-12 shrink-0 items-center gap-2 rounded-control px-6",
-            "bg-action text-body font-bold text-on-action",
+            // `px-4` and a smaller label on a phone: at px-6 with the count,
+            // the total and a close button beside it, the row overflowed a
+            // 360px screen and the button was pushed off the edge.
+            "flex h-12 shrink-0 items-center gap-2 rounded-control px-4 md:px-6",
+            "bg-action text-small font-bold text-on-action md:text-body",
             "shadow-md",
             "transition duration-fast",
             "group-hover:bg-promo group-hover:shadow-[0_10px_24px_-8px_rgba(244,123,32,.75)]",
+            "focus-visible:outline-none focus-visible:outline-focus",
           )}
         >
           Checkout
           <ArrowRight className="size-4" aria-hidden="true" />
-        </span>
-      </Link>
+        </Link>
+
+        {/* Dismiss. Quiet by design - it is an escape hatch, not an action
+            competing with Checkout, so it is an outline icon rather than a
+            filled control. size-touch keeps it a 44px tap target even though
+            the glyph inside is small. */}
+        <button
+          type="button"
+          onClick={() => setDismissedAt(count)}
+          aria-label="Hide the basket bar"
+          className={cn(
+            "flex size-touch shrink-0 items-center justify-center rounded-control",
+            "text-ink-muted",
+            "transition-colors duration-fast hover:bg-neutral-subtle hover:text-ink",
+            "focus-visible:outline-none focus-visible:outline-focus",
+          )}
+        >
+          <X className="size-5" aria-hidden="true" />
+        </button>
+      </div>
     </div>
   );
 }

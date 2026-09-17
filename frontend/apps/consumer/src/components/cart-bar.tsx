@@ -112,7 +112,7 @@ export function CartBar() {
           // other action surface in the app (buttons, the Add stepper, the
           // selected-tab state) is teal-on-white; this now matches that
           // language instead of introducing a fourth colour scheme of its own.
-          "rounded-card border border-action-line bg-surface px-4 py-3 shadow-lg",
+          "relative rounded-card border border-action-line bg-surface px-4 py-3 shadow-lg",
         )}
       >
         <Link
@@ -167,11 +167,11 @@ export function CartBar() {
         <Link
           href="/cart"
           className={cn(
-            // `px-4` and a smaller label on a phone: at px-6 with the count,
-            // the total and a close button beside it, the row overflowed a
-            // 360px screen and the button was pushed off the edge.
-            "flex h-12 shrink-0 items-center gap-2 rounded-control px-4 md:px-6",
-            "bg-action text-small font-bold text-on-action md:text-body",
+            // Full size again at every width. The px-4/text-small shrink here
+            // was compensating for a close button sitting in this row; with it
+            // moved to the card corner the width is no longer contested.
+            "flex h-12 shrink-0 items-center gap-2 rounded-control px-6",
+            "bg-action text-body font-bold text-on-action",
             "shadow-md",
             "transition duration-fast",
             "group-hover:bg-promo group-hover:shadow-[0_10px_24px_-8px_rgba(244,123,32,.75)]",
@@ -182,16 +182,19 @@ export function CartBar() {
           <ArrowRight className="size-4" aria-hidden="true" />
         </Link>
 
-        {/* Dismiss. Quiet by design - it is an escape hatch, not an action
-            competing with Checkout, so it is an outline icon rather than a
-            filled control. size-touch keeps it a 44px tap target even though
-            the glyph inside is small. */}
+        {/* Dismiss — DESKTOP ONLY, and exactly as it was before: a quiet
+            44px icon in the row, beside Checkout. There is room for it at this
+            width and it has never been in the way here.
+
+            Hidden below `md`. On a phone the row is too tight to carry it, and
+            the corner ✕ that replaced it read as a stray dot floating off the
+            card. The mobile dismiss is the strip beneath the bar instead. */}
         <button
           type="button"
           onClick={() => setDismissedAt(count)}
           aria-label="Hide the basket bar"
           className={cn(
-            "flex size-touch shrink-0 items-center justify-center rounded-control",
+            "hidden size-touch shrink-0 items-center justify-center rounded-control md:flex",
             "text-ink-muted",
             "transition-colors duration-fast hover:bg-neutral-subtle hover:text-ink",
             "focus-visible:outline-none focus-visible:outline-focus",
@@ -199,7 +202,41 @@ export function CartBar() {
         >
           <X className="size-5" aria-hidden="true" />
         </button>
+
+        {/* Dismiss — MOBILE ONLY, in the card's top-right corner.
+
+            A ✕ in the row cost width the 360px layout did not have, and the
+            "Hide" strip beneath the bar added a second row of chrome to the one
+            screen with the least space. The corner circle takes neither: it
+            overlaps the card edge, so it reads as "close this" without occupying
+            any of the bar.
+
+            The button is size-touch (44px) so the tap target stays honest; the
+            visible mark is the 24px circle inside it.
+
+            `pointer-events-auto` because the wrapper is `pointer-events-none`,
+            so the page still scrolls behind the floating bar. */}
+        <button
+          type="button"
+          onClick={() => setDismissedAt(count)}
+          aria-label="Hide the basket bar"
+          className={cn(
+            "pointer-events-auto absolute -right-1 -top-3 z-sticky md:hidden",
+            "flex size-touch items-center justify-center",
+            "focus-visible:outline-none focus-visible:outline-focus",
+          )}
+        >
+          <span
+            className={cn(
+              "flex size-6 items-center justify-center rounded-full",
+              "border border-border bg-surface text-ink-muted shadow-md",
+            )}
+          >
+            <X className="size-3" aria-hidden="true" />
+          </span>
+        </button>
       </div>
+
     </div>
   );
 }

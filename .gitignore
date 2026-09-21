@@ -11,7 +11,12 @@
 # commercial terms.
 *.docx
 ~$*.docx
-cfcplatform.pdf
+
+# cfcplatform.pdf IS committed. It is the client's screen specification — the
+# source of the 44-screen inventory and the numbering used in code comments
+# ("Customer 12"). A team inheriting this repo needs it to know what was asked
+# for. The development agreement above stays out: that one carries commercial
+# terms, which the code never needs.
 
 # ── Dependencies ───────────────────────────────────────────────────────────
 node_modules/

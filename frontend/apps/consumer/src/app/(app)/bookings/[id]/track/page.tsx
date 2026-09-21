@@ -101,7 +101,7 @@ function TrackPageInner() {
   }
 
   return (
-    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+    <div className="bg-canvas min-h-screen px-4 pb-20 pt-6 md:px-6">
       <div className="mx-auto max-w-screen-md">
       <Link
         href={`/bookings/${booking.id}`}
@@ -125,7 +125,7 @@ function TrackPageInner() {
         <>
           <Eta minutes={booking.etaMinutes} />
 
-          <section className="mt-3 overflow-hidden cfc-card">
+          <section className="mt-3 overflow-hidden rounded-card bg-surface shadow-sm">
             <MapView
               className="h-block-lg"
               markers={[
@@ -176,7 +176,7 @@ function TrackPageInner() {
 
       {/* The professional, and how to reach them. */}
       {booking.pro !== null && (travelling || onSite) && (
-        <section className="mt-4 cfc-card p-4">
+        <section className="mt-4 rounded-card bg-surface shadow-sm p-4">
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-small font-medium text-ink">
@@ -219,7 +219,7 @@ function TrackPageInner() {
       {/* Customer 28 — proof of work. */}
       {(booking.beforePhotoUrls.length > 0 ||
         booking.afterPhotoUrls.length > 0) && (
-        <section className="mt-4 cfc-card p-4">
+        <section className="mt-4 rounded-card bg-surface shadow-sm p-4">
           <h2 className="text-small font-semibold text-ink">
             {finished ? "Before and after" : "Before starting"}
           </h2>
@@ -241,7 +241,7 @@ function TrackPageInner() {
       )}
 
       {/* Customer 27 — the job status timeline. */}
-      <section className="mt-4 cfc-card p-4">
+      <section className="mt-4 rounded-card bg-surface shadow-sm p-4">
         <h2 className="mb-3 text-small font-semibold text-ink">Progress</h2>
         <Timeline>
           {booking.events.map((e, i) => {

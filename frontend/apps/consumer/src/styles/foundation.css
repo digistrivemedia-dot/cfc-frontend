@@ -8,7 +8,7 @@
   properties defined here, and on the base element rules under `.cfc-page`
   and `.cfc-chrome`.
 
-  Original backed up at css-backup/phase0-original/home-pages.css.
+  The pre-split original is in git history (commit 0684eae).
 */
 
 /*
@@ -27,8 +27,9 @@
 */
 
 /*
-  The two approved home pages, ported from
-  `cfc-handoff/reference/cfc-nextjs/app/globals.css`.
+  The two approved home pages, ported from the client-approved prototype's
+  stylesheet. That prototype is no longer in the repo — this file is the ported
+  result. See ARCHITECTURE.md §3.
 
   ONE mechanical change: every selector is prefixed with `.cfc-page`, the
   wrapper each page renders inside.
@@ -60,7 +61,7 @@
    Palette lifted from the app Figma: teal brand, navy ink,
    support blue from the offer banner. No orange anywhere.
    ============================================================ */
-/* Palette per final/cfccolors-spec.md - every hex sampled from the client's own
+/* Palette per the client's approved colour spec - every hex sampled from their own
    Figma. The token NAMES are unchanged so the ~400 references across this file
    keep working; only the values moved.
 
@@ -71,7 +72,7 @@
   --teal: #02BABC;        /* his category tiles + confirm tick - 98% sat */
   --teal-deep: #01A09E;   /* reserved darker teal */
   /* Teal TEXT. Shipped as his exact fill colour rather than the spec's darker
-     #017E80: see final/DECISIONS-PENDING-CLIENT.md #1. Swap this one value to
+     #017E80: an open client decision, see ARCHITECTURE.md 8.2. Swap this one value to
      #017E80 to get the accessible variant - every piece of teal text on the
      page resolves through here, and the fills do not move. */
   --teal-ink: #02BABC;

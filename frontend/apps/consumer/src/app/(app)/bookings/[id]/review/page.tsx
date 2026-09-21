@@ -143,7 +143,7 @@ function ReviewPageInner() {
   }
 
   return (
-    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+    <div className="bg-canvas min-h-screen px-4 pb-20 pt-6 md:px-6">
       <div className="mx-auto max-w-screen-sm">
       <Link
         href={`/bookings/${booking.id}`}

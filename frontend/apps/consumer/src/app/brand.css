@@ -65,7 +65,9 @@ html:root {
 
   /* ═══════════════════════════════════════════════════════════════════════
      THE APPROVED DESIGN LANGUAGE
-     Ported from cfc-handoff/reference (the two pages the client signed off).
+     Ported from the two prototype pages the client signed off. That prototype
+     folder is no longer in the repo; the ported result IS this file plus
+     app/(home)/. See ARCHITECTURE.md §3.
 
      CONSUMER ONLY. This file is imported by apps/consumer/src/app/layout.tsx
      and by nothing else - Pro and Admin load `@cfc/ui/styles.css` alone, so
@@ -84,7 +86,7 @@ html:root {
 
      NOTE: this block used to end "No orange, per the client." That is no longer
      true and was left over from the handoff prototype. The client subsequently
-     supplied a pixel-sampled palette (final/cfccolors-spec.md) that includes
+     supplied a pixel-sampled palette (the client's own colour spec) that includes
      orange, and the approved home page spends it in four places - HOT badges,
      the "most booked" badge, the pro-band eyebrow and the live-ETA pill - plus
      yellow for rating stars. Both are defined below. */
@@ -93,7 +95,7 @@ html:root {
   /* UNIFIED WITH THE APPROVED HOME PAGE (2026-09-15).
      ------------------------------------------------
      These were #0fb3a6, the handoff prototype's teal. The client then supplied
-     a pixel-sampled palette (final/cfccolors-spec.md) and approved the home
+     a pixel-sampled palette (the client's own colour spec) and approved the home
      page built from it, which uses #02BABC - a visibly different teal. The two
      stylesheets were therefore rendering different brand colours: the home page
      from home-pages.css, and the other 43 screens from this file.
@@ -154,7 +156,7 @@ html:root {
   --color-clock-ink: #2464D0;
 
   /* ── Promotional accent and rating stars ────────────────────────────────
-     Both come from the client's approved palette (final/cfccolors-spec.md)
+     Both come from the client's approved palette (the client's own colour spec)
      and both are used on the finished home page. Neither existed as a
      consumer value before, so badges and star ratings could not be built on
      the other 43 screens without inventing a raw hex - which the house lint

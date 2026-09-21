@@ -294,7 +294,7 @@ export default function SignedInHomePage() {
               {/* "CFC Care, Rs2,499 a year" stood here with three invented
                   benefits. No such product exists: it was removed from the
                   marketing home for having no source at all, and is recorded
-                  in final/DECISIONS-PENDING-CLIENT.md. Selling a subscription
+                  an open client decision (ARCHITECTURE.md 8.2). Selling a subscription
                   nobody can buy is the worst version of that mistake, so this
                   is the real, documented promise instead - every term below is
                   in PLATFORM-FACTS.md. */}

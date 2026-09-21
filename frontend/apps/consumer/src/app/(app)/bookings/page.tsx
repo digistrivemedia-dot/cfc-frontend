@@ -85,8 +85,8 @@ function BookingsInner() {
   React.useEffect(() => load(), [load]);
 
   return (
-    <div className="cfc-band-wash min-h-screen pb-20 pt-6">
-      <div className="cfc-wrap">
+    <div className="bg-canvas min-h-screen pb-20 pt-6">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6">
       <span className="cfc-eyebrow">Your bookings</span>
       <h1 className="mt-3 text-section text-ink">My bookings</h1>
 
@@ -145,7 +145,7 @@ function BookingsInner() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="mt-4 cfc-card">
+        <div className="mt-4 rounded-card bg-surface shadow-sm">
           <EmptyState
             icon={<CalendarDays />}
             title={EMPTY[tab].title}
@@ -189,7 +189,7 @@ function BookingCard({ booking }: { booking: ConsumerBooking }) {
     <Link
       href={`/bookings/${booking.id}`}
       className={cn(
-        "block cfc-card p-4 shadow-sm",
+        "block rounded-card bg-surface p-4 shadow-sm",
         // the approved card hover: a lift and a teal edge
         "transition-all duration-fast hover:-translate-y-1 hover:border-action hover:shadow-md",
       )}

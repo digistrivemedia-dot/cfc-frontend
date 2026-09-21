@@ -113,7 +113,7 @@ function toTiles(services: ServiceDetail[]): CategoryTile[] {
   // busiest" was whatever the seed happened to produce and could not be aimed
   // at a particular tile. These four are a merchandising choice.
   //
-  // Recorded in final/DECISIONS-PENDING-CLIENT.md: once real booking data
+  // An open client decision (ARCHITECTURE.md 8.2): once real booking data
   // exists, this should go back to being derived, or the badge will eventually
   // sit on a tile nobody books.
   const hot = new Set(["Plumbing", "Appliance", "Beauty", "Carpentry"]);

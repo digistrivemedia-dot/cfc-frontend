@@ -119,7 +119,7 @@ function CategoriesInner() {
 
   if (error) {
     return (
-      <div className="cfc-wrap py-12">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6 py-12">
         <ErrorState
           title="We could not load the catalogue"
           description="Check your connection and try again."
@@ -195,8 +195,8 @@ function CategoriesInner() {
        the footer's top edge, so the two read as one block. The footer needs
        clear air above it to read as chrome rather than as the end of the
        grid. */
-    <div className="cfc-band-wash min-h-screen pb-20">
-      <div className="cfc-wrap pt-6">
+    <div className="bg-canvas min-h-screen pb-20">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6 pt-6">
         {/* Eyebrow, headline, strapline - the construction the approved home
             page puts above its own category grid, so arriving here from that
             grid does not read as a different product. */}
@@ -694,13 +694,13 @@ function SubCategoryView({
   const reviews = rows.reduce((a, r) => a + r.reviewCount, 0);
 
   return (
-    <div className="cfc-band-wash min-h-screen pb-20">
+    <div className="bg-canvas min-h-screen pb-20">
       {/* ── Hero strip ───────────────────────────────────────────────────
           White, so it separates from the wash below it without a dark slab.
           Carries the three facts a customer wants before they scroll: what
           this covers, what it starts at, and whether anyone rates it. */}
       <section className="border-b border-border bg-surface">
-        <div className="cfc-wrap py-6 md:py-8">
+        <div className="mx-auto w-full max-w-wrap px-4 md:px-6 py-6 md:py-8">
           <nav aria-label="Breadcrumb">
             <ol className="flex flex-wrap items-center gap-1 text-caption text-ink-muted">
               <li>
@@ -789,7 +789,7 @@ function SubCategoryView({
         </div>
       </section>
 
-      <div className="cfc-wrap">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6">
         {/* Two chips and a menu, not eleven chips.
 
             The strip listed every category, so a customer reading Cleaning had

@@ -6,7 +6,8 @@
   at the top so those rules still arrive FIRST, in their original order.
   Nothing else in this file was touched.
 
-  Backup of the pre-split original: css-backup/phase0-original/home-pages.css
+  The pre-split original is in git history (commit 0684eae, "Phase 0: split
+  home-pages.css into five layered stylesheets").
 */
 @import "../../styles/foundation.css";
 

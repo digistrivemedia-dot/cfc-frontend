@@ -65,7 +65,7 @@ function SupportInner() {
   const tab = (params.get("tab") as Tab | null) ?? "help";
 
   return (
-    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+    <div className="bg-canvas min-h-screen px-4 pb-20 pt-6 md:px-6">
       <div className="mx-auto max-w-screen-md">
       <h1 className="text-section text-ink">Help and support</h1>
 
@@ -178,7 +178,7 @@ function HelpTab() {
         )}
       </section>
 
-      <section className="cfc-card p-4">
+      <section className="rounded-card bg-surface shadow-sm p-4">
         <h2 className="text-small font-semibold text-ink">
           Still need help?
         </h2>
@@ -227,7 +227,7 @@ function TicketsTab() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="cfc-card">
+        <div className="rounded-card bg-surface shadow-sm">
           <EmptyState
             icon={<MessageSquare />}
             title="No tickets yet"
@@ -242,7 +242,7 @@ function TicketsTab() {
                 type="button"
                 onClick={() => setOpenId(t.id)}
                 className={cn(
-                  "flex w-full items-start gap-3 cfc-card p-4 text-left",
+                  "flex w-full items-start gap-3 rounded-card bg-surface shadow-sm p-4 text-left",
                   "transition-colors duration-fast hover:border-action-line",
                 )}
               >
@@ -523,7 +523,7 @@ function AssistantTab() {
         </InlineAlert>
       )}
 
-      <div className="cfc-card p-4">
+      <div className="rounded-card bg-surface shadow-sm p-4">
         <ul className="space-y-3">
           {messages.map((m) => (
             <li

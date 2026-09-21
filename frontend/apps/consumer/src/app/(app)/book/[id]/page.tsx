@@ -320,7 +320,7 @@ function BookInner() {
   }
 
   return (
-    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6"><div className="mx-auto max-w-screen-md">
+    <div className="bg-canvas min-h-screen px-4 pb-20 pt-6 md:px-6"><div className="mx-auto max-w-screen-md">
       {/* The confirmation is a terminal state: there is nothing to go back
           to, and offering it invites a customer to try re-paying. */}
       {step !== "done" && (
@@ -359,7 +359,7 @@ function BookInner() {
         <Skeleton className="mt-4 h-block-lg rounded-card" />
       ) : (
         <>
-          <div className="cfc-card mt-4 p-4">
+          <div className="rounded-card bg-surface shadow-sm mt-4 p-4">
             <p className="text-caption text-ink-muted">You are booking</p>
             <p className="text-small font-semibold text-ink">{service.name}</p>
             <p className="tabular mt-1 text-small text-ink-muted">
@@ -606,7 +606,7 @@ function SlotStep({
 
   return (
     <div className="mt-4 space-y-4">
-      <section className="cfc-card">
+      <section className="rounded-card bg-surface shadow-sm">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           Pick a date
         </h2>
@@ -621,7 +621,7 @@ function SlotStep({
         />
       </section>
 
-      <section className="cfc-card">
+      <section className="rounded-card bg-surface shadow-sm">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           Pick an arrival window
         </h2>
@@ -752,7 +752,7 @@ function AddressStep({
         </div>
       )}
 
-      <section className="cfc-card">
+      <section className="rounded-card bg-surface shadow-sm">
         <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
           <h2 className="text-small font-semibold text-ink">Where to?</h2>
           <Button variant="ghost" size="sm" onClick={onAdd}>
@@ -794,7 +794,7 @@ function AddressStep({
           honest thing is to show where we think the address is and let the
           customer correct the text. */}
       {selected !== null && (
-        <section className="cfc-card overflow-hidden">
+        <section className="rounded-card bg-surface shadow-sm overflow-hidden">
           <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
             On the map
           </h2>

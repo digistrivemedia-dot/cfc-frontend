@@ -69,7 +69,7 @@ export function ConfirmationStep({
           looks for in their email. It was caption-sized grey over a heading -
           the weakest treatment on the screen for the one string that has to be
           readable later. Teal head, code at display weight, selectable. */}
-      <div className="cfc-card mt-6 overflow-hidden text-left">
+      <div className="rounded-card bg-surface shadow-sm mt-6 overflow-hidden text-left">
         <div className="flex items-center gap-2 bg-action px-4 py-3 text-on-action">
           <Check className="size-4 shrink-0" aria-hidden="true" />
           <p className="text-body font-bold">Booking reference</p>

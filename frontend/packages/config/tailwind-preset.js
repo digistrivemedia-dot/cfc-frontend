@@ -488,6 +488,20 @@ module.exports = {
         // thread, a reply box. The default sheet (448px) wraps a sentence
         // every few words.
         detail: "640px",
+        // The page container, matching the app bar exactly.
+        //
+        // The consumer header and its page content must share one width or
+        // the content sits visibly offset against the nav above it. That
+        // width is 1180px, and neither `max-w-screen-lg` (1024) nor
+        // `max-w-screen-xl` (1280) is it - which is why this had to be a
+        // hand-written `.cfc-wrap` class until now.
+        //
+        // ADDITIVE, and safe for Pro and Admin. `maxWidth` lives inside
+        // `extend`, so this adds a name without changing any existing one;
+        // neither app (nor `packages/ui`, which both of them also scan)
+        // writes `max-w-wrap`, and Tailwind only emits CSS for classes it
+        // finds in the files an app scans. Their output is unchanged.
+        wrap: "1180px",
       },
       size: {
         // A round icon tile - a category glyph, a trust mark, an avatar

@@ -109,7 +109,7 @@ function ReferPageInner() {
   const pending = programme.invited - programme.converted;
 
   return (
-    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+    <div className="bg-canvas min-h-screen px-4 pb-20 pt-6 md:px-6">
       <div className="mx-auto max-w-screen-md">
       <h1 className="text-section text-ink">Refer and earn</h1>
       <p className="text-small text-ink-muted">
@@ -174,7 +174,7 @@ function ReferPageInner() {
       </section>
 
       {/* How it works, in the order it happens. */}
-      <section className="mt-4 cfc-card p-4">
+      <section className="mt-4 rounded-card bg-surface shadow-sm p-4">
         <h2 className="text-small font-semibold text-ink">How it works</h2>
         <ol className="mt-3 space-y-3">
           <Step
@@ -196,7 +196,7 @@ function ReferPageInner() {
       </section>
 
       {/* Customer 38 — the rewards tracker. */}
-      <section className="mt-4 cfc-card">
+      <section className="mt-4 rounded-card bg-surface shadow-sm">
         <h2 className="border-b border-border bg-canvas px-4 py-3 text-body font-bold text-ink">
           Your referrals
         </h2>

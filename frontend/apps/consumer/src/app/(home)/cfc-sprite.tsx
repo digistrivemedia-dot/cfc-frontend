@@ -12,7 +12,7 @@
  */
 export function CfcSprite() {
   return (
-    // The size guard is inline, not from home-pages.css. That rule is
+    // The size guard is inline, not from styles/landing/. That rule is
     // `.cfc-page .sprite`, and this renders OUTSIDE the .cfc-page wrapper so
     // the chrome styles cannot leak onto page content - which left the sprite
     // unstyled and occupying a full-size block at the top of every screen.

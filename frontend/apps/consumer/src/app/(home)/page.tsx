@@ -1,10 +1,20 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { initCFC } from './interactions';
-import { useCatalogue, useRevealLateContent } from './use-catalogue';
+import {
+  useScrollState,
+  useSheet,
+  useFocusTrap,
+  useDismissable,
+  useRail,
+  useCountUp,
+  useLiveTracker,
+  useRevealAll,
+} from './use-landing';
+import { HeroSearch } from './hero-search';
+import { useCatalogue } from './use-catalogue';
 import { useSession } from '@/lib/session';
 import { SiteFooter } from './site-footer';
 import { CfcSprite } from './cfc-sprite';
@@ -42,16 +52,146 @@ export default function HomeRoute() {
   return signedIn === true ? <SignedInHomePage /> : <MarketingHomePage />;
 }
 
+/** The cities CFC serves. Lifted from `interactions.js` unchanged. */
+const CITIES = [
+  'Bengaluru', 'Chennai', 'Hyderabad', 'Coimbatore', 'Madurai',
+  'Kochi', 'Mysuru', 'Trichy', 'Salem', 'Vijayawada', 'Mangaluru',
+] as const;
+
+/**
+ * The testimonials, as data.
+ *
+ * They were six hand-written `<article>` elements, which `interactions.js`
+ * then cloned at runtime so the marquee could loop without a visible jump at
+ * the seam. Cloning meant the DOM held twelve articles React knew nothing
+ * about, inside an element React owns - the exact overlap this phase removes.
+ *
+ * Rendered twice from one array instead. The copy cannot drift from the
+ * original because there is only one source, and React is the only thing
+ * writing to the track.
+ *
+ * `stars` is the rating out of 5. A half step renders the half icon, which is
+ * why it is a number rather than a count of filled icons.
+ */
+const TESTIMONIALS = [
+  {
+    stars: 5,
+    quote: "Booked a deep clean at 11 PM for the next morning and three people turned up at 9 sharp. The kitchen chimney looks new. I have already booked them for my mother's flat.",
+    name: 'Meera Sundaram',
+    place: 'Indiranagar, Bengaluru',
+    photo: '/images/testimonials/meera.png',
+  },
+  {
+    stars: 4,
+    quote: 'What sold me is that the amount on the app was the amount I paid. No extra visiting charge, no sudden parts bill. The technician showed me the old capacitor before replacing it.',
+    name: 'Arvind Raghavan',
+    place: 'Anna Nagar, Chennai',
+    photo: '/images/testimonials/arvind.png',
+  },
+  {
+    stars: 5,
+    quote: 'My parents are in their seventies and I book everything for them from Dubai. They get an SMS with the pro’s photo, and I can see when he reaches. That peace of mind is worth a lot.',
+    name: 'Farhan Khan',
+    place: 'booking for Jayanagar',
+    photo: '/images/testimonials/farhan.png',
+  },
+  {
+    stars: 4.5,
+    quote: 'The leak came back after two weeks. I messaged support, they sent the same plumber the next morning and charged nothing. That is the only reason I am still with CFC.',
+    name: 'Priya Nair',
+    place: 'Kakkanad, Kochi',
+    photo: '/images/testimonials/priya.png',
+  },
+  {
+    stars: 5,
+    quote: 'I used the voice search while cooking, just said the fridge is not cooling, and it pulled up the exact service. Booked in under a minute with one hand.',
+    name: 'Sowmya Venkatesh',
+    place: 'RS Puram, Coimbatore',
+    photo: '/images/testimonials/sowmya.png',
+  },
+  {
+    stars: 4,
+    quote: 'Six months on the CFC Care plan and I have stopped thinking about AC servicing entirely. They call me before summer and fix a slot.',
+    name: 'Deepak Jain',
+    place: 'Gachibowli, Hyderabad',
+    photo: '/images/testimonials/deepak.png',
+  },
+] as const;
+
+/** One testimonial card. `copy` marks the duplicate half of the marquee. */
+function Quote({ t, copy }: { t: (typeof TESTIMONIALS)[number]; copy?: boolean }) {
+  return (
+    <article className="quote" aria-hidden={copy || undefined}>
+      <div className="stars" aria-label={`${t.stars} out of 5`}>
+        {[0, 1, 2, 3, 4].map((i) => {
+          // Full when the rating clears this star outright, half when it lands
+          // inside it, empty otherwise - so 4.5 gives four full and one half,
+          // which is what the six cards had by hand.
+          const full = t.stars >= i + 1;
+          const half = !full && t.stars > i;
+          return (
+            <svg key={i} className={full || half ? 'ic ic-fill' : 'ic ic-empty'}>
+              <use href={half ? '#i-star-half' : '#i-star'}></use>
+            </svg>
+          );
+        })}
+      </div>
+      <p>{t.quote}</p>
+      <footer>
+        <Image src={t.photo} alt={t.name} width={38} height={38} className="avatar" style={{ objectFit: 'cover' }} />
+        <div>
+          <b>{t.name}</b>
+          <span>{t.place}</span>
+        </div>
+      </footer>
+    </article>
+  );
+}
+
 function MarketingHomePage() {
-  // One place for every interaction on the page: sticky header, mobile menu,
-  // scroll reveals, the services rail, voice search and the marquee.
-  useEffect(() => initCFC(), []);
+  // GATE 1 of the interactions.js port: the header shadow, the mobile action
+  // bar and the menu sheet now come from React state rather than from
+  // `classList.toggle` on elements React also renders.
+  //
+  // `initCFC()` still runs for the behaviours not yet ported. It binds by id
+  // and skips anything absent, so the two coexist during the port without
+  // fighting over the same element - each behaviour moves exactly once.
+  const { stuck, barVisible } = useScrollState();
+  const { open: sheetOpen, setOpen: setSheetOpen } = useSheet();
+  const sheetRef = useFocusTrap<HTMLDivElement>(sheetOpen);
+
+  // GATE 2: the city picker. The list was built with `innerHTML` and its
+  // handlers re-bound on every repaint; it is rendered from an array now, so
+  // the markup and the selection can never disagree.
+  const {
+    ref: locRef,
+    open: locOpen,
+    setOpen: setLocOpen,
+  } = useDismissable<HTMLDivElement>();
+  const [city, setCity] = useState(CITIES[0] as string);
+
+  // GATE 4: the last four behaviours, and with them `interactions.js` itself.
+  //
+  // The rail's progress bar and arrow states were written straight onto
+  // `style.width` and `.disabled`; they are rendered from state now. The
+  // tracker's four steps, its label, value and caption were four separate
+  // `textContent` writes on elements React also owns - the exact overlap that
+  // makes a bug unreproducible, because which system wrote last depended on
+  // timing.
+  const rail = useRail<HTMLDivElement>();
+  const tracker = useLiveTracker();
+  const payout = useCountUp<HTMLElement>(48);
+  const commission = useCountUp<HTMLElement>(15, { suffix: '%' });
 
   // The category grid and the most-booked rail come from the real catalogue
   // rather than from the prototype's hardcoded tiles - see use-catalogue.ts
   // for why every one of those twelve tiles had to go.
   const { tiles, booked, serviceCount, loading } = useCatalogue();
-  useRevealLateContent(!loading);
+
+  // One reveal observer, re-scanning when the catalogue lands. There were two
+  // - see `useRevealAll` for why the second one existed and why it no longer
+  // needs to.
+  useRevealAll(!loading);
 
   return (
     <div className="cfc-page">
@@ -59,7 +199,7 @@ function MarketingHomePage() {
 
       <a className="skip" href="#top">Skip to content</a>
 
-      <header className="hdr" id="hdr">
+      <header className={stuck ? "hdr stuck" : "hdr"} id="hdr">
         <div className="wrap hdr-in">
           <a className="logo" href="#top" aria-label="CityFamilyCare home">
             <span className="logo-mark"><svg className="ic" aria-hidden="true"><use href="#i-home"></use></svg></span>
@@ -71,16 +211,54 @@ function MarketingHomePage() {
             </span>
           </a>
 
-          <div className="loc-wrap">
-            <button className="loc" type="button" id="locBtn" aria-haspopup="listbox" aria-expanded="false">
+          <div className="loc-wrap" ref={locRef}>
+            <button
+              className="loc"
+              type="button"
+              id="locBtn"
+              aria-haspopup="listbox"
+              aria-expanded={locOpen}
+              onClick={() => setLocOpen((v) => !v)}
+            >
               <svg className="ic" aria-hidden="true"><use href="#i-pin"></use></svg>
-              <span className="loc-city">Bengaluru</span>
+              <span className="loc-city">{city}</span>
               <svg className="ic ic-dn" aria-hidden="true"><use href="#i-chev"></use></svg>
             </button>
-            <div className="loc-pop" id="locPop" role="listbox" aria-label="Choose your city">
+            <div
+              className={locOpen ? "loc-pop open" : "loc-pop"}
+              id="locPop"
+              role="listbox"
+              aria-label="Choose your city"
+            >
               <h4>We are live in these cities</h4>
-              <div id="locList"></div>
-              <button className="loc-detect" type="button" id="locDetect">
+              {/* Rendered from CITIES rather than written with innerHTML.
+                  The old version repainted the whole list and re-bound every
+                  handler on each selection; React updates only what changed,
+                  and the tick can never disagree with the label above. */}
+              <div id="locList">
+                {CITIES.map((c) => (
+                  <button
+                    key={c}
+                    className="loc-opt"
+                    type="button"
+                    role="option"
+                    aria-selected={c === city}
+                    onClick={() => {
+                      setCity(c);
+                      setLocOpen(false);
+                    }}
+                  >
+                    {c}
+                    <svg className="ic" aria-hidden="true"><use href="#i-check"></use></svg>
+                  </button>
+                ))}
+              </div>
+              <button
+                className="loc-detect"
+                type="button"
+                id="locDetect"
+                onClick={() => setLocOpen(false)}
+              >
                 <svg className="ic" aria-hidden="true"><use href="#i-pin"></use></svg>Use my current location
               </button>
             </div>
@@ -101,17 +279,42 @@ function MarketingHomePage() {
           <div className="hdr-actions">
             <Link className="btn btn-ghost btn-sm" href="/login">Log in</Link>
             <Link className="btn btn-primary btn-sm" href="/categories">Book Now</Link>
-            <button className="burger" type="button" id="burger" aria-label="Open menu" aria-expanded="false">
+            <button
+              className="burger"
+              type="button"
+              id="burger"
+              aria-label="Open menu"
+              aria-expanded={sheetOpen}
+              onClick={() => setSheetOpen(true)}
+            >
               <svg className="ic" aria-hidden="true"><use href="#i-menu"></use></svg>
             </button>
           </div>
         </div>
       </header>
 
-      <div className="sheet" id="sheet" aria-hidden="true">
+      <div
+        ref={sheetRef}
+        className={sheetOpen ? "sheet open" : "sheet"}
+        id="sheet"
+        aria-hidden={sheetOpen ? "false" : "true"}
+        // Every link here is an in-page anchor. Without closing on click the
+        // sheet stays open over the section it just scrolled to, which reads
+        // as a menu that has stopped responding.
+        onClick={(e) => {
+          const el = e.target as HTMLElement;
+          if (el.closest("a, .btn")) setSheetOpen(false);
+        }}
+      >
         <div className="sheet-top">
           <span className="logo-text"><span className="logo-name">CityFamilyCare<sup>CFC</sup></span></span>
-          <button className="burger" type="button" id="sheetClose" aria-label="Close menu">
+          <button
+            className="burger"
+            type="button"
+            id="sheetClose"
+            aria-label="Close menu"
+            onClick={() => setSheetOpen(false)}
+          >
             <svg className="ic" aria-hidden="true"><use href="#i-x"></use></svg>
           </button>
         </div>
@@ -136,30 +339,7 @@ function MarketingHomePage() {
               <h1>Book a <em>verified pro</em> for anything your home needs.</h1>
               <p className="hero-sub">Cleaning, plumbing, electrical, appliances and 40 more services. Fixed prices before you book, background-checked professionals, and a 30-day warranty on every job.</p>
 
-              <div className="ask">
-                <div className="ask-field">
-                <div className="ask-bar" id="askBar">
-                  <svg className="ic ic-search" aria-hidden="true"><use href="#i-search"></use></svg>
-                  <input id="askInput" type="text" autoComplete="off" role="combobox" aria-expanded="false" aria-controls="sug" aria-autocomplete="list" aria-label="Search for a home service" placeholder="Search or speak a service" />
-                  <button className="mic" type="button" id="micBtn" aria-label="Search by voice">
-                    <svg className="ic" aria-hidden="true"><use href="#i-mic"></use></svg>
-                  </button>
-                  <button className="btn btn-primary ask-go" type="button" id="askGo"><span>Search</span><svg className="ic" aria-hidden="true" style={{ width: '18px', height: '18px' }}><use href="#i-search"></use></svg></button>
-                </div>
-                  <div className="sug" id="sug" role="listbox" aria-label="Service suggestions"></div>
-                </div>
-                <div className="ask-status" id="askStatus" role="status" aria-live="polite">
-                  <span className="bars"><i></i><i></i><i></i><i></i><i></i></span>
-                  <span id="askStatusText">Listening. Say something like "my tap is leaking"</span>
-                </div>
-                <div className="chips">
-                  <span className="chip-label">Popular:</span>
-                  <button className="chip" type="button">AC service</button>
-                  <button className="chip" type="button">Deep cleaning</button>
-                  <button className="chip" type="button">Sofa shampooing</button>
-                  <button className="chip" type="button">Electrician</button>
-                            </div>
-              </div>
+              <HeroSearch />
 
             </div>
 
@@ -222,18 +402,22 @@ function MarketingHomePage() {
                   <div className="price-amt"><b>&#8377;499</b></div>
                 </div>
 
-                {/* A real tracker, not four loose bars. interactions.js sets
-                    each child's className to 'done' | 'now' | '', so the dots
-                    and the spine are driven by exactly the same states it
-                    already writes - the markup shape is free to change. */}
+                {/* A real tracker, not four loose bars. The four step states -
+                    'done' | 'now' | '' - come from `useLiveTracker` now; they
+                    were four `className` writes and two `textContent` writes
+                    on elements React also renders. The ids are kept because
+                    the verification harness addresses them by id. */}
                 <div className="rail-track">
                   <div className="pro-steps" id="proSteps">
-                    <i className="done"><em>Booked</em></i>
-                    <i className="done"><em>Assigned</em></i>
-                    <i className="now"><em id="etaLabel">On the way to your address</em><b id="etaValue">32 min</b></i>
-                    <i><em>At your door</em></i>
+                    <i className={tracker.steps[0]}><em>Booked</em></i>
+                    <i className={tracker.steps[1]}><em>Assigned</em></i>
+                    <i className={tracker.steps[2]}>
+                      <em id="etaLabel">{tracker.label}</em>
+                      <b id="etaValue">{tracker.value}</b>
+                    </i>
+                    <i className={tracker.steps[3]}><em>At your door</em></i>
                   </div>
-                  <p className="pro-cap" id="proCap">Assigned. Arriving in uniform with a CFC ID card.</p>
+                  <p className="pro-cap" id="proCap">{tracker.caption}</p>
                 </div>
               </div>
 
@@ -362,17 +546,17 @@ function MarketingHomePage() {
             <div className="sec-head">
               <div>
                 <span className="eyebrow"><svg className="ic" aria-hidden="true"><use href="#i-spark"></use></svg>Top services near you</span>
-                <h2>Most booked in <span data-city>Bengaluru</span> this week</h2>
+                <h2>Most booked in <span data-city>{city}</span> this week</h2>
                 <p>Real prices, no surge. Same rate at 8 AM or 8 PM.</p>
               </div>
               <div className="rail-nav">
-                <button className="rail-btn" type="button" id="railPrev" aria-label="Previous services"><svg className="ic" aria-hidden="true"><use href="#i-arr-l"></use></svg></button>
-                <button className="rail-btn" type="button" id="railNext" aria-label="More services"><svg className="ic" aria-hidden="true"><use href="#i-arr-r"></use></svg></button>
+                <button className="rail-btn" type="button" id="railPrev" aria-label="Previous services" disabled={rail.atStart} onClick={() => rail.scrollByStep(-1)}><svg className="ic" aria-hidden="true"><use href="#i-arr-l"></use></svg></button>
+                <button className="rail-btn" type="button" id="railNext" aria-label="More services" disabled={rail.atEnd} onClick={() => rail.scrollByStep(1)}><svg className="ic" aria-hidden="true"><use href="#i-arr-r"></use></svg></button>
               </div>
             </div>
 
             <div className="rail-wrap">
-              <div className="rail" id="rail">
+              <div className="rail" id="rail" ref={rail.ref}>
                 {/* The eight most-booked services, from the catalogue. The
                     prototype's six cards carried invented figures - `12.4k
                     bookings`, a `4.8` with nothing behind it - which is what
@@ -420,7 +604,17 @@ function MarketingHomePage() {
                   </article>
                 ))}
               </div>
-              <div className="rail-prog"><i id="railProg"></i></div>
+              {/* The indicator's width is how much of the rail is on screen,
+                  its offset how far along that window sits. Both were written
+                  to `style` directly by `syncRail()`; they are state now, but
+                  they still have to be inline styles - a percentage that
+                  changes on every scroll frame cannot be a utility class. */}
+              <div className="rail-prog">
+                <i
+                  id="railProg"
+                  style={{ width: rail.progress.width + '%', marginLeft: rail.progress.offset + '%' }}
+                ></i>
+              </div>
             </div>
           </div>
         </section>
@@ -513,8 +707,8 @@ function MarketingHomePage() {
                   monthly earning cannot exist before launch, and publishing
                   one sets an expectation nobody can be held to. */}
               <div className="pstat rv"><svg className="ic" aria-hidden="true"><use href="#i-spark"></use></svg><strong>0%</strong><span>commission on your first 20 jobs</span></div>
-              <div className="pstat rv rv-1"><svg className="ic" aria-hidden="true"><use href="#i-cal"></use></svg><strong data-count="48">48</strong><span>hour payouts, to your bank or UPI</span></div>
-              <div className="pstat rv rv-2"><svg className="ic" aria-hidden="true"><use href="#i-growth"></use></svg><strong data-count="15" data-suffix="%">15%</strong><span>flat commission after that. No hidden cuts.</span></div>
+              <div className="pstat rv rv-1"><svg className="ic" aria-hidden="true"><use href="#i-cal"></use></svg><strong ref={payout.ref}>{payout.text}</strong><span>hour payouts, to your bank or UPI</span></div>
+              <div className="pstat rv rv-2"><svg className="ic" aria-hidden="true"><use href="#i-growth"></use></svg><strong ref={commission.ref}>{commission.text}</strong><span>flat commission after that. No hidden cuts.</span></div>
               <div className="pstat rv rv-3"><svg className="ic" aria-hidden="true"><use href="#i-wallet"></use></svg><strong>MRP</strong><span>on parts. You never fund a job yourself.</span></div>
             </div>
           </div>
@@ -540,36 +734,12 @@ function MarketingHomePage() {
           </div>
           <div className="marquee">
             <div className="marquee-track" id="track">
-              <article className="quote">
-                <div className="stars" aria-label="5 out of 5"><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg></div>
-                <p>Booked a deep clean at 11 PM for the next morning and three people turned up at 9 sharp. The kitchen chimney looks new. I have already booked them for my mother's flat.</p>
-                <footer><Image src="/images/testimonials/meera.png" alt="Meera Sundaram" width={38} height={38} className="avatar" style={{ objectFit: 'cover' }} /><div><b>Meera Sundaram</b><span>Indiranagar, Bengaluru</span></div></footer>
-              </article>
-              <article className="quote">
-                <div className="stars" aria-label="4 out of 5"><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-empty"><use href="#i-star"></use></svg></div>
-                <p>What sold me is that the amount on the app was the amount I paid. No extra visiting charge, no sudden parts bill. The technician showed me the old capacitor before replacing it.</p>
-                <footer><Image src="/images/testimonials/arvind.png" alt="Arvind Raghavan" width={38} height={38} className="avatar" style={{ objectFit: 'cover' }} /><div><b>Arvind Raghavan</b><span>Anna Nagar, Chennai</span></div></footer>
-              </article>
-              <article className="quote">
-                <div className="stars" aria-label="5 out of 5"><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg></div>
-                <p>My parents are in their seventies and I book everything for them from Dubai. They get an SMS with the pro's photo, and I can see when he reaches. That peace of mind is worth a lot.</p>
-                <footer><Image src="/images/testimonials/farhan.png" alt="Farhan Khan" width={38} height={38} className="avatar" style={{ objectFit: 'cover' }} /><div><b>Farhan Khan</b><span>booking for Jayanagar</span></div></footer>
-              </article>
-              <article className="quote">
-                <div className="stars" aria-label="4.5 out of 5"><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star-half"></use></svg></div>
-                <p>The leak came back after two weeks. I messaged support, they sent the same plumber the next morning and charged nothing. That is the only reason I am still with CFC.</p>
-                <footer><Image src="/images/testimonials/priya.png" alt="Priya Nair" width={38} height={38} className="avatar" style={{ objectFit: 'cover' }} /><div><b>Priya Nair</b><span>Kakkanad, Kochi</span></div></footer>
-              </article>
-              <article className="quote">
-                <div className="stars" aria-label="5 out of 5"><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg></div>
-                <p>I used the voice search while cooking, just said the fridge is not cooling, and it pulled up the exact service. Booked in under a minute with one hand.</p>
-                <footer><Image src="/images/testimonials/sowmya.png" alt="Sowmya Venkatesh" width={38} height={38} className="avatar" style={{ objectFit: 'cover' }} /><div><b>Sowmya Venkatesh</b><span>RS Puram, Coimbatore</span></div></footer>
-              </article>
-              <article className="quote">
-                <div className="stars" aria-label="4 out of 5"><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-fill"><use href="#i-star"></use></svg><svg className="ic ic-empty"><use href="#i-star"></use></svg></div>
-                <p>Six months on the CFC Care plan and I have stopped thinking about AC servicing entirely. They call me before summer and fix a slot.</p>
-                <footer><Image src="/images/testimonials/deepak.png" alt="Deepak Jain" width={38} height={38} className="avatar" style={{ objectFit: 'cover' }} /><div><b>Deepak Jain</b><span>Gachibowli, Hyderabad</span></div></footer>
-              </article>
+              {TESTIMONIALS.map((t) => <Quote key={t.name} t={t} />)}
+              {/* The second pass is what makes the loop seamless: the track
+                  scrolls the width of one set, by which point the copy sits
+                  exactly where the original started. `aria-hidden` on it so a
+                  screen reader reads six testimonials, not twelve. */}
+              {TESTIMONIALS.map((t) => <Quote key={t.name + '-copy'} t={t} copy />)}
             </div>
           </div>
         </section>
@@ -657,7 +827,7 @@ function MarketingHomePage() {
           identical footer rather than a diverging copy of it. */}
       <SiteFooter tiles={tiles} />
 
-      <div className="mbar" id="mbar">
+      <div className={barVisible ? "mbar show" : "mbar"} id="mbar">
         <Link className="btn btn-primary" href="/categories">Book Now</Link>
         <button className="btn btn-ghost" type="button" aria-label="Call CFC support"><svg className="ic" aria-hidden="true"><use href="#i-headset"></use></svg></button>
       </div>

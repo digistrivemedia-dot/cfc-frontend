@@ -60,3 +60,20 @@ Thumbs.db
 # Session transcripts and scratch files. Machine-specific and not useful to
 # another developer.
 .claude/
+
+# ── Working notes, not product code ────────────────────────────────────────
+#
+# This repository is PUBLIC (see the note at the top about the agreement
+# documents), so what goes in is permanent and visible to anyone.
+#
+# `pro-admin-revisions.md` is the CLIENT'S internal revision list - their own
+# wording about what they were unhappy with, and commercial decisions such as
+# the Rs500 security balance. The code records what was built and why;
+# the client's unedited feedback is not ours to publish.
+#
+# The checklists are a developer's own tracking for one round of revisions.
+# ARCHITECTURE.md is what a new developer should read instead.
+pro-admin-revisions.md
+PRO-CHECKLIST.md
+ADMIN-CHECKLIST.md
+PRO-ADMIN-CHECKLIST.md

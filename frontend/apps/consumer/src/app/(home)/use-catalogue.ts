@@ -253,10 +253,13 @@ export function useCatalogue(bookedLimit = 8): Catalogue {
  * forever - an invisible category grid, which is exactly the kind of failure
  * that looks like nothing at all rather than like an error.
  *
- * Rather than edit the transcribed `interactions.js` - which the handoff asks
- * to be kept as-is - this observes only the stragglers: elements that carry
- * `.rv` and have not yet been given `.in`. Elements the first observer already
- * revealed are skipped, so the two never fight over the same node.
+ * This observes only the stragglers: elements that carry `.rv` and have not
+ * yet been given `.in`. Elements the first observer already revealed are
+ * skipped, so the two never fight over the same node.
+ *
+ * Used by the SIGNED-IN home (`home/page.tsx`), which still runs its own
+ * `home/interactions.js`. The signed-out landing page no longer needs it - it
+ * has a single observer in `useRevealAll` now that its script is gone.
  *
  * `deps` is what to re-run on, normally the loaded rows.
  */

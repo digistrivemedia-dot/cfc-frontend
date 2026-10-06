@@ -9,6 +9,7 @@ import { initials } from "@cfc/ui";
 import { useSession } from "@/lib/session";
 import { useArea } from "@/lib/area";
 import { useCart } from "@/lib/cart";
+import { HeaderSearch } from "./header-search";
 
 /**
  * The signed-in app bar — one component, rendered by every screen behind a
@@ -24,7 +25,7 @@ import { useCart } from "@/lib/cart";
  * binds by id — `#addrBtn`, `#askInput`, `#cartBtn`, `#acctBtn`. Any screen
  * rendering this header must call it, which `AppShell` does.
  *
- * Styled by `home-pages.css` under `.cfc-page`, so it must sit inside that
+ * Styled by `styles/landing/` under `.cfc-page`, so it must sit inside that
  * wrapper — again, `AppShell` handles it.
  */
 export function AppHeader() {
@@ -106,14 +107,16 @@ export function AppHeader() {
           <svg className="ic ic-dn" aria-hidden="true"><use href="#i-chev"></use></svg>
         </button>
 
-        <div className="app-search" id="appSearch">
-          <svg className="ic" aria-hidden="true"><use href="#i-search"></use></svg>
-          <input id="askInput" type="text" autoComplete="off" role="combobox" aria-expanded="false" aria-controls="sug" aria-autocomplete="list" aria-label="Search for a home service" placeholder="Search for a service" />
-          <button className="mic" type="button" id="micBtn" aria-label="Search by voice">
-            <svg className="ic" aria-hidden="true"><use href="#i-mic"></use></svg>
-          </button>
-          <div className="sug" id="sug" role="listbox" aria-label="Service suggestions"></div>
-        </div>
+        {/* The search box was markup here with its behaviour in
+            `home/interactions.js`, which crashed on every pick: it called an
+            `add()` that no longer existed. It is a component now - see
+            `header-search.tsx` for the three faults that fixes.
+
+            It also carried `id="askInput"` and `id="sug"`, the same ids
+            `hero-search.tsx` uses on the landing page. Two elements with one
+            id is invalid, and the legacy script looked elements up BY id, so
+            whichever rendered first won. The component's ids are its own. */}
+        <HeaderSearch />
 
         <div className="appbar-actions">
           {/* Notifications belong to an ACCOUNT.

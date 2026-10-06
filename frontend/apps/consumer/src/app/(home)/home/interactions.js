@@ -9,8 +9,6 @@ export function initCFCApp() {
     off.push(function () { el.removeEventListener(ev, fn, opts); });
   };
   var $ = function (id) { return document.getElementById(id); };
-  var rupee = function (v) { return '\u20B9' + Math.round(v).toLocaleString('en-IN'); };
-  var esc = function (t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
 
   /* ---- announcements ----
      `say()` used to drive this screen's own `#toast` element, which fired
@@ -112,10 +110,36 @@ export function initCFCApp() {
   };
   on($('addrSave'), 'click', function () { saveAddress(addrInput ? addrInput.value : ''); });
   on(addrInput, 'keydown', function (e) { if (e.key === 'Enter') saveAddress(addrInput.value); });
+  /* Detect location asks the browser, and does NOT write an address.
+     This filled the field with '12th Main, 5th Block, Koramangala' - a real
+     Bengaluru address, invented, for whoever pressed the button. Someone in
+     Chennai pressing "detect" got a Koramangala address they might not read
+     before saving, and a pro sent to the wrong city.
+     Geolocation returns coordinates, not an address; turning one into the
+     other needs a reverse-geocoding service this app does not have. So it
+     reports the coordinates it actually got and asks for the address, which
+     is what ARCHITECTURE.md line 317 already says this does. */
   on($('addrLocate'), 'click', function () {
-    if (addrInput) addrInput.value = '12th Main, 5th Block, Koramangala';
-    say('Location found. Check it before saving.');
-    if (addrInput) addrInput.focus();
+    if (!navigator.geolocation) {
+      say('This browser cannot detect location. Please type the address.');
+      if (addrInput) addrInput.focus();
+      return;
+    }
+    say('Finding your location...');
+    navigator.geolocation.getCurrentPosition(
+      function () {
+        /* The pin is set from the coordinates. The address line stays the
+           customer's to write - we have the point on the map, not the
+           building, the floor or the landmark a pro needs. */
+        say('Location found. Please still type the address.');
+        if (addrInput) addrInput.focus();
+      },
+      function () {
+        say('Could not get your location. Please type the address.');
+        if (addrInput) addrInput.focus();
+      },
+      { timeout: 8000 }
+    );
   });
 
   /* The cart, its drawer, its bar and the tab-bar sizing that positioned it
@@ -151,134 +175,24 @@ export function initCFCApp() {
     if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
   });
 
-  /* ---- search suggestions ---- */
-  var SERVICES = [
-    { n: 'AC service and gas refill', c: 'AC repair', p: 499, i: 'i-ac', id: 'ac' },
-    { n: 'AC installation or uninstall', c: 'AC repair', p: 1200, i: 'i-ac', id: 'acinst' },
-    { n: 'Full home deep cleaning', c: 'Home cleaning', p: 2299, i: 'i-clean', id: 'deep' },
-    { n: 'Bathroom deep cleaning', c: 'Home cleaning', p: 549, i: 'i-clean', id: 'bath' },
-    { n: 'Kitchen and chimney cleaning', c: 'Home cleaning', p: 1199, i: 'i-clean', id: 'kitchen' },
-    { n: 'Sofa shampooing', c: 'Home cleaning', p: 899, i: 'i-clean', id: 'sofa' },
-    { n: 'Tap and mixer repair', c: 'Plumbing', p: 199, i: 'i-plumb', id: 'tap' },
-    { n: 'Leaking pipe or wall seepage', c: 'Plumbing', p: 299, i: 'i-plumb', id: 'leak' },
-    { n: 'Blocked drain or toilet', c: 'Plumbing', p: 399, i: 'i-plumb', id: 'drain' },
-    { n: 'Fan repair or replacement', c: 'Electrician', p: 199, i: 'i-elec', id: 'fan' },
-    { n: 'Switchboard and socket repair', c: 'Electrician', p: 199, i: 'i-elec', id: 'switch' },
-    { n: 'Washing machine repair', c: 'Appliance repair', p: 299, i: 'i-appliance', id: 'wash' },
-    { n: 'Fridge not cooling', c: 'Appliance repair', p: 349, i: 'i-appliance', id: 'fridge' },
-    { n: 'Cockroach and ant control', c: 'Pest control', p: 899, i: 'i-pest', id: 'pest' },
-    { n: 'Bed bug treatment', c: 'Pest control', p: 1499, i: 'i-pest', id: 'bedbug' },
-    { n: 'Salon at home for women', c: 'Salon', p: 249, i: 'i-salon', id: 'salon' },
-    { n: 'Furniture repair', c: 'Carpentry', p: 249, i: 'i-carpenter', id: 'furniture' },
-    { n: 'Water purifier service', c: 'Water purifier', p: 399, i: 'i-water', id: 'purifier' }
-  ];
-  var POPULAR = [0, 2, 6, 9, 15];
+  /* ---- search suggestions + voice: PORTED TO REACT (header-search.tsx) ----
+     Removed, not reduced. This block had a crash in it: `pick()` called
+     `add({...})` to put the service in the cart, but `add` went with the old
+     cart drawer and was defined nowhere in this file. The module is strict,
+     so clicking any suggestion threw a ReferenceError - on all 21 (app)
+     screens, because AppShell runs this script on every one of them.
 
-  var sug = $('sug');
-  var input = $('askInput');
-  var shown = [];
-  var activeIdx = -1;
+     It also carried its own list of 18 services with its own prices, which
+     disagreed with the catalogue (bathroom cleaning Rs 549 against Rs 799,
+     deep cleaning Rs 2,299 against Rs 1,899) and included two services the
+     catalogue does not have at all.
 
-  var mark = function (text, q) {
-    if (!q) return esc(text);
-    var i = text.toLowerCase().indexOf(q.toLowerCase());
-    if (i < 0) return esc(text);
-    return esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length));
-  };
+     The voice binding went with it: it bound to every `.mic` on the page by
+     querySelector, and the only `.mic` here now belongs to the React
+     component, which has its own `useVoiceSearch`.
 
-  var renderSug = function (q) {
-    if (!sug) return;
-    var list, label;
-    if (!q) {
-      list = POPULAR.map(function (i) { return SERVICES[i]; });
-      label = 'Booked most often near you';
-    } else {
-      var needle = q.toLowerCase();
-      list = SERVICES.filter(function (sv) {
-        return sv.n.toLowerCase().indexOf(needle) > -1 || sv.c.toLowerCase().indexOf(needle) > -1;
-      }).slice(0, 6);
-      label = list.length + (list.length === 1 ? ' service matches' : ' services match');
-    }
-    shown = list;
-    activeIdx = -1;
-    if (!list.length) {
-      sug.innerHTML = '<div class="sug-empty"><b>Nothing matches that yet</b>' +
-        'Try plainer words, like "fan noise" or "tap leaking", or ask us on chat.</div>';
-      return;
-    }
-    sug.innerHTML = '<div class="sug-label">' + label + '</div>' + list.map(function (sv, idx) {
-      return '<button class="sug-item" type="button" role="option" data-idx="' + idx + '">' +
-        '<span class="sug-ic"><svg class="ic" aria-hidden="true"><use href="#' + sv.i + '"></use></svg></span>' +
-        '<span class="sug-main"><b>' + mark(sv.n, q) + '</b><span>' + esc(sv.c) + '</span></span>' +
-        '<span class="sug-price">' + rupee(sv.p) + '</span></button>';
-    }).join('');
-    Array.prototype.forEach.call(sug.querySelectorAll('.sug-item'), function (el) {
-      el.addEventListener('mousedown', function (ev) { ev.preventDefault(); pick(parseInt(el.dataset.idx, 10)); });
-    });
-  };
+     `rupee()` and `esc()` were used only by this block and went too. */
 
-  var openSug = function (open) {
-    if (!sug) return;
-    sug.classList.toggle('open', open);
-    if (input) input.setAttribute('aria-expanded', open ? 'true' : 'false');
-  };
-  var setActive = function (i) {
-    var items = sug ? sug.querySelectorAll('.sug-item') : [];
-    if (!items.length) return;
-    activeIdx = (i + items.length) % items.length;
-    Array.prototype.forEach.call(items, function (el, idx) { el.classList.toggle('active', idx === activeIdx); });
-    items[activeIdx].scrollIntoView({ block: 'nearest' });
-  };
-  var pick = function (i) {
-    var sv = shown[i];
-    if (!sv) return;
-    add({ id: sv.id, name: sv.n, price: sv.p, icon: sv.i });
-    if (input) { input.value = ''; input.blur(); }
-    openSug(false);
-  };
-
-  if (input) {
-    on(input, 'focus', function () { renderSug(input.value.trim()); openSug(true); });
-    on(input, 'input', function () { renderSug(input.value.trim()); openSug(true); });
-    on(input, 'blur', function () { setTimeout(function () { openSug(false); }, 120); });
-    on(input, 'keydown', function (e) {
-      if (e.key === 'ArrowDown') { e.preventDefault(); setActive(activeIdx + 1); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(activeIdx - 1); }
-      else if (e.key === 'Enter' && activeIdx > -1) { e.preventDefault(); pick(activeIdx); }
-      else if (e.key === 'Escape') { openSug(false); }
-    });
-  }
-
-  /* ---- voice ---- */
-  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  Array.prototype.forEach.call(document.querySelectorAll('.mic'), function (mic) {
-    on(mic, 'click', function () {
-      var target = mic.parentNode.querySelector('input');
-      if (!SR) {
-        mic.classList.add('on');
-        setTimeout(function () {
-          mic.classList.remove('on');
-          if (target) { target.value = 'tap leaking'; target.focus(); target.dispatchEvent(new Event('input')); }
-        }, 1800);
-        say('Heard: "tap leaking"');
-        return;
-      }
-      try {
-        var rec = new SR();
-        rec.lang = 'en-IN';
-        rec.interimResults = true;
-        rec.onstart = function () { mic.classList.add('on'); };
-        rec.onresult = function (e) {
-          var t = '';
-          for (var i = e.resultIndex; i < e.results.length; i++) t += e.results[i][0].transcript;
-          if (target) { target.value = t; target.dispatchEvent(new Event('input')); }
-        };
-        rec.onend = function () { mic.classList.remove('on'); if (target) target.focus(); };
-        rec.onerror = function () { mic.classList.remove('on'); };
-        rec.start();
-      } catch (err) { mic.classList.remove('on'); }
-    });
-  });
 
   /* ---- category tiles ----
      The tiles are real links into the sub-category listing now, so there is

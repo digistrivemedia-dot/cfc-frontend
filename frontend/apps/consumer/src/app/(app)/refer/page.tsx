@@ -133,7 +133,12 @@ function ReferPageInner() {
           the approved home page, where it carries the accent. In teal it was
           one more teal block on a screen whose buttons, steps and tracker are
           all already teal. */}
-      <section className="mt-4 rounded-card border-2 border-promo/30 bg-promo-subtle p-5 text-center shadow-sm">
+      {/* `border-promo`, not `border-promo/30`: the opacity modifier compiled to
+          nothing, so this `border-2` drew no border at all. The preset's
+          colours are CSS variables holding bare hex, which Tailwind cannot
+          turn into an rgb(... / .3). Full-strength promo is the intent anyway -
+          this block is meant to be the one orange thing here. */}
+      <section className="mt-4 rounded-card border-2 border-promo bg-promo-subtle p-5 text-center shadow-sm">
         <p className="text-caption font-semibold uppercase tracking-wide text-promo">
           Your referral code
         </p>

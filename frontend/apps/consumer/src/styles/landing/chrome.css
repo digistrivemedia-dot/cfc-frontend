@@ -212,9 +212,19 @@
    ============================================================ */
 .cfc-page .rv { opacity: 0; transform: translateY(16px); transition: opacity .65s var(--ease), transform .65s var(--ease); }
 .cfc-page .rv.in { opacity: 1; transform: none; }
-.cfc-page .rv-1 { transition-delay: .07s; } .rv-2 { transition-delay: .14s; }
-.cfc-page .rv-3 { transition-delay: .21s; } .rv-4 { transition-delay: .28s; }
-.cfc-page .rv-5 { transition-delay: .35s; } .rv-6 { transition-delay: .42s; }
+/* One per line, deliberately.
+   These were written two rules per line, which left `.rv-2`, `.rv-4` and
+   `.rv-6` UNSCOPED - the `.cfc-page` prefix only applies to the first
+   selector on a line, so those three were global and applied a transition
+   delay to any element anywhere in the app carrying that class. Nothing in
+   `app/(app)` uses them, so it never bit, but it was one class name away
+   from doing so. */
+.cfc-page .rv-1 { transition-delay: .07s; }
+.cfc-page .rv-2 { transition-delay: .14s; }
+.cfc-page .rv-3 { transition-delay: .21s; }
+.cfc-page .rv-4 { transition-delay: .28s; }
+.cfc-page .rv-5 { transition-delay: .35s; }
+.cfc-page .rv-6 { transition-delay: .42s; }
 
 /* ============================================================
    Skip link

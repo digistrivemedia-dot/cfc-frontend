@@ -1,21 +1,47 @@
 /*
-  The two approved home pages.
+  The two approved home pages. READ `README.md` IN THIS FOLDER FIRST - it
+  explains why these pages have a stylesheet at all when the other 21 screens
+  have none.
 
-  PHASE 0 MOVE 1: design tokens, resets and base element rules were moved
-  out to `src/styles/foundation.css` and are imported below. The import sits
-  at the top so those rules still arrive FIRST, in their original order.
-  Nothing else in this file was touched.
+  ── What is in here, in order ──────────────────────────────────────────────
 
-  The pre-split original is in git history (commit 0684eae, "Phase 0: split
-  home-pages.css into five layered stylesheets").
+  The four @imports below, then this file's own rules in three parts:
+
+    ~line  22 - 350   BOTH pages: the header, the account menu, the location
+                      picker, the responsive blocks they share
+    ~line 352 - 527   SIGNED-IN only: welcome, setup checklist, address
+                      capture, empty states, help strip, mobile tab bar
+    ~line 528 - end   SIGNED-IN responsive
+
+  ── Why the signed-in part is not a separate file ──────────────────────────
+
+  It was measured for a split. Nineteen classes are used by BOTH pages -
+  `hdr-in`, `menu`, `loc-pop`, `chip`, `btn-sm`, `bk-foot`, `pro-steps` and
+  twelve more - and the responsive block at the end sets rules for both in the
+  same media queries. Separating them means either duplicating those nineteen
+  or inventing a third shared file, and the media queries would have to be
+  split by hand across all three.
+
+  That is more moving parts and more ways to drift, for no gain a reader can
+  see. The boundary is documented instead, which is what the split was for.
+
+  ── History ────────────────────────────────────────────────────────────────
+
+  Tokens, resets and base element rules live in `foundation.css` and are
+  imported first so they still arrive before everything else, in their
+  original order. The pre-split original is in git history (commit 0684eae).
+
+  Three dead blocks were removed - the cart drawer, the toast and the sticky
+  cart bar - each replaced by a Tailwind-styled React component. The removal
+  points are marked inline with what replaced them.
 */
-@import "../../styles/foundation.css";
+@import "./foundation.css";
 
-@import "../../styles/primitives.css";
+@import "./primitives.css";
 
 
-@import "../../styles/chrome.css";
-@import "../../styles/home-page.css";
+@import "./chrome.css";
+@import "./home-page.css";
 
 /* ============================================================
    Responsive
@@ -489,49 +515,8 @@
 .cfc-page .qty .ic { width: 15px; height: 15px; stroke-width: 2.2; }
 .cfc-page .qty b { min-width: 20px; text-align: center; font-size: .875rem; font-weight: 700; }
 
-/* ---------- cart drawer ---------- */
-.cfc-page .scrim {
-  position: fixed; inset: 0; z-index: 95; background: rgba(11, 34, 57, .45);
-  opacity: 0; pointer-events: none; transition: opacity .3s var(--ease);
-  backdrop-filter: blur(2px);
-}
-.cfc-page .scrim.open { opacity: 1; pointer-events: auto; }
-/* Same fix as `.sheet` above, for the same reason: a transform hides this
-   panel visually but leaves it in hit testing. Its scrim already sets
-   `pointer-events: none` at rest; the panel itself did not. */
-.cfc-page .cart {
-  position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100%); z-index: 96;
-  background: #fff; display: flex; flex-direction: column;
-  transform: translateX(101%);
-  visibility: hidden; pointer-events: none;
-  transition: transform .34s var(--ease), visibility 0s linear .34s;
-  box-shadow: -30px 0 60px -40px rgba(11, 34, 57, .8);
-}
-.cfc-page .cart.open {
-  transform: none;
-  visibility: visible; pointer-events: auto;
-  transition: transform .34s var(--ease), visibility 0s;
-}
-.cfc-page .cart-top { display: flex; align-items: center; justify-content: space-between; padding: 20px 22px; border-bottom: 1px solid var(--line); }
-.cfc-page .cart-top h3 { font-size: 1.0625rem; }
-.cfc-page .cart-top span { font-size: .75rem; color: var(--muted); font-weight: 500; display: block; margin-top: 2px; }
-.cfc-page .cart-body { flex: 1; overflow-y: auto; padding: 16px 22px; }
-.cfc-page .cart-item { display: flex; gap: 13px; padding: 14px 0; border-bottom: 1px solid var(--line-soft); }
-.cfc-page .cart-item .sug-ic { width: 42px; height: 42px; background: var(--teal-wash); }
-.cfc-page .cart-item .ci-main { flex: 1; min-width: 0; }
-.cfc-page .cart-item b { display: block; font-size: .9375rem; font-weight: 600; }
-.cfc-page .cart-item small { font-size: .75rem; color: var(--muted); }
-.cfc-page .cart-item .ci-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 12px; }
-.cfc-page .cart-empty { text-align: center; padding: 56px 20px; }
-.cfc-page .cart-empty .ic { width: 46px; height: 46px; margin: 0 auto 16px; color: #b9c8d6; stroke-width: 1.2; }
-.cfc-page .cart-empty b { display: block; font-size: 1rem; margin-bottom: 6px; }
-.cfc-page .cart-empty p { font-size: .875rem; color: var(--muted); max-width: 30ch; margin: 0 auto; }
-.cfc-page .cart-foot { border-top: 1px solid var(--line); padding: 18px 22px calc(18px + env(safe-area-inset-bottom)); background: #fff; }
-.cfc-page .cart-line { display: flex; justify-content: space-between; font-size: .875rem; margin-bottom: 9px; color: var(--ink-2); }
-.cfc-page .cart-line.save { color: var(--teal-deep); font-weight: 600; }
-.cfc-page .cart-line.total { font-size: 1.0625rem; font-weight: 800; color: var(--ink); padding-top: 11px; border-top: 1px dashed var(--line); }
-.cfc-page .cart-foot .btn { width: 100%; margin-top: 6px; height: 50px; }
-.cfc-page .cart-foot .cart-note { font-size: .6875rem; color: var(--muted); text-align: center; margin-top: 10px; }
+/* The cart drawer's CSS was removed here. Its markup went in 680b756 and
+   the replacement is `components/cart-bar.tsx`, styled with Tailwind. */
 
 /* ---------- help strip ---------- */
 /* Pale, not a navy slab. This was `background: var(--ink)` - a full-width dark
@@ -548,18 +533,8 @@
 .cfc-page .help-strip p { font-size: .875rem; color: var(--ink-2); margin-top: 4px; }
 .cfc-page .help-strip .help-cta { margin-left: auto; display: flex; gap: 10px; flex-wrap: wrap; }
 
-/* ---------- toast ---------- */
-.cfc-page .toast {
-  position: fixed; left: 50%; bottom: 28px; z-index: 120;
-  transform: translate(-50%, calc(100% + 40px));
-  background: var(--ink); color: #fff; padding: 13px 20px; border-radius: 999px;
-  font-size: .875rem; font-weight: 600; display: flex; align-items: center; gap: 10px;
-  box-shadow: var(--shadow-float); transition: transform .34s var(--ease);
-  max-width: calc(100vw - 32px);
-}
-.cfc-page .toast.show { transform: translate(-50%, 0); }
-.cfc-page .toast .ic { width: 17px; height: 17px; color: var(--teal); flex-shrink: 0; }
-
+/* The toast CSS was removed here. The live toast is the `sonner` library,
+   exported as `toast` from `@cfc/ui`, which styles itself. */
 /* ---------- mobile tab bar ---------- */
 .cfc-page .tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; display: none;
@@ -719,33 +694,14 @@
   .cfc-page .menu { width: min(290px, calc(100vw - 28px)); }
   .cfc-page .setup-row { flex-wrap: wrap; }
   .cfc-page .setup-row .btn { margin-left: 34px; }
-  .cfc-page .cart { width: 100%; }
   .cfc-page .help-strip { padding: 22px; }
   .cfc-page .help-strip .help-cta { margin-left: 0; width: 100%; }
   .cfc-page .help-strip .help-cta .btn { flex: 1; }
   .cfc-page .offer-card { padding: 22px; }
 }
 
-/* ---------- sticky cart bar above the tab bar ---------- */
-.cfc-page .cartbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 69; display: none;
-  align-items: center; justify-content: space-between; gap: 14px; width: 100%;
-  padding: 13px var(--pad); border: 0; cursor: pointer; text-align: left;
-  background: var(--teal-deep); color: #fff;
-  transform: translateY(120%); transition: transform .34s var(--ease);
-}
-.cfc-page .cartbar.show { transform: translateY(calc(-1 * var(--tabbar-h, 0px))); }
-.cfc-page .cartbar-left { display: flex; align-items: center; gap: 12px; }
-.cfc-page .cartbar-left .ic { width: 22px; height: 22px; }
-.cfc-page .cartbar-left b { display: block; font-size: .9375rem; font-weight: 700; }
-.cfc-page .cartbar-left small { font-size: .75rem; opacity: .8; }
-.cfc-page .cartbar-cta { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: .9375rem; }
-.cfc-page .cartbar-cta .ic { width: 17px; height: 17px; }
-@media (max-width: 900px) {
-  .cfc-page .cartbar { display: flex; }
-  /* keep the toast clear of the cart bar and the tab bar */
-  .cfc-page .toast { bottom: calc(var(--tabbar-h, 60px) + 82px); }
-}
+/* The sticky cart bar's CSS was removed here - see `components/cart-bar.tsx`,
+   which replaced it in 857830e and is styled with Tailwind. */
 
 
 

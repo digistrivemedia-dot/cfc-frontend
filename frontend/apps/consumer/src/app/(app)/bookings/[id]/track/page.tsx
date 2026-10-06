@@ -315,8 +315,13 @@ function Eta({ minutes }: { minutes: number | null }) {
         // approved design spends it, and the reason this screen is open. It
         // was teal, which made the countdown one more teal thing among the
         // map, the timeline and the buttons.
+        // `border-promo`, not `border-promo/30`. The opacity modifier compiled
+        // to nothing - this preset's colours are CSS variables holding bare
+        // hex, so Tailwind cannot build an rgb(... / .3) from them - which left
+        // this branch with NO border while the branch below had one. Same bug
+        // as `categories/page.tsx:746`, which documents it.
         left > 0
-          ? "border-promo/30 bg-promo-subtle"
+          ? "border-promo bg-promo-subtle"
           : "border-live-line bg-live-subtle",
       )}
       // The countdown changes without the customer acting, so it announces

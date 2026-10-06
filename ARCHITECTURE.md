@@ -87,7 +87,7 @@ import "../styles/patterns.css";  // 3. what Tailwind cannot express
 `app/(home)/layout.tsx` then adds one more, for two pages only:
 
 ```tsx
-import "./home-pages.css";
+import "../../styles/landing/index.css";
 ```
 
 ### 3.2 What each stylesheet is for
@@ -96,19 +96,63 @@ import "./home-pages.css";
 |---|---|---|
 | `app/brand.css` | 248 | **Colour values only**, whole consumer app |
 | `styles/patterns.css` | 334 | The 21 `(app)` screens — see §5 |
-| `app/(home)/home-pages.css` | 792 | `(home)` only |
-| `styles/home-page.css` | 686 | `(home)` only |
-| `styles/chrome.css` | 310 | `(home)` only |
-| `styles/foundation.css` | 189 | `(home)` only |
-| `styles/primitives.css` | 44 | `(home)` only |
+| `styles/landing/` | ~1,950 | `/` and `/home` only — **read its `README.md`** |
 
 **`brand.css` is not where you write styling.** It redefines token *values*
 ("teal means `#02BABC` here"). Layout and appearance are written as Tailwind
 classes in the component.
 
-**The home-page stylesheets are fenced off.** They serve `/` and `/home` and
-nothing else — `grep -rl "cfc-page" app/(app)/` returns zero files. That design
-is client-approved; see §6.
+**`styles/landing/` is the approved marketing pages' stylesheet**, and it is
+the one place in this app that is not Tailwind.
+
+Its **page** rules serve `/` and `/home` only: `grep -rl "cfc-page" app/(app)/`
+returns zero files. But the file itself is **loaded on all 21 `(app)` screens**,
+because `AppShell` wraps them in `.cfc-chrome` — an alias that carries the
+design tokens without the bare-element resets. The header and footer those
+screens share are styled from here. See the note at the end of this section
+before assuming a change here cannot reach them.
+
+It used to be five files split across two folders, with the entry point sitting
+in `app/(home)/` while the files it imported lived in `styles/`. They are in one
+folder now, with a `README.md` that answers the question a new reader actually
+has: *why does this exist when the other 21 screens have no CSS at all?*
+
+The short version: these pages came from a client-approved HTML prototype, and
+this stylesheet **is** that approved design. Converting it was measured — 392
+live rules using 149 distinct values, 71 of them used exactly once, on a 2px
+grid where this repo's Tailwind preset is 4px and deliberately closed. A value
+used once cannot earn a token name, so it converts to `pt-[54px]`: the same
+number, harder to read, moved into JSX. The conversion was stopped on purpose.
+The `README.md` shows the before-and-after so the next person can judge it.
+
+What *was* fixed in these pages: `(home)/interactions.js` (462 lines driving the
+DOM behind React's back) is gone, replaced by hooks in
+`app/(home)/use-landing.ts`; search no longer suggests services the catalogue
+does not contain; inline styles halved, 16 → 8; and 76 lines of dead CSS
+removed. Every change verified by
+diffing the browser's **computed style** for every element at nine viewport
+widths — zero differences.
+
+**There is a second script, and it is still live.**
+`app/(home)/home/interactions.js` (225 lines) drives the signed-in home and the
+app header — the address panel, the account menu, the category rail. It is
+imported by `app-shell.tsx`, so it runs on **every** `(app)` screen, not just
+`/home`. It is not the same file as the deleted `(home)/interactions.js`, and it
+has not been ported.
+
+Its search and voice sections *were* removed, because they held a crash:
+`pick()` called an `add()` that went with the old cart drawer and was defined
+nowhere, so clicking any header suggestion threw a ReferenceError on all 21
+screens. Those sections are now `app/(home)/header-search.tsx`. What remains in
+the script still reaches into the DOM directly, and porting it is the same work
+Phase 1 did for the landing page.
+
+**On CSS scope, read §3.2 carefully.** No `(app)` screen uses `.cfc-page`, but
+`AppShell` wraps them all in `.cfc-chrome` — an alias declared in
+`styles/landing/` that carries the design tokens **without** the bare-element
+resets (`h1`, `p`). So that stylesheet *is* loaded and *does* apply on all 21
+screens; what it does not do is restyle their headings and paragraphs. Widening
+`cfc-chrome` to include the element rules would change typography app-wide.
 
 ### 3.3 Route groups
 

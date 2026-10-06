@@ -16,7 +16,7 @@
  */
 import * as React from "react";
 import { CartBar } from "@/components/cart-bar";
-import "./home-pages.css";
+import "../../styles/landing/index.css";
 
 export default function HomeLayout({
   children,

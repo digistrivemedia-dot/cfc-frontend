@@ -121,6 +121,24 @@ export interface ProJob {
    */
   beforePhotoUrls: string[];
   afterPhotoUrls: string[];
+
+  /**
+   * Who cancelled, and why. Both null unless `status` is "cancelled".
+   *
+   * A job that simply reads "Cancelled" tells the pro nothing: they do not know
+   * whether the customer changed their mind, the office reassigned it, or
+   * something they did caused it — and the third possibility is the one they
+   * will assume. The client asked for the reason to be shown (Pro correction
+   * 7), and a cancellation without a cause is also the kind of thing that turns
+   * into a support call.
+   *
+   * Optional because the BACKEND will own these. Every existing caller keeps
+   * working without them, and a job that arrives with no reason shows the
+   * status alone rather than an empty panel.
+   */
+  cancelledBy?: "customer" | "pro" | "office" | undefined;
+  cancelReason?: string | undefined;
+  cancelledAt?: Timestamp | undefined;
 }
 
 /** The four tabs on Pro 20. */

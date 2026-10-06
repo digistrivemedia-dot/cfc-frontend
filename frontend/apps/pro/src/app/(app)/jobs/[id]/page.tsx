@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import { getProJob } from "@cfc/mocks";
 import {
-  CFC_COMMISSION_BPS,
   PRO_JOB_STATUS_LABEL,
   type ProJob,
 } from "@cfc/types";
@@ -28,7 +27,6 @@ import {
   Button,
   ErrorState,
   MapView,
-  MoneyBreakdown,
   PhotoGrid,
   Skeleton,
   cn,
@@ -37,6 +35,7 @@ import {
   toast,
 } from "@cfc/ui";
 import { ProAction, ProActionLayout } from "@/components/pro-action-bar";
+import { YouEarn } from "@/components/you-earn";
 import { currentProId } from "@/lib/pro-session";
 import {
   GPS_PROOF_RADIUS_M,
@@ -51,7 +50,7 @@ import {
  * not have to know which screen their job is "on". What changes with the status
  * is the docked action and how much of the record is filled in:
  *
- *   on the way   → Navigate / Call / WhatsApp, and I'm Here      (Pro 13, 14)
+ *   on the way   → Navigate / Call / Message, and I'm Here       (Pro 13, 14)
  *   in progress  → continue to the work screen
  *   completed    → the full record: checklist, photos, settlement (Pro 21)
  *
@@ -63,10 +62,11 @@ import {
  *
  * ## What a pro needs while travelling
  *
- * Four actions, and the inventory names all four: Navigate, Call, WhatsApp,
- * and **I'm Here**. The first three are how they arrive; the last is the one
- * that moves the job forward, so it is the docked action and the other three
- * are a row of buttons.
+ * Four actions: Navigate, Call, Message and **I'm Here**. The inventory named
+ * the third as WhatsApp; the client asked for it to be a plain message
+ * instead. The first three are how they arrive; the last is the one that moves
+ * the job forward, so it is the docked action and the other three are a row of
+ * buttons.
  *
  * ## Why "I'm Here" checks GPS
  *
@@ -279,11 +279,15 @@ function JobView({
                   icon={<Phone className="size-5" aria-hidden="true" />}
                   label="Call"
                 />
+                {/* Message, not WhatsApp - the client asked for WhatsApp to
+                    go. `sms:` opens the phone's own messaging app, which works
+                    on every handset without a third party. If CFC later routes
+                    messages through their own service or a masked number, only
+                    this href changes. */}
                 <ContactButton
-                  href={waHref(job.customerPhone)}
-                  external
+                  href={smsHref(job.customerPhone)}
                   icon={<MessageCircle className="size-5" aria-hidden="true" />}
-                  label="WhatsApp"
+                  label="Message"
                 />
               </div>
             )}
@@ -355,19 +359,11 @@ function JobView({
             one gets the net figure alone: quoting a fee that has not been
             charged yet reads as money already gone. */}
         {job.status === "completed" ? (
-          <MoneyBreakdown
+          <YouEarn
             className="mt-4"
-            grossPaise={job.grossEarningPaise}
-            cfcFeePaise={job.grossEarningPaise - job.netEarningPaise}
             netPaise={job.netEarningPaise}
-            cfcFeeBps={
-              job.grossEarningPaise === job.netEarningPaise
-                ? 0
-                : CFC_COMMISSION_BPS
-            }
             commissionFree={job.grossEarningPaise === job.netEarningPaise}
             payoutNote="Credited to your bank or UPI within 48 hours of completing."
-            gstNote
           />
         ) : (
           <section className="mt-4 rounded-card border border-border bg-surface p-4">
@@ -546,6 +542,21 @@ function WorkAction({ job, onOpen }: { job: ProJob; onOpen: () => void }) {
   );
 }
 
+/**
+ * Who cancelled, in the pro's words.
+ *
+ * "office" rather than "admin": a pro deals with the CFC office, not with a
+ * role name from the permission model.
+ */
+const CANCELLED_BY_LABEL: Record<
+  NonNullable<ProJob["cancelledBy"]>,
+  string
+> = {
+  customer: "Cancelled by the customer",
+  office: "Cancelled by the CFC office",
+  pro: "Cancelled by you",
+};
+
 /** Nothing left to do — completed or cancelled. */
 function ClosedAction({ job }: { job: ProJob }) {
   const done = job.status === "completed";
@@ -568,6 +579,24 @@ function ClosedAction({ job }: { job: ProJob }) {
         {done && (
           <p className="mt-px text-caption text-ink-muted">
             You earned {formatCurrency(job.netEarningPaise)}.
+          </p>
+        )}
+
+        {/* Who cancelled, and why. "Job cancelled" on its own leaves a pro
+            assuming they caused it - which is wrong most of the time, and is
+            the kind of silence that becomes a support call. Pro correction 7.
+
+            Shown only when the backend sends it; a job without a reason falls
+            back to the status alone rather than an empty line. */}
+        {!done && job.cancelledBy !== undefined && (
+          <p className="mt-1 text-caption text-critical-ink">
+            {CANCELLED_BY_LABEL[job.cancelledBy]}
+            {job.cancelReason !== undefined ? ` — ${job.cancelReason}` : null}
+          </p>
+        )}
+        {!done && job.cancelledAt !== undefined && (
+          <p className="mt-px text-caption text-ink-muted">
+            {formatSchedule(job.cancelledAt)}
           </p>
         )}
       </div>
@@ -639,10 +668,16 @@ function mapsHref(address: string): string {
 }
 
 /**
- * WhatsApp, which the inventory asks for and which genuinely works on the web.
+ * The phone's own messaging app.
  *
- * `wa.me` needs the number with no plus sign and no spaces.
+ * This replaced a `wa.me` WhatsApp link, which the client asked to be removed.
+ * `sms:` is handled by every handset and needs no third-party app installed.
+ *
+ * The number is stripped to digits and a leading plus is kept, because an
+ * Indian number stored as "+91 98765 43210" has to reach the dialler as
+ * "+919876543210" or the message goes nowhere.
  */
-function waHref(phone: string): string {
-  return `https://wa.me/${phone.replace(/\D/g, "")}`;
+function smsHref(phone: string): string {
+  const digits = phone.replace(/[^\d+]/g, "");
+  return `sms:${digits}`;
 }

@@ -2,12 +2,24 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, Lock, TriangleAlert, Wrench } from "lucide-react";
-import { getProServices, setProServiceEnabled } from "@cfc/mocks";
-import type { ProService } from "@cfc/types";
+import { ArrowLeft, Lock, Plus, TriangleAlert, Wrench } from "lucide-react";
+import {
+  getAvailableProServices,
+  getProServices,
+  requestProServices,
+  setProServiceEnabled,
+} from "@cfc/mocks";
+import type { AvailableProService, ProService } from "@cfc/types";
 import {
   Badge,
   Button,
+  Checkbox,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   EmptyState,
   ErrorState,
   Skeleton,
@@ -168,6 +180,12 @@ export default function ProServicesPage() {
         </>
       )}
 
+      {/* Pro correction 1: a pro doing AC work as well should be able to say
+          so. Adding is a REQUEST - the agreement has CFC approving what a pro
+          is onboarded for, so a pro cannot grant themselves a trade and start
+          taking that work. The office decides; the backend will own that step. */}
+      <AddServices proId={proId} held={rows ?? []} onRequested={load} />
+
       {/* Who owns the rate. Answered once, at the foot, where a pro who has
           just read three prices will be wondering. */}
       <section className="mt-6 rounded-card border border-border bg-canvas p-4">
@@ -228,21 +246,15 @@ function ServiceRow({
         />
       </div>
 
-      {/* Both figures. The rate is what the customer pays; the net is what the
-          pro decides on. */}
-      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-border pt-3">
-        <div>
-          <dt className="text-caption text-ink-muted">Customer pays from</dt>
-          <dd className="tabular text-small font-medium text-ink">
-            {formatCurrency(service.ratePaise)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-caption text-ink-muted">You keep</dt>
-          <dd className="tabular text-small font-semibold text-ink">
-            {formatCurrency(service.netPaise)}
-          </dd>
-        </div>
+      {/* One figure. "Customer pays from" was here beside it - that is the job
+          value, which the client asked not to appear anywhere in the Pro app
+          (corrections 2 and 6). A pro deciding whether to take this work needs
+          what they earn; the customer's price is the admin app's to show. */}
+      <dl className="mt-3 border-t border-border pt-3">
+        <dt className="text-caption text-ink-muted">You earn from</dt>
+        <dd className="tabular text-small font-semibold text-ink">
+          {formatCurrency(service.netPaise)}
+        </dd>
       </dl>
 
       {service.jobsCompleted > 0 && (
@@ -258,5 +270,176 @@ function ServiceRow({
         </p>
       )}
     </article>
+  );
+}
+
+/**
+ * Ask the CFC office to add services.
+ *
+ * A pro who starts doing AC work should be able to say so (Pro correction 1).
+ * What they cannot do is grant it to themselves: `PLATFORM-FACTS.md` has CFC
+ * approving pro onboarding, and a pro who could add "Electrical" and
+ * immediately take electrical jobs would be approving their own competence.
+ *
+ * So this sends a request. The office approves it, and the backend owns that
+ * step — today the request is recorded and confirmed, and nothing dispatches on
+ * it. Noted for the backend team in PRO-CHECKLIST.md.
+ */
+function AddServices({
+  proId,
+  held,
+  onRequested,
+}: {
+  proId: string;
+  held: ProService[];
+  onRequested: () => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [available, setAvailable] = React.useState<AvailableProService[] | null>(
+    null,
+  );
+  const [picked, setPicked] = React.useState<string[]>([]);
+  const [busy, setBusy] = React.useState(false);
+
+  // Loaded when the dialog opens, not on page load: most visits to this screen
+  // are to switch something off, and the catalogue is not needed for that.
+  React.useEffect(() => {
+    if (!open) return;
+    setPicked([]);
+    let cancelled = false;
+    void getAvailableProServices(proId)
+      .then((r) => {
+        if (!cancelled) setAvailable(r);
+      })
+      .catch(() => {
+        if (!cancelled) setAvailable([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, proId]);
+
+  const toggle = (id: string) =>
+    setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+
+  const submit = async () => {
+    if (picked.length === 0) return;
+    setBusy(true);
+    try {
+      await requestProServices(proId, picked);
+      toast.success(
+        picked.length === 1
+          ? "Request sent. The CFC office will review it."
+          : `Request sent for ${picked.length} services. The CFC office will review it.`,
+      );
+      setOpen(false);
+      onRequested();
+    } catch {
+      toast.error("Could not send that request. Check your connection.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pending = held.filter((h) => h.pendingApproval === true);
+
+  return (
+    <section className="mt-6 rounded-card border border-border bg-surface p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-small font-semibold text-ink">
+            Do you offer more services?
+          </h2>
+          <p className="mt-1 text-caption text-ink-muted">
+            Ask the CFC office to add a service to your profile. They will
+            review it before you start getting that work.
+          </p>
+        </div>
+
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button variant="secondary" size="sm">
+              <Plus className="size-4" aria-hidden="true" />
+              Add services
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add services</DialogTitle>
+            </DialogHeader>
+
+            {available === null ? (
+              <div className="space-y-2">
+                {[0, 1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-field w-full" />
+                ))}
+              </div>
+            ) : available.length === 0 ? (
+              <p className="py-4 text-center text-small text-ink-muted">
+                You already offer every service CFC runs in your area.
+              </p>
+            ) : (
+              <ul className="max-h-panel space-y-1 overflow-y-auto">
+                {available.map((s) => (
+                  <li key={s.serviceId}>
+                    <label
+                      className={cn(
+                        "flex min-h-touch cursor-pointer items-center gap-3 rounded-control border p-3",
+                        "transition-colors duration-fast",
+                        picked.includes(s.serviceId)
+                          ? "border-action bg-action-subtle"
+                          : "border-border hover:border-action-line",
+                      )}
+                    >
+                      <Checkbox
+                        checked={picked.includes(s.serviceId)}
+                        onCheckedChange={() => toggle(s.serviceId)}
+                        aria-label={s.serviceName}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-small font-medium text-ink">
+                          {s.serviceName}
+                        </span>
+                        <span className="block truncate text-caption text-ink-muted">
+                          {s.categoryName}
+                        </span>
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <DialogFooter>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => void submit()}
+                loading={busy}
+                disabled={picked.length === 0}
+              >
+                {picked.length === 0
+                  ? "Send request"
+                  : `Send request (${picked.length})`}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* What is already waiting, so a pro does not ask twice. */}
+      {pending.length > 0 && (
+        <p className="mt-3 border-t border-border pt-3 text-caption text-ink-muted">
+          Waiting on the office:{" "}
+          {pending.map((p) => p.serviceName).join(", ")}.
+        </p>
+      )}
+    </section>
   );
 }

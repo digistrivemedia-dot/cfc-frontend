@@ -2,14 +2,13 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowLeft, Gift, ReceiptText } from "lucide-react";
+import { ArrowLeft, ReceiptText } from "lucide-react";
 import { getProEarnings } from "@cfc/mocks";
 import { CFC_COMMISSION_BPS, type ProEarning } from "@cfc/types";
 import {
   Badge,
   DataTable,
   EmptyState,
-  cn,
   formatCurrency,
   type Column,
 } from "@cfc/ui";
@@ -75,32 +74,10 @@ export default function ProTransactionsPage() {
           </span>
         ),
       },
-      {
-        id: "gross",
-        header: "Job value",
-        align: "right",
-        tabular: true,
-        cell: (row) => formatCurrency(row.grossPaise),
-      },
-      {
-        id: "fee",
-        header: "CFC fee",
-        align: "right",
-        tabular: true,
-        // Zero is shown as ₹0 with its reason, never as a blank. A blank cell
-        // is indistinguishable from data that failed to load.
-        cell: (row) =>
-          row.commissionFree ? (
-            <span className="inline-flex items-center gap-1 text-live-ink">
-              <Gift className="size-4 shrink-0" aria-hidden="true" />
-              {formatCurrency(0)}
-            </span>
-          ) : (
-            <span className="text-ink-muted">
-              − {formatCurrency(row.cfcFeePaise)}
-            </span>
-          ),
-      },
+      /* "Job value" and "CFC fee" columns were here. The client asked for
+         neither the job value nor the platform fee to appear anywhere in the
+         Pro app - a pro sees what they earn, and the full breakdown lives in
+         the admin app. The data is still on the row; it is simply not shown. */
       {
         id: "net",
         header: "You earned",
@@ -160,24 +137,22 @@ export default function ProTransactionsPage() {
             row.commissionFree ? (
               <Badge tone="live">No fee</Badge>
             ) : undefined,
+          /* The "Job value" and "CFC fee − ₹X" lines were here and are gone
+             for the same reason as the columns above: no job value and no
+             platform fee anywhere in the Pro app.
+
+             The commission-free line stays, without a figure. It is a benefit
+             to the pro rather than a deduction from them, and "one of your
+             first 20 jobs" names no amount. */
           lines: [
-            (row) => (
-              <span className="tabular">
-                Job value {formatCurrency(row.grossPaise)}
-              </span>
-            ),
-            (row) => (
-              <span
-                className={cn(
-                  "tabular",
-                  row.commissionFree && "text-live-ink",
-                )}
-              >
-                {row.commissionFree
-                  ? "CFC fee waived — one of your first 20 jobs"
-                  : `CFC fee − ${formatCurrency(row.cfcFeePaise)}`}
-              </span>
-            ),
+            (row) =>
+              row.commissionFree ? (
+                <span className="text-live-ink">
+                  No CFC fee — one of your first 20 jobs
+                </span>
+              ) : (
+                <span className="text-ink-muted">{row.bookingId}</span>
+              ),
           ],
           trailing: (row) => (
             <span className="block text-right">

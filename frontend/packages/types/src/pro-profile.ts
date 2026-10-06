@@ -37,6 +37,34 @@ export interface ProService {
   enabled: boolean;
   /** Jobs done in this service. Context for whether to keep it on. */
   jobsCompleted: number;
+  /**
+   * Waiting on the CFC office to approve it.
+   *
+   * A pro can ask to add a service they are not yet approved for (Pro
+   * correction 1). Until the office approves, the row is listed but takes no
+   * work - the alternative, letting a pro grant themselves a trade and start
+   * receiving those jobs, is not something the agreement allows, since CFC
+   * approves pro onboarding.
+   *
+   * Optional, and absent on every existing row: the BACKEND owns the approval
+   * step. Today the request is recorded and shown; nothing dispatches on it.
+   */
+  pendingApproval?: boolean | undefined;
+}
+
+/**
+ * A service a pro could ask to add - in the catalogue, not yet on their list.
+ *
+ * Only the identity and the rate, because that is all a pro needs to decide.
+ * `netPaise` is deliberately absent: the commission on a service they do not
+ * hold yet is not a figure to put in front of them before it applies.
+ */
+export interface AvailableProService {
+  serviceId: Id;
+  serviceName: string;
+  categoryName: string;
+  /** Admin-set, the same figure the approved rows show. */
+  ratePaise: Paise;
 }
 
 /**

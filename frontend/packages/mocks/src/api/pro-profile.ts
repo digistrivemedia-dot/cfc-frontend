@@ -3,6 +3,7 @@ import type {
   ProAvailability,
   ProProfileEdit,
   ProService,
+  AvailableProService,
   Weekday,
 } from "@cfc/types";
 import { WEEKDAYS } from "@cfc/types";
@@ -59,6 +60,59 @@ export async function getProServices(proId: string): Promise<ProService[]> {
     });
 
   return applyScenario(rows, []);
+}
+
+/**
+ * Services the pro could ask to add - the catalogue, less what they already
+ * hold.
+ *
+ * Sorted by category then name so the list reads like the catalogue rather
+ * than in whatever order the fixtures happen to sit in.
+ */
+export async function getAvailableProServices(
+  proId: string,
+): Promise<AvailableProService[]> {
+  await latency();
+
+  const pro = pros.find((p) => p.id === proId);
+  if (!pro) return applyScenario([], []);
+
+  const rows: AvailableProService[] = services
+    .filter((s) => s.active && !pro.services.includes(s.name))
+    .map((s) => {
+      const rule = pricingRules.find((r) => r.serviceId === s.id);
+      return {
+        serviceId: s.id,
+        serviceName: s.name,
+        categoryName: s.categoryName,
+        ratePaise: rule?.basePricePaise ?? s.basePricePaise,
+      };
+    })
+    .sort(
+      (a, b) =>
+        a.categoryName.localeCompare(b.categoryName) ||
+        a.serviceName.localeCompare(b.serviceName),
+    );
+
+  return applyScenario(rows, []);
+}
+
+/**
+ * Ask the CFC office to add a service.
+ *
+ * A REQUEST, not a grant. The agreement has CFC approving what a pro is
+ * onboarded for, so a pro cannot give themselves a new trade and start taking
+ * that work - they ask, and the office decides.
+ *
+ * The backend owns the approval step. This records the request and returns the
+ * rows as the pro should now see them: listed, and marked as waiting.
+ */
+export async function requestProServices(
+  _proId: string,
+  serviceIds: string[],
+): Promise<{ requested: number }> {
+  await latency();
+  return { requested: serviceIds.length };
 }
 
 /** The pro's own switch. Admin-set rates are untouched by this. */

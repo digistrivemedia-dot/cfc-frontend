@@ -192,6 +192,8 @@ export {
 } from "./api/pro-work";
 export {
   getProServices,
+  getAvailableProServices,
+  requestProServices,
   setProServiceEnabled,
   getProAvailability,
   saveProAvailability,

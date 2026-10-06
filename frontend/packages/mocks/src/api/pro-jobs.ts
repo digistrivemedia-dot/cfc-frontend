@@ -210,6 +210,22 @@ function build(proId: string): Built {
   const pool = matching.length > 0 ? matching : SERVICE_CATALOG.slice(0, 3);
 
   let seq = 0;
+  /**
+   * Who cancelled, and the reasons each of them gives.
+   *
+   * Real reasons rather than "Cancelled by user": a pro reading this needs to
+   * know whether it was them, the customer or the office, because the third
+   * possibility - that they caused it - is the one they will otherwise assume.
+   */
+  const CANCELLERS = ["customer", "office", "pro"] as const;
+  const CANCEL_REASONS = [
+    "Customer was not at home at the scheduled time.",
+    "Customer rescheduled to another day.",
+    "Customer no longer needs the service.",
+    "Reassigned by the CFC office to a nearer pro.",
+    "Pro was unable to travel — reassigned by the office.",
+  ] as const;
+
   const make = (
     status: ProJobStatus,
     offsetMs: number,
@@ -278,6 +294,16 @@ function build(proId: string): Built {
         status === "completed"
           ? [`/mock/jobs/${proId}-${seq}-after-1.jpg`]
           : [],
+      // Who cancelled and why, only on a cancelled job. The backend will own
+      // these; the fixture fills them so the screen has something real to show.
+      ...(status === "cancelled"
+        ? {
+            cancelledBy: CANCELLERS[Math.floor(rand() * CANCELLERS.length)]!,
+            cancelReason:
+              CANCEL_REASONS[Math.floor(rand() * CANCEL_REASONS.length)]!,
+            cancelledAt: new Date(Date.now() + offsetMs).toISOString(),
+          }
+        : {}),
     };
   };
 

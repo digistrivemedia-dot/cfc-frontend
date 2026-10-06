@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { BriefcaseBusiness, CalendarClock, MapPin } from "lucide-react";
+import { Ban, BriefcaseBusiness, CalendarClock, MapPin } from "lucide-react";
 import { getProJobCounts, getProJobs } from "@cfc/mocks";
 import {
   PRO_JOB_STATUS_LABEL,
@@ -217,6 +217,21 @@ function JobsInner() {
                 {formatWhen(job.scheduledAt)}
               </span>
             ),
+            // The cancellation reason, in the list rather than only in the
+            // detail: the cancelled tab is read as a list, and a pro scanning
+            // it should not have to open each job to find out what happened.
+            (job) =>
+              job.status === "cancelled" && job.cancelledBy !== undefined ? (
+                <span className="flex items-start gap-1 text-critical-ink">
+                  <Ban className="mt-px size-4 shrink-0" aria-hidden="true" />
+                  <span>
+                    {CANCELLED_BY_LABEL[job.cancelledBy]}
+                    {job.cancelReason !== undefined
+                      ? ` — ${job.cancelReason}`
+                      : null}
+                  </span>
+                </span>
+              ) : null,
           ],
           trailing: (job) => (
             <span className="block text-right">
@@ -233,6 +248,18 @@ function JobsInner() {
     </div>
   );
 }
+
+/**
+ * Who cancelled, in the pro's words. Mirrors the detail screen's map.
+ */
+const CANCELLED_BY_LABEL: Record<
+  NonNullable<ProJob["cancelledBy"]>,
+  string
+> = {
+  customer: "Cancelled by the customer",
+  office: "Cancelled by the CFC office",
+  pro: "Cancelled by you",
+};
 
 /**
  * A job's status, coloured once.

@@ -2,17 +2,8 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Globe, Info, LogOut, TriangleAlert, UserX } from "lucide-react";
-import { getProDayStats } from "@cfc/mocks";
+import { Globe, LogOut } from "lucide-react";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
   Badge,
   Button,
   InlineAlert,
@@ -21,24 +12,26 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  Switch,
   cn,
-  toast,
 } from "@cfc/ui";
-import { currentProId, signOut } from "@/lib/pro-session";
+import { signOut } from "@/lib/pro-session";
 
 /**
  * Pro 33 — settings.
  *
  * "Notification preferences, language, account deactivation."
  *
- * ## One preference is deliberately not switchable
+ * ## The notification switches were removed
  *
- * Job alerts. A pro who turns those off stops receiving work and will not
- * connect the two — they will conclude the platform has stopped sending them
- * jobs. The switch is present, locked on, and says why. The pro already has the
- * correct control for "stop sending me work": going offline, or holiday mode,
- * both of which are reversible in one tap and visible on every screen.
+ * The client asked for them to go: the office operates notifications from the
+ * admin panel, and a pro does not switch their own on and off. The rows stay,
+ * so a pro can still read what they receive - removing the list as well would
+ * leave them guessing.
+ *
+ * Job alerts were already locked on, for a reason that still holds: a pro who
+ * turned those off would stop receiving work and conclude the platform had
+ * stopped sending it. The correct control for "stop sending me work" is going
+ * offline or holiday mode, which the row still points at.
  *
  * ## Language is parked, and labelled honestly
  *
@@ -47,32 +40,26 @@ import { currentProId, signOut } from "@/lib/pro-session";
  * reasonable expectation with no contractual backing, and the screen says the
  * app is English for now rather than offering four options that do nothing.
  *
- * ## Deactivation is a request, not a switch
+ * ## There is no "deactivate my account"
  *
- * A pro with active jobs cannot simply vanish — a customer is expecting them
- * tomorrow. Whether a pro can self-deactivate is not stated anywhere in the
- * agreement (PRO-OPEN-ITEMS 1.6), so this is built as a request to the office
- * with the active-job count shown, which is both the safe reading and the one
- * that tells the pro what actually stands in the way.
+ * It was a request to the office, built that way because whether a pro may
+ * self-deactivate is not stated in the agreement (PRO-OPEN-ITEMS 1.6). The
+ * client asked for the option to be removed, so a pro who wants to leave
+ * contacts the office - which the line at the foot of this screen already says.
  */
 
-const NOTIFY_KEY = "cfc_pro_notify";
+/**
+ * The notification types a pro receives.
+ *
+ * There is no stored preference behind these any more. The client asked for
+ * the pro's toggles to be removed and the CFC office to operate them, so this
+ * is a list of what arrives rather than a set of controls - and a stored value
+ * nothing can change is a value that will drift out of step with whatever the
+ * office has set.
+ */
+type NotifyKey = "payouts" | "quotations" | "announcements";
 
-type NotifyPrefs = {
-  payouts: boolean;
-  quotations: boolean;
-  announcements: boolean;
-};
-
-const DEFAULTS: NotifyPrefs = {
-  payouts: true,
-  quotations: true,
-  // The only one off by default: announcements are useful and not urgent, and
-  // a pro who wants fewer interruptions should lose these first.
-  announcements: true,
-};
-
-const ROWS: { key: keyof NotifyPrefs; label: string; body: string }[] = [
+const ROWS: { key: NotifyKey; label: string; body: string }[] = [
   {
     key: "payouts",
     label: "Payment updates",
@@ -97,45 +84,8 @@ const LANGUAGES = [
 ];
 
 export default function ProSettingsPage() {
-  const proId = React.useMemo(() => currentProId(), []);
-
-  const [notify, setNotify] = React.useState<NotifyPrefs>(DEFAULTS);
   const [langOpen, setLangOpen] = React.useState(false);
-  const [deactivating, setDeactivating] = React.useState(false);
-  const [activeJobs, setActiveJobs] = React.useState<number | null>(null);
 
-  React.useEffect(() => {
-    try {
-      const raw = localStorage.getItem(NOTIFY_KEY);
-      if (raw !== null) setNotify({ ...DEFAULTS, ...JSON.parse(raw) });
-    } catch {
-      // Private mode, or malformed stored value. Defaults are correct.
-    }
-  }, []);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    void getProDayStats(proId)
-      .then((s) => {
-        if (!cancelled) setActiveJobs(s.activeCount + s.upcomingCount);
-      })
-      .catch(() => {
-        // The deactivation warning falls back to a general one.
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [proId]);
-
-  const setPref = (key: keyof NotifyPrefs, value: boolean) => {
-    const next = { ...notify, [key]: value };
-    setNotify(next);
-    try {
-      localStorage.setItem(NOTIFY_KEY, JSON.stringify(next));
-    } catch {
-      // Non-fatal: the preference just does not survive a reload.
-    }
-  };
 
   return (
     <div className="mx-auto max-w-detail px-4 py-4 pb-12 md:px-6 md:py-6">
@@ -157,12 +107,9 @@ export default function ProSettingsPage() {
               <Badge tone="live">Always on</Badge>
             </span>
             <span className="mt-px block text-caption text-ink-muted">
-              These cannot be switched off — you would stop getting work without
-              an obvious reason. To stop receiving jobs, go offline or turn on
-              holiday mode instead.
+              To stop receiving jobs, go offline or turn on holiday mode.
             </span>
           </span>
-          <Switch checked disabled aria-label="New job alerts (always on)" />
         </div>
 
         <ul className="divide-y divide-border-soft">
@@ -179,18 +126,16 @@ export default function ProSettingsPage() {
                   {row.body}
                 </span>
               </span>
-              <Switch
-                checked={notify[row.key]}
-                onCheckedChange={(v) => setPref(row.key, v)}
-                aria-label={row.label}
-              />
+
             </li>
           ))}
         </ul>
 
-        {/* These preferences are per-device until a backend owns them. */}
+        {/* Set by the CFC office, not here - the client asked for the pro's
+            toggles to be removed and the admin to operate them. The list stays
+            so a pro can still see what they receive. */}
         <p className="border-t border-border px-4 py-2 text-caption text-ink-muted">
-          Saved on this device.
+          Set by the CFC office.
         </p>
       </section>
 
@@ -215,37 +160,10 @@ export default function ProSettingsPage() {
         </button>
       </section>
 
-      {/* Account. */}
-      <section className="mt-4 overflow-hidden rounded-card border border-border bg-surface">
-        <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
-          Account
-        </h2>
-
-        <div className="p-4">
-          <button
-            type="button"
-            onClick={() => setDeactivating(true)}
-            className={cn(
-              "flex min-h-touch w-full items-center gap-3 rounded-control text-left",
-              "transition-colors duration-fast hover:bg-canvas",
-            )}
-          >
-            <UserX
-              className="size-5 shrink-0 text-critical-ink"
-              aria-hidden="true"
-            />
-            <span className="min-w-0 flex-1">
-              <span className="block text-small font-medium text-critical-ink">
-                Deactivate my account
-              </span>
-              <span className="block text-caption text-ink-muted">
-                Stop working with CFC. The office will confirm before anything
-                changes.
-              </span>
-            </span>
-          </button>
-        </div>
-      </section>
+      {/* The Account section held only "Deactivate my account", which the
+          client asked to be removed - a pro who wants to leave contacts the
+          office, which the line at the foot of this screen already says. The
+          section went with it rather than leaving an empty card. */}
 
       <Button
         variant="ghost"
@@ -302,50 +220,6 @@ export default function ProSettingsPage() {
         </SheetContent>
       </Sheet>
 
-      {/* Deactivation — a request, with what stands in the way. */}
-      <AlertDialog open={deactivating} onOpenChange={setDeactivating}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Deactivate your account?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This sends a request to the CFC office. Nothing changes until they
-              confirm it with you.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-
-          {activeJobs !== null && activeJobs > 0 && (
-            <p className="flex items-start gap-2 rounded-control bg-clock-subtle p-3 text-caption text-clock-ink">
-              <TriangleAlert
-                className="mt-px size-4 shrink-0"
-                aria-hidden="true"
-              />
-              You have {activeJobs} job{activeJobs === 1 ? "" : "s"} still to
-              do. Those customers are expecting you — finish or hand them over
-              before you leave the platform.
-            </p>
-          )}
-
-          <p className="flex items-start gap-2 text-caption text-ink-muted">
-            <Info className="mt-px size-4 shrink-0" aria-hidden="true" />
-            Any cleared earnings are still paid out. Withdraw your balance
-            before your account closes.
-          </p>
-
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep my account</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                toast.success(
-                  "Request sent. The CFC office will contact you before anything changes.",
-                );
-                setDeactivating(false);
-              }}
-            >
-              Send the request
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <p className="mt-6 text-center text-caption text-ink-faint">
         Need something changed on your account?{" "}

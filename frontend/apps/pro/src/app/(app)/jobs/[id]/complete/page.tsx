@@ -24,7 +24,6 @@ import {
   AlertDialogTitle,
   Button,
   InlineAlert,
-  MoneyBreakdown,
   OtpInput,
   PhotoCapture,
   Skeleton,
@@ -34,6 +33,7 @@ import {
   type CapturedPhoto,
 } from "@cfc/ui";
 import { ProAction, ProActionLayout } from "@/components/pro-action-bar";
+import { YouEarn } from "@/components/you-earn";
 import { currentProId, useOnlineState } from "@/lib/pro-session";
 import {
   GPS_PROOF_RADIUS_M,
@@ -409,15 +409,11 @@ function CompletedView({
       </div>
 
       {/* gross → fee → net, from the one function that computes it. */}
-      <MoneyBreakdown
+      <YouEarn
         className="mt-6"
-        grossPaise={earning.grossPaise}
-        cfcFeePaise={earning.cfcFeePaise}
         netPaise={earning.netPaise}
-        cfcFeeBps={earning.cfcFeeBps}
         commissionFree={earning.commissionFree}
         payoutNote="Credited to your bank or UPI within 48 hours."
-        gstNote
         emphasis
       />
 

@@ -339,28 +339,46 @@ export async function getPendingSettlements(
  * balance they cannot actually take, which is worse than showing a smaller
  * honest number.
  *
- * `minimumPaise` has **no source in the agreement.** The inventory asks for a
- * "minimum threshold" and never states one, so it is configured here rather
- * than hardcoded into a screen, and it is on the client-decisions list
- * (PRO-OPEN-ITEMS 1.2). Zero means no minimum applies.
+ * `securityBalancePaise` is the **Pro security balance**: an amount that stays
+ * in the account and cannot be withdrawn. The client set it at Rs500 in their
+ * revision list (Pro correction 3), which is the source this figure has - the
+ * agreement itself is silent, which is why it was 0 until now
+ * (PRO-OPEN-ITEMS 1.2).
+ *
+ * It is a RETAINED balance, not a qualifying threshold. A pro with Rs700
+ * settled can withdraw Rs200, not Rs700, and not nothing - so it is subtracted
+ * from what is available rather than used as a gate on whether a payout is
+ * allowed at all.
  */
 export interface PayoutBalance {
-  /** Settled and available now. */
+  /**
+   * Everything that has cleared, BEFORE the security balance comes off.
+   *
+   * Shown so the subtraction is visible. Without it a pro sees only the figure
+   * after the deduction and cannot tell whether the Rs500 has already been
+   * taken or is about to be - which is the one thing they need to know before
+   * tapping a button that moves their money.
+   */
+  settledPaise: Paise;
+  /** Settled, less the security balance - what a payout would actually send. */
   availablePaise: Paise;
   /** Completed but still inside the 48-hour window. */
   pendingPaise: Paise;
-  /** From config, not from the agreement. See above. */
-  minimumPaise: Paise;
+  /** Held back and not withdrawable. See above. */
+  securityBalancePaise: Paise;
   /** Whether a payout can be requested right now. */
   canWithdraw: boolean;
 }
 
 /**
- * Awaiting a client answer. Set to 0 so the UI shows no threshold rather than
- * inventing one - a screen stating "minimum Rs500" that the client never agreed
- * to is a commitment made by a developer.
+ * Rs500, from the client's Pro correction 3: "display the text as 'After
+ * minimum Pro security balance' in the amount Rs500".
+ *
+ * This was 0 while the agreement was silent, because a screen stating a minimum
+ * the client had not agreed to is a commitment a developer is not entitled to
+ * make. The client has now stated it, so it is set.
  */
-const PAYOUT_MINIMUM_PAISE = 0;
+const SECURITY_BALANCE_PAISE = 50_000;
 
 export async function getPayoutBalance(proId: string): Promise<PayoutBalance> {
   await latency();
@@ -376,19 +394,26 @@ export async function getPayoutBalance(proId: string): Promise<PayoutBalance> {
   // carries a pending payout balance on the pro record, which is the figure
   // the admin panel settles against - so it is the source of truth here too.
   const pro = pros.find((p) => p.id === proId);
-  const availablePaise = pro?.pendingPayoutPaise ?? 0;
+  const settledPaise = pro?.pendingPayoutPaise ?? 0;
+
+  // What a payout would send: everything settled, less the security balance.
+  // Clamped at zero so a pro below the security balance sees 0 rather than a
+  // negative figure.
+  const availablePaise = Math.max(0, settledPaise - SECURITY_BALANCE_PAISE);
 
   const balance: PayoutBalance = {
+    settledPaise,
     availablePaise,
     pendingPaise,
-    minimumPaise: PAYOUT_MINIMUM_PAISE,
-    canWithdraw: availablePaise > 0 && availablePaise >= PAYOUT_MINIMUM_PAISE,
+    securityBalancePaise: SECURITY_BALANCE_PAISE,
+    canWithdraw: availablePaise > 0,
   };
 
   return applyScenario(balance, {
+    settledPaise: 0,
     availablePaise: 0,
     pendingPaise: 0,
-    minimumPaise: PAYOUT_MINIMUM_PAISE,
+    securityBalancePaise: SECURITY_BALANCE_PAISE,
     canWithdraw: false,
   });
 }
@@ -445,11 +470,11 @@ export async function requestPayout(
   await latency();
 
   const balance = await getPayoutBalance(proId);
+  // `availablePaise` already has the security balance taken off, so there is
+  // one check, not two: nothing withdrawable covers both "no earnings yet" and
+  // "everything settled is still inside the security balance".
   if (balance.availablePaise <= 0) {
     return { ok: false, reason: "nothing-available" };
-  }
-  if (balance.availablePaise < balance.minimumPaise) {
-    return { ok: false, reason: "below-minimum" };
   }
 
   return {

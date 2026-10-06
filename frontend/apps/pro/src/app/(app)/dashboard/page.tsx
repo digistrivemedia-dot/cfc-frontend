@@ -151,7 +151,7 @@ function EarningsCard({ stats }: { stats: ProDayStats | null }) {
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-small text-on-structure-muted">
-            Earned today, after CFC fee
+            You earned today
           </p>
           {stats ? (
             <p className="mt-1 tabular text-display font-semibold text-on-structure">

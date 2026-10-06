@@ -91,6 +91,9 @@ import {
   type MapMarker,
   type SortDir,
 } from "@cfc/ui";
+import { GeoFilter, useGeoFilter } from "@/components/geo-filter";
+import { PrintButton, PrintHeader } from "@/components/printable";
+import { matchesGeo } from "@/lib/geography";
 import { useActor } from "@/lib/actor";
 
 /**
@@ -199,6 +202,12 @@ function AllBookingsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }
   const [sortBy, setSortBy] = React.useState<string | null>("scheduledAt");
   const [sortDir, setSortDir] = React.useState<SortDir>("desc");
 
+  // The operator's own state/city/area filter. This is SEPARATE from
+  // `scopedArea` below, which is a permission boundary: an area manager is
+  // locked to their area and this filter narrows WITHIN it. Overwriting
+  // `query.area` with this would let a scoped admin see other areas.
+  const { geo, setGeo, activeCount: geoCount, clear: clearGeo } = useGeoFilter();
+
   const [data, setData] = React.useState<Page<BookingListItem> | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
@@ -211,7 +220,7 @@ function AllBookingsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }
 
   React.useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, status, range]);
+  }, [debouncedSearch, status, range, geo]);
 
   const query = React.useMemo(
     () => ({
@@ -257,13 +266,26 @@ function AllBookingsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }
   React.useEffect(() => load(), [load]);
 
   const hasFilters =
-    debouncedSearch !== "" || status !== "all" || range?.from !== undefined;
+    debouncedSearch !== "" ||
+    status !== "all" ||
+    range?.from !== undefined ||
+    geoCount > 0;
 
   const clearFilters = () => {
     setSearch("");
     setStatus("all");
     setRange(undefined);
+    clearGeo();
   };
+
+  // Applied after fetch: the query takes one `area` string and that slot is
+  // already the permission scope. City and state have no server filter at all,
+  // so geography narrows the fetched page here. It moves into the request when
+  // the backend carries a city and state per booking.
+  const geoRows = React.useMemo(
+    () => (data?.items ?? []).filter((b) => matchesGeo(b.area, geo)),
+    [data, geo],
+  );
 
   const handleExport = async () => {
     setExporting(true);
@@ -356,7 +378,8 @@ function AllBookingsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }
       </div>
 
       <div className="rounded-card border border-border bg-surface">
-        <div className="flex flex-wrap items-center gap-2 border-b border-border p-3">
+        <PrintHeader title="Bookings" geo={geo} rowCount={geoRows.length} />
+        <div className="flex flex-wrap items-center gap-2 border-b border-border p-3 print:hidden">
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -373,6 +396,8 @@ function AllBookingsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }
             </SelectContent>
           </Select>
           <DateRangePicker value={range} onChange={setRange} />
+          <GeoFilter value={geo} onChange={setGeo} />
+          <PrintButton disabled={loading || geoRows.length === 0} />
           {hasFilters && <Button variant="ghost" size="sm" onClick={clearFilters}>Clear filters</Button>}
         </div>
 
@@ -387,7 +412,7 @@ function AllBookingsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }
           <>
             <DataTable
               columns={columns}
-              rows={data?.items ?? []}
+              rows={geoRows}
               rowKey={(b) => b.id}
               card={card}
               loading={loading}

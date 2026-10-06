@@ -356,6 +356,43 @@ module.exports = {
       fontFamily: {
         sans: ["var(--font-archivo)", "system-ui", "sans-serif"],
       },
+
+      // ── The marketing page's 2px rhythm ───────────────────────────────
+      //
+      // The signed-out landing page came from a standalone prototype built on
+      // a 2px grid, where this scale is 4px and deliberately closed ("Nothing
+      // between these steps", above). Converting it needs those in-between
+      // values to be expressible.
+      //
+      // They are NOT added to `spacing`. `spacing` is replaced rather than
+      // extended, so adding steps to it would reverse that decision for all
+      // three apps in order to serve one page - and `p-2.5` would then be
+      // reachable on every admin table, which is exactly what the closed
+      // scale exists to prevent.
+      //
+      // Instead they sit as `padding` and `gap` additions, named for the page
+      // they belong to. `p-marketing-sm` reads as a deliberate borrowing;
+      // `p-2.5` would read as a step everyone may use.
+      //
+      // The padding values live in the single `padding` block further down,
+      // NOT in a second one here. A duplicate key in the same object silently
+      // overwrites the first - which is what happened on the first attempt:
+      // all seven resolved to `undefined`, the build succeeded, the CSS hash
+      // gate passed, and every one of them compiled to nothing.
+      //
+      // Only values used FIVE OR MORE times are tokens. The singletons -
+      // 34px, 42px, 50px, 54px, 66px, one use each - stay as arbitrary
+      // values at their call site, where the comment explaining them is
+      // still next to them. A token for a number used once is an alias, not
+      // a system.
+      gap: {
+        "marketing-xs": "6px",
+        "marketing-sm": "10px",
+        "marketing-md": "14px",
+        "marketing-lg": "18px",
+        "marketing-xl": "22px",
+        "marketing-2xl": "26px",
+      },
       // Archivo variable width axis. Three values, never interpolated between.
       // 87 admin tables · 100 default · 112 display moments.
       //
@@ -520,6 +557,18 @@ module.exports = {
       // Backdrop washes sit outside their container on purpose. Positive
       // value; the utility carries the minus (-bottom-wash).
       padding: {
+        // ── The marketing page's 2px rhythm ─────────────────────────────
+        // See the note beside `gap` above for why these are named rather than
+        // added to `spacing`, and why only the values used five or more times
+        // are here.
+        "marketing-xs": "6px", // control insets, chip padding
+        "marketing-sm": "10px", // the most common - card and field padding
+        "marketing-md": "14px",
+        "marketing-lg": "18px", // section inner padding
+        "marketing-xl": "22px",
+        "marketing-2xl": "26px",
+        "marketing-3xl": "46px", // hero block
+        // ────────────────────────────────────────────────────────────────
         // Clears the fixed mobile tab strip. The bar is 56px plus the iOS
         // safe-area inset, so content needs at least that much room beneath
         // it or the last row sits under the bar.

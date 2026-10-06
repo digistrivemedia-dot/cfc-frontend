@@ -15,7 +15,6 @@ import {
   getCustomerBookings,
   getCustomerComplaints,
   getCustomers,
-  AREA_OPTIONS,
 } from "@cfc/mocks";
 import type {
   CustomerBooking,
@@ -75,6 +74,9 @@ import {
   initials,
   toast,
 } from "@cfc/ui";
+import { GeoFilter, useGeoFilter } from "@/components/geo-filter";
+import { PrintButton, PrintHeader } from "@/components/printable";
+import { matchesGeo } from "@/lib/geography";
 
 /**
  * Admin 19–21 — Customer management.
@@ -108,7 +110,9 @@ function CustomerManagementInner() {
 
   const [search, setSearch] = React.useState("");
   const [debounced, setDebounced] = React.useState("");
-  const [area, setArea] = React.useState<string | null>(null);
+  // State / city / area, as one selection. See `components/geo-filter.tsx` for
+  // why the three are one piece of state rather than three.
+  const { geo, setGeo, activeCount: geoCount, clear: clearGeo } = useGeoFilter();
   const [standing, setStanding] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(PAGE_SIZE);
@@ -124,7 +128,7 @@ function CustomerManagementInner() {
     const t = setTimeout(() => setDebounced(search), 300);
     return () => clearTimeout(t);
   }, [search]);
-  React.useEffect(() => setPage(1), [debounced, area, standing]);
+  React.useEffect(() => setPage(1), [debounced, geo, standing]);
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -139,29 +143,34 @@ function CustomerManagementInner() {
 
   React.useEffect(() => load(), [load]);
 
-  // Area and standing are not server filters in the mock query, so both are
-  // applied here. They move into the request when the backend adds them.
+  // Geography and standing are not server filters in the mock query, so both
+  // are applied here. They move into the request when the backend adds them.
+  //
+  // `matchesGeo` replaces the old `c.area === area` check: a customer record
+  // carries only an area, so filtering by city or state means looking that
+  // area's city up. That lookup lives in `lib/geography.ts` so every screen
+  // filters by the same rule.
   const rows = React.useMemo(() => {
     let items = data?.items ?? [];
-    if (area) items = items.filter((c) => c.area === area);
+    items = items.filter((c) => matchesGeo(c.area, geo));
     if (standing === "blocked") items = items.filter((c) => c.blocked);
     if (standing === "complaints")
       items = items.filter((c) => c.complaintCount > 0);
     if (standing === "noshows")
       items = items.filter((c) => c.noShowCount >= NO_SHOW_CONCERN);
     return items;
-  }, [data, area, standing]);
+  }, [data, geo, standing]);
 
   const openDetail = (id: string) =>
     router.push(`/customers?id=${id}`, { scroll: false });
   const closeDetail = () => router.push("/customers", { scroll: false });
 
   const all = data?.items ?? [];
-  const activeFilters = (area ? 1 : 0) + (standing ? 1 : 0);
+  const activeFilters = geoCount + (standing ? 1 : 0);
   const anyFilter = activeFilters > 0 || debounced !== "";
   const clearAll = () => {
     setSearch("");
-    setArea(null);
+    clearGeo();
     setStanding(null);
   };
 
@@ -211,6 +220,7 @@ function CustomerManagementInner() {
           resultLabel={
             !loading && data ? `${rows.length} of ${data.total}` : undefined
           }
+          actions={<PrintButton disabled={loading || rows.length === 0} />}
         >
           <FilterSelect
             label="Standing"
@@ -223,14 +233,14 @@ function CustomerManagementInner() {
               { value: "blocked", label: "Blocked" },
             ]}
           />
-          <FilterSelect
-            label="Area"
-            value={area}
-            onChange={setArea}
-            allLabel="All areas"
-            options={AREA_OPTIONS.map((a) => ({ value: a, label: a }))}
-          />
+          {/* Replaces the single Area dropdown: State narrows City, City
+              narrows Area, and changing a parent clears its children. */}
+          <GeoFilter value={geo} onChange={setGeo} />
         </FilterBar>
+
+        {/* Print-only, so the paper says what it is filtered to. A printed
+            list with no header is indistinguishable from the whole file. */}
+        <PrintHeader title="Customers" geo={geo} rowCount={rows.length} />
 
         {error ? (
           <ErrorState

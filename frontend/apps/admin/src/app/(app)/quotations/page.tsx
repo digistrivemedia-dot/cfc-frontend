@@ -69,6 +69,7 @@ import {
   initials,
   toast,
 } from "@cfc/ui";
+import { PrintButton, PrintHeader } from "@/components/printable";
 
 /**
  * Admin 4 + 5 — Quotation management.
@@ -249,6 +250,7 @@ function QuotationManagementInner() {
       </div>
 
       <div className="overflow-hidden rounded-card border border-border bg-surface shadow-sm">
+        <PrintHeader title="Quotations" rowCount={rows.length} />
         <FilterBar
           search={search}
           onSearchChange={setSearch}
@@ -262,6 +264,7 @@ function QuotationManagementInner() {
           resultLabel={
             !loading && data ? `${rows.length} of ${data.total}` : undefined
           }
+          actions={<PrintButton disabled={loading || rows.length === 0} />}
         >
           <FilterSelect
             label="Status"

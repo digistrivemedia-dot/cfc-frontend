@@ -68,6 +68,7 @@ import {
   type CardLayout,
   type Column,
 } from "@cfc/ui";
+import { PrintButton, PrintHeader } from "@/components/printable";
 
 /**
  * Admin 22–29 — Service & Pricing Management.
@@ -929,12 +930,14 @@ function PricingSection() {
       </div>
 
       <div className="overflow-hidden rounded-card border border-border bg-surface shadow-sm">
+        <PrintHeader title="Services" rowCount={visible.length} />
         <FilterBar
           search={search}
           onSearchChange={setSearch}
           searchPlaceholder="Search by service name"
           searchLabel="Search pricing"
           resultLabel={rows ? `${visible.length} of ${rows.length}` : undefined}
+          actions={<PrintButton disabled={!rows || visible.length === 0} />}
         />
 
         {error ? (

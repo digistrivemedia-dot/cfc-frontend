@@ -18,6 +18,22 @@ export interface BookingsPoint {
 
 export interface ProPerformanceRow {
   proName: string;
+  /**
+   * The area this pro works.
+   *
+   * Added so the Pro performance report can be filtered by state / city /
+   * area like the rest of admin. A pro belongs to an area, so this is a real
+   * property of the row rather than a label bolted on.
+   *
+   * NOT added to `RevenueBreakdownRow`, `CustomerGrowthPoint` or `PeakHourRow`:
+   * those rows are already aggregates ("Tuesday: 340 bookings"), and an area on
+   * a total that spans every area would be a field with no true value. Those
+   * reports need the geography applied BEFORE aggregation, which is a backend
+   * query parameter, not a row field.
+   *
+   * Optional because the backend will own it.
+   */
+  area?: string | undefined;
   completionRateBps: number;
   avgRating: number;
   jobsCompleted: number;

@@ -43,6 +43,7 @@ import {
   initials,
   toast,
 } from "@cfc/ui";
+import { PrintButton, PrintHeader } from "@/components/printable";
 
 /**
  * Admin 3 — Main dashboard.
@@ -146,14 +147,19 @@ export default function MainDashboardPage() {
         title="Dashboard"
         description={<TodayLine />}
         actions={
-          <Button variant="secondary" size="sm" asChild>
-            <Link href="/bookings">
-              All bookings
-              <ArrowRight />
-            </Link>
-          </Button>
+          <>
+            <Button variant="secondary" size="sm" asChild>
+              <Link href="/bookings">
+                All bookings
+                <ArrowRight />
+              </Link>
+            </Button>
+            <PrintButton />
+          </>
         }
       />
+
+      <PrintHeader title="Dashboard" />
 
       {/* ------------------------------------------------------------------
           NEEDS YOU — the reason this screen exists. Full width, above the

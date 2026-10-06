@@ -93,8 +93,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         Skip to content
       </a>
 
-      {/* Mobile top bar */}
-      <header className="flex h-bar items-center gap-1 border-b border-border bg-surface px-2 lg:hidden">
+      {/* Mobile top bar. `print:hidden` here and on the desktop bar and the
+          sidebar below: the admin navigation is of no use on paper, and leaving
+          it in reserves a blank strip at the top of every printed page. */}
+      <header className="flex h-bar items-center gap-1 border-b border-border bg-surface px-2 print:hidden lg:hidden">
         <Button
           variant="ghost"
           size="icon-md"
@@ -157,7 +159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <div className="flex min-w-0 flex-1 flex-col">
           {/* Desktop top bar — breadcrumb, command bar, identity. */}
-          <header className="hidden h-bar shrink-0 items-center gap-4 border-b border-border bg-surface px-6 lg:flex">
+          <header className="hidden h-bar shrink-0 items-center gap-4 border-b border-border bg-surface px-6 print:!hidden lg:flex">
             <nav aria-label="Breadcrumb" className="min-w-0">
               <ol className="flex items-center gap-2 text-small text-ink-muted">
                 {here ? (
@@ -426,6 +428,9 @@ function Sidebar({
         "on-structure-surface",
         "fixed inset-y-0 left-0 z-drawer w-rail-drawer shrink-0 overflow-y-auto bg-structure",
         "transition-transform duration-base ease-out",
+        // Not on paper. `!hidden` because the `lg:` rules below would otherwise
+        // win on specificity and keep the rail in the printed layout.
+        "print:!hidden",
         "lg:sticky lg:top-0 lg:h-screen lg:w-rail lg:translate-x-0",
         open ? "translate-x-0" : "-translate-x-full",
       )}

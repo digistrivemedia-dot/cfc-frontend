@@ -20,7 +20,6 @@ import {
   X,
 } from "lucide-react";
 import {
-  AREA_OPTIONS,
   SERVICE_NAMES,
   getPayouts,
   getPro,
@@ -103,6 +102,9 @@ import {
   type CardLayout,
   type Column,
 } from "@cfc/ui";
+import { GeoFilter, useGeoFilter } from "@/components/geo-filter";
+import { PrintButton, PrintHeader } from "@/components/printable";
+import { matchesGeo } from "@/lib/geography";
 
 /**
  * Admin 11–18 — Pro Management.
@@ -243,7 +245,8 @@ function AllProsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }) {
   const [debounced, setDebounced] = React.useState("");
   const [approval, setApproval] = React.useState<ProApprovalStatus | null>(null);
   const [online, setOnline] = React.useState<string | null>(null);
-  const [area, setArea] = React.useState<string | null>(null);
+  // State / city / area as one selection - see `components/geo-filter.tsx`.
+  const { geo, setGeo, activeCount: geoCount, clear: clearGeo } = useGeoFilter();
   const [service, setService] = React.useState<string | null>(null);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(PAGE_SIZE);
@@ -259,7 +262,7 @@ function AllProsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }) {
     const t = setTimeout(() => setDebounced(search), 300);
     return () => clearTimeout(t);
   }, [search]);
-  React.useEffect(() => setPage(1), [debounced, approval, online, area, service]);
+  React.useEffect(() => setPage(1), [debounced, approval, online, geo, service]);
 
   const load = React.useCallback(() => {
     setLoading(true);
@@ -285,20 +288,20 @@ function AllProsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }) {
   // the others.
   const rows = React.useMemo(() => {
     let items = data?.items ?? [];
-    if (area) items = items.filter((p) => p.area === area);
+    items = items.filter((p) => matchesGeo(p.area, geo));
     if (service) items = items.filter((p) => p.services.includes(service));
     return items;
-  }, [data, area, service]);
+  }, [data, geo, service]);
 
   const activeFilters =
-    (approval ? 1 : 0) + (online ? 1 : 0) + (area ? 1 : 0) + (service ? 1 : 0);
+    (approval ? 1 : 0) + (online ? 1 : 0) + geoCount + (service ? 1 : 0);
   const anyFilter = activeFilters > 0 || debounced !== "";
 
   const clearAll = () => {
     setSearch("");
     setApproval(null);
     setOnline(null);
-    setArea(null);
+    clearGeo();
     setService(null);
   };
 
@@ -347,6 +350,7 @@ function AllProsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }) {
           resultLabel={
             !loading && data ? `${rows.length} of ${data.total}` : undefined
           }
+          actions={<PrintButton disabled={loading || rows.length === 0} />}
         >
           <FilterSelect
             label="Availability"
@@ -375,14 +379,12 @@ function AllProsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }) {
             allLabel="All services"
             options={SERVICE_NAMES.map((n) => ({ value: n, label: n }))}
           />
-          <FilterSelect
-            label="Area"
-            value={area}
-            onChange={setArea}
-            allLabel="All areas"
-            options={AREA_OPTIONS.map((a) => ({ value: a, label: a }))}
-          />
+          {/* State narrows City, City narrows Area; changing a parent clears
+              its children. Replaces the single Area dropdown. */}
+          <GeoFilter value={geo} onChange={setGeo} />
         </FilterBar>
+
+        <PrintHeader title="Pros" geo={geo} rowCount={rows.length} />
 
         {error ? (
           <ErrorState

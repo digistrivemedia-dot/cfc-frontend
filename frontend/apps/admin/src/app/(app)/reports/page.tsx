@@ -55,6 +55,9 @@ import {
   type CsvColumn,
   type DateRange,
 } from "@cfc/ui";
+import { GeoFilter, useGeoFilter } from "@/components/geo-filter";
+import { PrintButton, PrintHeader } from "@/components/printable";
+import { matchesGeo } from "@/lib/geography";
 
 /**
  * Admin 38–42 — Reports and analytics.
@@ -90,10 +93,17 @@ function ReportsInner() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Reports"
-        description="How the platform is performing, and where it is not."
-      />
+      <div className="flex items-start justify-between gap-3">
+        <PageHeader
+          title="Reports"
+          description="How the platform is performing, and where it is not."
+        />
+        {/* Print is page-level: each tab renders its own charts and tables, and
+            whichever is open is what the operator wants on paper. The geography
+            filter sits on the Service demand tab instead, because that is the
+            only report whose rows carry an area. */}
+        <PrintButton />
+      </div>
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
@@ -736,10 +746,16 @@ function PeakHoursSection({
 function ProPerformanceReport() {
   const { rows, error, reload } = useReport<ProPerformanceRow>(getProPerformance);
   const ratings = useReport<RatingTrendPoint>(getRatingTrend);
+  const { geo, setGeo } = useGeoFilter();
 
+  // Each row is one pro, and a pro works an area, so geography narrows the
+  // table and every average computed from it.
   const sorted = React.useMemo(
-    () => [...(rows ?? [])].sort((a, b) => b.earnedPaise - a.earnedPaise),
-    [rows],
+    () =>
+      [...(rows ?? [])]
+        .filter((r) => matchesGeo(r.area ?? null, geo))
+        .sort((a, b) => b.earnedPaise - a.earnedPaise),
+    [rows, geo],
   );
 
   const avgCompletion =
@@ -850,6 +866,13 @@ function ProPerformanceReport() {
 
   return (
     <div className="space-y-4">
+      {/* Geography narrows the pro table and every average above it. */}
+      <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <GeoFilter value={geo} onChange={setGeo} />
+      </div>
+
+      <PrintHeader title="Pro performance" geo={geo} rowCount={sorted.length} />
+
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard
           label="Average completion"
@@ -1018,26 +1041,35 @@ function RatingTrendSection({
 
 function ServiceDemandReport() {
   const { rows, error, reload } = useReport<ServiceDemandRow>(getServiceDemand);
+  const { geo, setGeo } = useGeoFilter();
+
+  // Geography narrows the rows before either roll-up, so the service totals and
+  // the area totals describe the same filtered set. Filtering only the area
+  // chart would leave the two halves of this report disagreeing.
+  const scoped = React.useMemo(
+    () => (rows ?? []).filter((r) => matchesGeo(r.area, geo)),
+    [rows, geo],
+  );
 
   // The inventory asks two questions — which services, and which areas — so
   // the data is rolled up both ways rather than shown as one flat list.
   const byService = React.useMemo(() => {
     const map = new Map<string, number>();
-    for (const r of rows ?? [])
+    for (const r of scoped)
       map.set(r.serviceName, (map.get(r.serviceName) ?? 0) + r.bookingCount);
     return [...map.entries()]
       .map(([label, bookings]) => ({ label, bookings }))
       .sort((a, b) => b.bookings - a.bookings);
-  }, [rows]);
+  }, [scoped]);
 
   const byArea = React.useMemo(() => {
     const map = new Map<string, number>();
-    for (const r of rows ?? [])
+    for (const r of scoped)
       map.set(r.area, (map.get(r.area) ?? 0) + r.bookingCount);
     return [...map.entries()]
       .map(([label, bookings]) => ({ label, bookings }))
       .sort((a, b) => b.bookings - a.bookings);
-  }, [rows]);
+  }, [scoped]);
 
   const total = byService.reduce((s, r) => s + r.bookings, 0);
   const topService = byService[0];
@@ -1045,6 +1077,15 @@ function ServiceDemandReport() {
 
   return (
     <div className="space-y-4">
+      {/* Geography sits above the stat cards, not inside one, because it
+          narrows every figure below it - the totals, both roll-ups and the
+          printed page. */}
+      <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <GeoFilter value={geo} onChange={setGeo} />
+      </div>
+
+      <PrintHeader title="Service demand" geo={geo} rowCount={scoped.length} />
+
       <div className="grid gap-3 sm:grid-cols-3">
         <StatCard
           label="Bookings"

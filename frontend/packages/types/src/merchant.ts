@@ -62,11 +62,21 @@ export interface MaterialRequestLine {
   /** "m", "nos", "kg" — free text, as the Pro typed it. */
   unit: string;
   /**
-   * Indicative cost, carried so a shop can sanity-check the spec it is being
-   * asked to supply. Hidden behind `showsPricing` on the shop profile: with no
-   * payment flowing through this app, most shops only need the spec.
+   * Cost per unit as the approved quotation priced it — CFC's estimate, not a
+   * figure the shop is bound by. Always shown, so the shop can see what it is
+   * being asked to match.
    */
   costPaise: Paise;
+  /**
+   * The shop's own price per unit, entered when it accepts. Null until then,
+   * and left null on a line the shop cannot supply.
+   *
+   * A shop prices against its own stock, so the quotation's figure is an
+   * opening estimate rather than the settled amount. Where the two differ, the
+   * difference goes back to CFC to approve before the pro collects — which is
+   * why this is a separate field and never overwrites `costPaise`.
+   */
+  merchantCostPaise: Paise | null;
   /** False once the merchant marks the line unavailable. */
   available: boolean;
 }
@@ -142,11 +152,6 @@ export interface MerchantProfile {
   openTime: string;
   closeTime: string;
   status: MerchantApprovalStatus;
-  /**
-   * Whether indicative costs are shown against request lines. Off by default:
-   * nothing is paid through this app, so the spec is what matters.
-   */
-  showsPricing: boolean;
   /** Accepting new requests. A shop closes itself during stock-taking. */
   acceptingRequests: boolean;
 }

@@ -47,7 +47,6 @@ export const merchantProfile: MerchantProfile = {
   openTime: "09:00",
   closeTime: "20:30",
   status: "approved",
-  showsPricing: false,
   acceptingRequests: true,
 };
 
@@ -72,6 +71,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 1,
         unit: "nos",
         costPaise: 240000,
+        merchantCostPaise: null,
         available: true,
       },
       {
@@ -80,6 +80,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 2,
         unit: "nos",
         costPaise: 96000,
+        merchantCostPaise: null,
         available: true,
       },
       {
@@ -88,6 +89,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 12,
         unit: "m",
         costPaise: 54000,
+        merchantCostPaise: null,
         available: true,
       },
     ],
@@ -111,6 +113,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 2,
         unit: "nos",
         costPaise: 130000,
+        merchantCostPaise: null,
         available: true,
       },
       {
@@ -119,6 +122,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 2,
         unit: "nos",
         costPaise: 4000,
+        merchantCostPaise: null,
         available: true,
       },
     ],
@@ -142,6 +146,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 2,
         unit: "nos",
         costPaise: 36000,
+        merchantCostPaise: 36000,
         available: true,
       },
       {
@@ -150,6 +155,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 2,
         unit: "nos",
         costPaise: 18000,
+        merchantCostPaise: 18000,
         available: true,
       },
     ],
@@ -173,6 +179,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 20,
         unit: "m",
         costPaise: 70000,
+        merchantCostPaise: 74000,
         available: true,
       },
       {
@@ -181,6 +188,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 1,
         unit: "nos",
         costPaise: 22000,
+        merchantCostPaise: 22000,
         available: true,
       },
       {
@@ -189,6 +197,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 5,
         unit: "nos",
         costPaise: 9000,
+        merchantCostPaise: null,
         available: false,
       },
     ],
@@ -213,6 +222,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 3,
         unit: "m",
         costPaise: 45000,
+        merchantCostPaise: 45000,
         available: true,
       },
       {
@@ -221,6 +231,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 4,
         unit: "nos",
         costPaise: 12000,
+        merchantCostPaise: 12000,
         available: true,
       },
     ],
@@ -246,6 +257,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 2,
         unit: "nos",
         costPaise: 64000,
+        merchantCostPaise: 64000,
         available: true,
       },
       {
@@ -254,6 +266,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 4,
         unit: "nos",
         costPaise: 32000,
+        merchantCostPaise: 30000,
         available: true,
       },
     ],
@@ -277,6 +290,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 2,
         unit: "nos",
         costPaise: 180000,
+        merchantCostPaise: null,
         available: true,
       },
       {
@@ -285,6 +299,7 @@ export const materialRequests: MaterialRequestDetail[] = [
         quantity: 2,
         unit: "nos",
         costPaise: 16000,
+        merchantCostPaise: null,
         available: true,
       },
     ],

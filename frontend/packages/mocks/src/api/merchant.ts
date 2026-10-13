@@ -94,10 +94,15 @@ export async function getMerchantDashboard(): Promise<MerchantDashboardSummary> 
  * `unavailableLineIds` carries the lines the shop cannot supply. An empty list
  * is a full acceptance; a partial one leaves the remainder for the admin to
  * place elsewhere, which is why it is a distinct status rather than a flag.
+ *
+ * `prices` maps a line id to the shop's own cost per unit. A line left out
+ * keeps the quotation's figure, so a shop that agrees with the estimate does
+ * not have to retype it.
  */
 export async function acceptMaterialRequest(
   id: string,
   unavailableLineIds: string[] = [],
+  prices: Record<string, number> = {},
 ): Promise<MaterialRequestDetail> {
   await latency();
 
@@ -108,10 +113,17 @@ export async function acceptMaterialRequest(
   }
 
   const unavailable = new Set(unavailableLineIds);
-  row.lines = row.lines.map((line) => ({
-    ...line,
-    available: !unavailable.has(line.id),
-  }));
+  row.lines = row.lines.map((line) => {
+    const isAvailable = !unavailable.has(line.id);
+    return {
+      ...line,
+      available: isAvailable,
+      // A line the shop cannot supply carries no price of its own.
+      merchantCostPaise: isAvailable
+        ? (prices[line.id] ?? line.costPaise)
+        : null,
+    };
+  });
 
   if (row.lines.every((line) => !line.available)) {
     throw new ApiError(

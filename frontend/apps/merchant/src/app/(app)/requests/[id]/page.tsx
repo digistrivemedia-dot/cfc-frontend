@@ -10,7 +10,7 @@ import {
   PackageCheck,
   User,
 } from "lucide-react";
-import type { MaterialRequestDetail, MerchantProfile } from "@cfc/types";
+import type { MaterialRequestDetail } from "@cfc/types";
 import {
   Button,
   Checkbox,
@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
   formatCurrency,
+  Input,
   Skeleton,
   Textarea,
   toast,
@@ -28,7 +29,6 @@ import {
 import {
   acceptMaterialRequest,
   getMaterialRequest,
-  getMerchantProfile,
   markMaterialRequestReady,
   rejectMaterialRequest,
 } from "@cfc/mocks";
@@ -50,18 +50,15 @@ export default function RequestDetailPage() {
   const [request, setRequest] = React.useState<MaterialRequestDetail | null>(
     null,
   );
-  const [profile, setProfile] = React.useState<MerchantProfile | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [availableIds, setAvailableIds] = React.useState<Set<string>>(
     new Set(),
   );
+  /** The shop's own price per unit, in rupees as typed. */
+  const [prices, setPrices] = React.useState<Record<string, string>>({});
   const [isRejecting, setRejecting] = React.useState(false);
   const [rejectReason, setRejectReason] = React.useState("");
   const [isBusy, setBusy] = React.useState(false);
-
-  React.useEffect(() => {
-    void getMerchantProfile().then(setProfile).catch(() => setProfile(null));
-  }, []);
 
   React.useEffect(() => {
     setError(null);
@@ -70,6 +67,16 @@ export default function RequestDetailPage() {
         setRequest(row);
         setAvailableIds(
           new Set(row.lines.filter((l) => l.available).map((l) => l.id)),
+        );
+        setPrices(
+          Object.fromEntries(
+            row.lines.map((line) => [
+              line.id,
+              line.merchantCostPaise === null
+                ? ""
+                : String(line.merchantCostPaise / 100),
+            ]),
+          ),
         );
       })
       .catch(() => setError("Could not load this request."));
@@ -89,10 +96,53 @@ export default function RequestDetailPage() {
 
   const hasAnyAvailable = availableIds.size > 0;
 
+  /**
+   * A line's price per unit in paise, as the shop typed it. Zero until priced:
+   * the shop sets the price, so there is no figure to fall back to.
+   */
+  const unitPaise = React.useCallback(
+    (lineId: string): number => {
+      const typed = prices[lineId];
+      if (typed === undefined || typed.trim() === "") return 0;
+      const rupees = Number(typed);
+      return Number.isFinite(rupees) && rupees >= 0
+        ? Math.round(rupees * 100)
+        : 0;
+    },
+    [prices],
+  );
+
+  /** What the shop is charging, across the lines it is supplying. */
+  const supplyingTotal = (request?.lines ?? [])
+    .filter((line) => (isPending ? availableIds.has(line.id) : line.available))
+    .reduce(
+      (sum, line) =>
+        sum +
+        line.quantity *
+          (isPending ? unitPaise(line.id) : (line.merchantCostPaise ?? 0)),
+      0,
+    );
+
+  const suppliedCount = (request?.lines ?? []).filter((l) => l.available).length;
+
+  /**
+   * Every line the shop is supplying carries a price. Accepting without one
+   * would commit the shop to supplying for nothing.
+   */
+  const isFullyPriced = (request?.lines ?? [])
+    .filter((line) => availableIds.has(line.id))
+    .every((line) => unitPaise(line.id) > 0);
+
   const onAccept = async () => {
     setBusy(true);
     try {
-      const next = await acceptMaterialRequest(id, unavailableIds);
+      const next = await acceptMaterialRequest(
+        id,
+        unavailableIds,
+        Object.fromEntries(
+          (request?.lines ?? []).map((line) => [line.id, unitPaise(line.id)]),
+        ),
+      );
       setRequest(next);
       toast.success(
         unavailableIds.length > 0
@@ -243,33 +293,103 @@ export default function RequestDetailPage() {
                     />
                   )}
 
-                  <span className="min-w-0 flex-1">
+                  <span className="flex min-w-0 flex-1 items-start gap-3">
+                    <span className="min-w-0 flex-1">
+                      <span
+                        className={`block text-sm font-medium ${
+                          isPending || line.available
+                            ? "text-ink"
+                            : "text-ink-faint line-through"
+                        }`}
+                      >
+                        {line.description}
+                      </span>
+                      <span className="mt-px block text-sm text-ink-muted">
+                        {line.quantity} {line.unit}
+                      </span>
+                      {!isPending && !line.available ? (
+                        <span className="mt-1 block text-xs text-critical-ink">
+                          Not supplied
+                        </span>
+                      ) : null}
+                    </span>
+
+                    {/* Line total, from the shop's own price. */}
                     <span
-                      className={`block text-sm font-medium ${
-                        isPending || line.available
-                          ? "text-ink"
-                          : "text-ink-faint line-through"
+                      className={`shrink-0 text-sm font-semibold tabular-nums ${
+                        isTicked ? "text-ink" : "text-ink-faint line-through"
                       }`}
                     >
-                      {line.description}
+                      {isPending
+                        ? unitPaise(line.id) === 0
+                          ? "—"
+                          : formatCurrency(line.quantity * unitPaise(line.id))
+                        : formatCurrency(
+                            line.quantity * (line.merchantCostPaise ?? 0),
+                          )}
                     </span>
-                    <span className="mt-px block text-sm text-ink-muted">
-                      {line.quantity} {line.unit}
-                      {profile?.showsPricing
-                        ? ` · ${formatCurrency(line.costPaise)}`
-                        : ""}
-                    </span>
-                    {!isPending && !line.available ? (
-                      <span className="mt-1 block text-xs text-critical-ink">
-                        Not supplied
-                      </span>
-                    ) : null}
                   </span>
                 </label>
+
+                {isPending && isTicked ? (
+                  <div className="flex flex-wrap items-center gap-3 border-t border-border bg-neutral-subtle px-4 py-3">
+                    <label
+                      htmlFor={`price-${line.id}`}
+                      className="text-sm text-ink-muted"
+                    >
+                      Your price per {line.unit}
+                    </label>
+
+                    <span className="flex items-center gap-2">
+                      <span className="text-sm text-ink-muted">₹</span>
+                      <Input
+                        id={`price-${line.id}`}
+                        inputMode="decimal"
+                        placeholder="0"
+                        value={prices[line.id] ?? ""}
+                        onChange={(event) => {
+                          const next = event.target.value.replace(
+                            /[^0-9.]/g,
+                            "",
+                          );
+                          setPrices((prev) => ({ ...prev, [line.id]: next }));
+                        }}
+                        className="w-line-xs"
+                        aria-label={`Your price per ${line.unit} for ${line.description}`}
+                      />
+                    </span>
+                  </div>
+                ) : null}
               </li>
             );
           })}
         </ul>
+
+        <dl className="mt-3 space-y-2 rounded-lg border border-border bg-neutral-subtle p-4 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <dt className="text-ink-muted">
+              {isPending ? "Items you are supplying" : "Items supplied"}
+            </dt>
+            <dd className="tabular-nums text-ink-muted">
+              {isPending ? availableIds.size : suppliedCount} of{" "}
+              {request.lines.length}
+            </dd>
+          </div>
+
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
+            <dt className="font-medium text-ink">Your total</dt>
+            <dd className="text-base font-semibold tabular-nums text-ink">
+              {isPending && !isFullyPriced
+                ? "—"
+                : formatCurrency(supplyingTotal)}
+            </dd>
+          </div>
+
+          <p className="pt-1 text-xs leading-relaxed text-ink-muted">
+            You set these prices. CFC settles with you directly — nothing is
+            collected through this app.
+          </p>
+        </dl>
 
         {isPending && unavailableIds.length > 0 ? (
           <p className="mt-3 rounded-md bg-clock-subtle p-3 text-sm text-clock-ink">
@@ -297,7 +417,7 @@ export default function RequestDetailPage() {
               </Button>
               <Button
                 className="flex-1"
-                disabled={isBusy || !hasAnyAvailable}
+                disabled={isBusy || !hasAnyAvailable || !isFullyPriced}
                 onClick={() => void onAccept()}
               >
                 <CheckCircle2 className="size-4" aria-hidden="true" />

@@ -106,7 +106,7 @@ export default function ProfilePage() {
         </ul>
       </section>
 
-      <section className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+      <section className="overflow-hidden rounded-lg border border-border bg-surface">
         <ToggleRow
           label="Accepting requests"
           caption="Turn off while stock-taking. You stop receiving new requests."
@@ -116,18 +116,6 @@ export default function ProfilePage() {
             void patch(
               { acceptingRequests: value },
               value ? "Accepting requests." : "Paused new requests.",
-            )
-          }
-        />
-        <ToggleRow
-          label="Show indicative prices"
-          caption="Displays the cost CFC quoted against each item. Nothing is paid through this app."
-          checked={profile.showsPricing}
-          disabled={isBusy}
-          onChange={(value) =>
-            void patch(
-              { showsPricing: value },
-              value ? "Prices shown." : "Prices hidden.",
             )
           }
         />

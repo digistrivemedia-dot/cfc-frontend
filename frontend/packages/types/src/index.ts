@@ -25,3 +25,4 @@ export * from "./report";
 export * from "./admin-user";
 export * from "./dashboard";
 export * from "./consumer";
+export * from "./merchant";

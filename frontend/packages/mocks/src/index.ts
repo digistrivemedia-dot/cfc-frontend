@@ -252,3 +252,16 @@ export {
   type GoldenRule,
   type PenaltyStep,
 } from "./api/pro-conduct";
+
+export {
+  acceptMaterialRequest,
+  getMaterialRequest,
+  getMaterialRequests,
+  getMerchantCategories,
+  getMerchantDashboard,
+  getMerchantProfile,
+  markMaterialRequestReady,
+  rejectMaterialRequest,
+  updateMerchantProfile,
+  type MaterialRequestQuery,
+} from "./api/merchant";

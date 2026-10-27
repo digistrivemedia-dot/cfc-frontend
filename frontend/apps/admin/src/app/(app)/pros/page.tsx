@@ -27,7 +27,12 @@ import {
   getProWarnings,
   getPros,
   getWalletEntries,
+  getProDocumentUrl,
+  reviewProDocument,
+  approveProKyc,
+  rejectProKyc,
 } from "@cfc/mocks";
+import { ApiError } from "@cfc/types";
 import {
   DOCUMENT_TYPE_LABEL,
   PRO_APPROVAL_LABEL,
@@ -586,20 +591,67 @@ function ApprovalsTab() {
 
   React.useEffect(() => load(), [load]);
 
-  const decide = (p: ProListItem, outcome: "approved" | "rejected") => {
-    setPending((rs) => rs?.filter((x) => x.id !== p.id) ?? rs);
-    toast.success(
+  /**
+   * Admin 13 — approve or reject the registration.
+   *
+   * Previously this filtered the row out of local state and showed a toast. The
+   * pro was still pending in every other session and still receiving no work,
+   * and the operator had no way to tell.
+   *
+   * The row is removed only **after** the server confirms. An optimistic
+   * removal here would be the same lie in a shorter window: a failed approval
+   * would leave a pro invisible in the queue until someone reloaded.
+   */
+  const decide = (
+    p: ProListItem,
+    outcome: "approved" | "rejected",
+    remark: string,
+  ) => {
+    const call =
       outcome === "approved"
-        ? `${p.name} approved — they can go online now`
-        : `${p.name} rejected — they can resubmit their documents`,
-    );
+        ? approveProKyc(p.id)
+        : rejectProKyc(p.id, remark);
+
+    void call
+      .then(() => {
+        setPending((rs) => rs?.filter((x) => x.id !== p.id) ?? rs);
+        toast.success(
+          outcome === "approved"
+            ? `${p.name} approved — they can go online now`
+            : `${p.name} rejected — they can resubmit their documents`,
+        );
+      })
+      .catch((err: unknown) => {
+        // The server refuses an approval with unverified documents, no bank
+        // details or no conduct acceptance, and names which. That message is
+        // the useful one.
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Could not record that decision.",
+        );
+      });
   };
 
+  /**
+   * Admin 14 — verify one document.
+   *
+   * A rejection needs a reason, so one is required here rather than left
+   * optional: `PRO-OPEN-ITEMS.md` 4.7 records what happens when status and
+   * reason drift apart — documents rejected with no reason, and documents
+   * approved while still carrying one. The pro reading either has no idea what
+   * to do next.
+   */
   const setDocStatus = (
     proId: string,
     docType: DocumentType,
     status: "approved" | "rejected",
+    reason?: string,
   ) => {
+    const previous = details[proId];
+
+    // Optimistic: an operator checking four documents in a row should not wait
+    // on a round trip between each.
     setDetails((d) => {
       const detail = d[proId];
       if (!detail) return d;
@@ -608,11 +660,32 @@ function ApprovalsTab() {
         [proId]: {
           ...detail,
           documents: detail.documents.map((doc) =>
-            doc.type === docType ? { ...doc, status } : doc,
+            doc.type === docType
+              ? {
+                  ...doc,
+                  status,
+                  // Cleared on approval, so an approved document never shows a
+                  // stale reason beside it.
+                  ...(status === "rejected"
+                    ? { rejectionReason: reason }
+                    : { rejectionReason: undefined }),
+                }
+              : doc,
           ),
         },
       };
     });
+
+    void reviewProDocument(proId, docType, status, reason).catch(
+      (err: unknown) => {
+        if (previous) setDetails((d) => ({ ...d, [proId]: previous }));
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Could not record that document review.",
+        );
+      },
+    );
   };
 
   if (error) {
@@ -681,9 +754,18 @@ function ApprovalCard({
     proId: string,
     docType: DocumentType,
     status: "approved" | "rejected",
+    reason?: string,
   ) => void;
-  onDecide: (p: ProListItem, outcome: "approved" | "rejected") => void;
+  onDecide: (
+    p: ProListItem,
+    outcome: "approved" | "rejected",
+    remark: string,
+  ) => void;
 }) {
+  // One remarks field serves both a document rejection and a registration
+  // rejection, which is what the screen was built with. Either way the server
+  // requires a reason, so the field is not optional in practice — it is the
+  // thing the pro reads to know what to fix.
   const [remark, setRemark] = React.useState("");
 
   const docs = detail?.documents ?? [];
@@ -721,9 +803,20 @@ function ApprovalCard({
             {docs.map((doc) => (
               <DocumentTile
                 key={doc.type}
+                proId={pro.id}
                 doc={doc}
                 onApprove={() => onDoc(pro.id, doc.type, "approved")}
-                onReject={() => onDoc(pro.id, doc.type, "rejected")}
+                onReject={() => {
+                  // Refused client-side as well as server-side: a rejection
+                  // with no reason is one the pro cannot act on.
+                  if (remark.trim() === "") {
+                    toast.error(
+                      "Add a remark saying what is wrong with that document.",
+                    );
+                    return;
+                  }
+                  onDoc(pro.id, doc.type, "rejected", remark.trim());
+                }}
               />
             ))}
           </div>
@@ -754,7 +847,7 @@ function ApprovalCard({
                 variant="secondary"
                 size="sm"
                 disabled={remark.trim() === ""}
-                onClick={() => onDecide(pro, "rejected")}
+                onClick={() => onDecide(pro, "rejected", remark.trim())}
               >
                 <X className="text-critical" />
                 Reject
@@ -763,7 +856,7 @@ function ApprovalCard({
                 variant="primary"
                 size="sm"
                 disabled={!allChecked}
-                onClick={() => onDecide(pro, "approved")}
+                onClick={() => onDecide(pro, "approved", remark.trim())}
               >
                 <Check />
                 Approve pro
@@ -792,35 +885,112 @@ function ApprovalCard({
  * decided the tile shows its verdict and offers to undo, rather than losing the
  * controls entirely — a mis-tap on someone's KYC should not be permanent.
  */
+/**
+ * One document, with the document actually in it.
+ *
+ * This tile used to render a `FileText` icon and nothing else — so a reviewer
+ * was asked to verify an Aadhaar they could not see, and "Verify" meant
+ * "confirm a filename". The comment on `ApprovalsTab` had it right all along:
+ * *"A registration is not approved by looking at a name."*
+ *
+ * The file sits behind an authenticated route, so it is fetched with the token
+ * and shown from a blob URL — revoked on unmount, or every document opened
+ * stays in memory for the life of the tab.
+ */
 function DocumentTile({
+  proId,
   doc,
   onApprove,
   onReject,
 }: {
+  proId: string;
   doc: ProDocument;
   onApprove: () => void;
   onReject: () => void;
 }) {
+  // An empty `imageUrl` means never uploaded. That is **not** the same as
+  // awaiting review, and showing both as "pending" would leave an operator
+  // waiting on a document the pro has not sent.
+  const uploaded = doc.imageUrl !== "";
+
+  const [src, setSrc] = React.useState<string | null>(null);
+  const [failed, setFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!uploaded) return;
+    let url: string | null = null;
+    let cancelled = false;
+
+    void getProDocumentUrl(proId, doc.type)
+      .then((objectUrl) => {
+        if (cancelled) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        url = objectUrl;
+        setSrc(objectUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+
+    return () => {
+      cancelled = true;
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [proId, doc.type, uploaded]);
+
   return (
     <div className="space-y-2">
       <div
         className={cn(
-          "flex aspect-video items-center justify-center rounded-control border",
+          "relative flex aspect-video items-center justify-center overflow-hidden rounded-control border",
           doc.status === "approved"
             ? "border-live bg-live-subtle text-live-ink"
             : doc.status === "rejected"
               ? "border-critical bg-critical-subtle text-critical-ink"
               : "border-border bg-canvas text-ink-faint",
         )}
-        role="img"
-        aria-label={`${DOCUMENT_TYPE_LABEL[doc.type]} scan`}
       >
-        {doc.status === "approved" ? (
-          <Check className="size-6" aria-hidden="true" />
-        ) : doc.status === "rejected" ? (
-          <X className="size-6" aria-hidden="true" />
+        {src ? (
+          <>
+            {/* Opens full size in a new tab — an Aadhaar number is unreadable
+                at tile size, and a reviewer has to actually read it. */}
+            <a
+              href={src}
+              target="_blank"
+              rel="noreferrer"
+              className="size-full"
+              aria-label={`Open ${DOCUMENT_TYPE_LABEL[doc.type]} full size`}
+            >
+              <img
+                src={src}
+                alt={`${DOCUMENT_TYPE_LABEL[doc.type]} scan`}
+                className="size-full object-cover"
+              />
+            </a>
+            {doc.status === "approved" && (
+              <span className="absolute right-1 top-1 rounded-full bg-live p-1 text-white">
+                <Check className="size-3" aria-hidden="true" />
+              </span>
+            )}
+            {doc.status === "rejected" && (
+              <span className="absolute right-1 top-1 rounded-full bg-critical p-1 text-white">
+                <X className="size-3" aria-hidden="true" />
+              </span>
+            )}
+          </>
         ) : (
-          <FileText className="size-6" aria-hidden="true" />
+          <span className="flex flex-col items-center gap-1 text-center">
+            <FileText className="size-6" aria-hidden="true" />
+            <span className="text-caption">
+              {!uploaded
+                ? "Not uploaded"
+                : failed
+                  ? "Could not load"
+                  : "Loading…"}
+            </span>
+          </span>
         )}
       </div>
 
@@ -828,7 +998,8 @@ function DocumentTile({
         {DOCUMENT_TYPE_LABEL[doc.type]}
       </p>
 
-      {doc.status === "pending" ? (
+      {/* Nothing to verify until the pro has sent it. */}
+      {uploaded && doc.status === "pending" ? (
         <div className="flex gap-1">
           <Button
             variant="secondary"
@@ -893,11 +1064,22 @@ function DocumentsTab() {
 
   React.useEffect(() => load(), [load]);
 
+  /** One remarks field per pro, required to reject any of their documents. */
+  const [remarks, setRemarks] = React.useState<Record<string, string>>({});
+
   const decideDoc = (
     proId: string,
     docType: DocumentType,
     status: "approved" | "rejected",
   ) => {
+    const reason = (remarks[proId] ?? "").trim();
+    if (status === "rejected" && reason === "") {
+      toast.error("Add a remark saying what is wrong with that document.");
+      return;
+    }
+
+    const previous = details[proId];
+
     setDetails((d) => {
       const detail = d[proId];
       if (!detail) return d;
@@ -906,14 +1088,35 @@ function DocumentsTab() {
         [proId]: {
           ...detail,
           documents: detail.documents.map((doc) =>
-            doc.type === docType ? { ...doc, status } : doc,
+            doc.type === docType
+              ? {
+                  ...doc,
+                  status,
+                  ...(status === "rejected"
+                    ? { rejectionReason: reason }
+                    : { rejectionReason: undefined }),
+                }
+              : doc,
           ),
         },
       };
     });
-    toast.success(
-      `${DOCUMENT_TYPE_LABEL[docType]} ${status === "approved" ? "verified" : "rejected"}`,
-    );
+
+    void reviewProDocument(proId, docType, status, reason || undefined)
+      .then(() =>
+        toast.success(
+          `${DOCUMENT_TYPE_LABEL[docType]} ${status === "approved" ? "verified" : "rejected"}`,
+        ),
+      )
+      .catch((err: unknown) => {
+        // Reverted, or the tile would keep a verdict the database never took.
+        if (previous) setDetails((d) => ({ ...d, [proId]: previous }));
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Could not record that document review.",
+        );
+      });
   };
 
   if (error) {
@@ -981,11 +1184,26 @@ function DocumentsTab() {
                 : detail.documents.map((doc) => (
                     <DocumentTile
                       key={doc.type}
+                      proId={p.id}
                       doc={doc}
                       onApprove={() => decideDoc(p.id, doc.type, "approved")}
                       onReject={() => decideDoc(p.id, doc.type, "rejected")}
                     />
                   ))}
+            </div>
+
+            {/* A rejection the pro cannot act on is not a decision, so the
+                reason is required here as well as on the Approvals tab. */}
+            <div className="border-t border-border p-4">
+              <Input
+                inputSize="sm"
+                value={remarks[p.id] ?? ""}
+                onChange={(e) =>
+                  setRemarks((r) => ({ ...r, [p.id]: e.target.value }))
+                }
+                placeholder="Remarks — required to reject a document"
+                aria-label={`Remarks for ${p.name}`}
+              />
             </div>
           </section>
         );

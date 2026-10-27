@@ -1,6 +1,7 @@
 import type { QuotationDetail } from "@cfc/types";
 import { quotations } from "../fixtures/quotations";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Customer 22, 23, 24 — the quotations waiting on this customer.
@@ -24,6 +25,9 @@ import { applyScenario, latency } from "../control";
 
 /** The customer's own quotations. Filtered to what has cleared admin review. */
 export async function getMyQuotations() {
+  if (isLive("getMyQuotations")) {
+    return fetchJson<QuotationDetail[]>("/consumer/quotations");
+  }
   await latency();
   const rows = quotations.filter((q) => q.status !== "pending");
   const sorted = [...rows].sort(
@@ -33,6 +37,13 @@ export async function getMyQuotations() {
 }
 
 export async function getMyQuotation(id: string) {
+  if (isLive("getMyQuotation")) {
+    // Null for not-found, which the screen handles: a pending quotation has
+    // not cleared review, so to the customer it does not exist yet.
+    return fetchJson<QuotationDetail>(`/consumer/quotations/${id}`).catch(
+      () => null,
+    );
+  }
   await latency();
   const found = quotations.find((q) => q.id === id || q.jobRef === id);
   // A `pending` quotation has not cleared admin review, so as far as the
@@ -59,7 +70,20 @@ export function splitQuotation(totalPaise: number): {
 }
 
 /** Customer 23 — accept, paying the advance. */
-export async function acceptQuotation(id: string): Promise<void> {
+export async function acceptQuotation(
+  id: string,
+  paymentMethod: "cash" | "wallet" | "upi" | "card" = "cash",
+): Promise<void> {
+  if (isLive("acceptQuotation")) {
+    // §4.3 — this returned `Promise<void>` with no payment step, but the
+    // agreement requires a **50% advance on accept**. The method is now
+    // required, and online methods answer 503 until Razorpay has keys rather
+    // than marking a quote accepted with no advance behind it.
+    await fetchJson<unknown>(`/consumer/quotations/${id}/accept`, {
+      body: { paymentMethod },
+    });
+    return;
+  }
   await latency();
   const found = quotations.find((q) => q.id === id);
   if (!found) return;
@@ -69,6 +93,12 @@ export async function acceptQuotation(id: string): Promise<void> {
 
 /** Customer 23 — decline. The visit is still chargeable; the work is not. */
 export async function declineQuotation(id: string): Promise<void> {
+  if (isLive("declineQuotation")) {
+    await fetchJson<unknown>(`/consumer/quotations/${id}/decline`, {
+      method: "POST",
+    });
+    return;
+  }
   await latency();
   const found = quotations.find((q) => q.id === id);
   if (!found) return;
@@ -87,6 +117,12 @@ export async function askQuotationQuestion(
   id: string,
   question: string,
 ): Promise<void> {
+  if (isLive("askQuotationQuestion")) {
+    await fetchJson<unknown>(`/consumer/quotations/${id}/question`, {
+      body: { question },
+    });
+    return;
+  }
   await latency();
   void id;
   void question;
@@ -94,6 +130,9 @@ export async function askQuotationQuestion(
 
 /** How many quotations are waiting on the customer. Drives a nav badge. */
 export async function getPendingQuotationCount(): Promise<number> {
+  if (isLive("getPendingQuotationCount")) {
+    return fetchJson<number>("/consumer/quotations/count");
+  }
   await latency();
   const n = quotations.filter((q) => q.status === "approved").length;
   return applyScenario(n, 0);

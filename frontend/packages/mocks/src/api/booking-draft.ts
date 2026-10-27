@@ -3,6 +3,7 @@ import { CGST_BPS, SGST_BPS } from "@cfc/types";
 import { coupons } from "../fixtures/promotions";
 import { pricingRules } from "../fixtures/catalog";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Customer 18, 19, 20, 21 — pricing a booking, applying a coupon, and placing
@@ -108,6 +109,28 @@ export function priceBooking({
 }
 
 /**
+ * The server's own price for a draft. Customer 18.
+ *
+ * `priceBooking` above stays **synchronous and client-side**, because a summary
+ * that re-renders on every add-on tick cannot wait on a round trip. This is the
+ * authority: `createBooking` recomputes from the same code path server-side, so
+ * what is displayed and what is charged come from one implementation.
+ *
+ * Where the two disagree, the server wins and `createBooking` answers 409
+ * rather than quietly charging a different number.
+ */
+export async function priceBookingLive(draft: {
+  serviceId: string;
+  variantId?: string | null;
+  addOnIds?: string[];
+  quantity?: number;
+  addressId?: string;
+  couponCode?: string | null;
+}): Promise<PriceBreakdown> {
+  return fetchJson<PriceBreakdown>("/consumer/bookings/price", { body: draft });
+}
+
+/**
  * Checks a code against a booking.
  *
  * Every restriction the coupon carries is enforced, and the failure is named,
@@ -120,12 +143,28 @@ export async function applyCoupon({
   subtotalPaise,
   serviceName,
   area,
+  serviceId,
+  addressId,
+  variantId,
+  addOnIds,
+  quantity,
 }: {
   code: string;
   subtotalPaise: number;
   serviceName: string;
   area: string;
+  /** Live only — the server evaluates against the real draft, not a subtotal. */
+  serviceId?: string;
+  addressId?: string;
+  variantId?: string | null;
+  addOnIds?: string[];
+  quantity?: number;
 }): Promise<CouponResult> {
+  if (isLive("applyCoupon")) {
+    return fetchJson<CouponResult>("/consumer/bookings/coupon", {
+      body: { code, serviceId, addressId, variantId, addOnIds, quantity },
+    });
+  }
   await latency();
 
   const found = coupons.find(
@@ -168,6 +207,9 @@ export async function applyCoupon({
 
 /** Coupons a customer can see and tap, rather than having to know the code. */
 export async function getAvailableCoupons() {
+  if (isLive("getAvailableCoupons")) {
+    return fetchJson<Coupon[]>("/consumer/bookings/coupons");
+  }
   await latency();
   const live = coupons.filter(
     (c) =>
@@ -196,11 +238,58 @@ export async function createBooking(draft: {
   addressId: string;
   paymentMethod: string;
   couponCode: string | null;
+  notes?: string | null;
+  /**
+   * The total the customer was shown.
+   *
+   * Sent to be **compared, not used**. If the price moved while they were
+   * deciding, the server answers 409 so they see the new figure before being
+   * charged rather than after.
+   */
+  expectedTotalPaise?: number;
 }): Promise<{ reference: string; startsAt: string }> {
+  if (isLive("createBooking")) {
+    return fetchJson<{ reference: string; startsAt: string }>(
+      "/consumer/bookings",
+      {
+        body: {
+          ...draft,
+          /**
+           * A per-attempt key, so a double-tap on a slow connection is one
+           * booking rather than two. Generated here because only the client
+           * knows that two requests are the same user action.
+           */
+          idempotencyKey: newIdempotencyKey(draft),
+        },
+      },
+    );
+  }
   await latency();
   const n = Math.floor(10_000_000 + Math.random() * 89_999_999);
   return applyScenario(
     { reference: `CFC${n}`, startsAt: draft.startsAt },
     { reference: "CFC00000000", startsAt: draft.startsAt },
   );
+}
+
+/**
+ * A stable key for one booking attempt.
+ *
+ * Derived from the draft rather than random, so a retry of the *same* booking
+ * reuses it while a genuinely new booking of the same service gets a fresh one
+ * — the minute bucket is what separates "they tapped twice" from "they booked
+ * the same thing again later".
+ *
+ * `ponytail:` a minute bucket, not a UUID held in component state. Two
+ * deliberate identical bookings inside the same minute would collapse into
+ * one; passing an explicit key from the checkout screen is the upgrade if that
+ * ever matters.
+ */
+function newIdempotencyKey(draft: {
+  serviceId: string;
+  startsAt: string;
+  addressId: string;
+}): string {
+  const minute = Math.floor(Date.now() / 60_000);
+  return `${draft.serviceId}:${draft.addressId}:${draft.startsAt}:${minute}`;
 }

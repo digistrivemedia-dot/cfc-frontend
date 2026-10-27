@@ -17,7 +17,6 @@ import { useSession } from "@/lib/session";
  * `useSearchParams` requires Suspense — OtpInner is the reactive part.
  */
 
-const AUTO_FILL_CODE = "123456";
 const RESEND_SECONDS = 30;
 
 type OtpFrom = "login" | "register" | "forgot-password";
@@ -62,14 +61,17 @@ function OtpInner() {
     return () => clearInterval(id);
   }, [resendSeconds]);
 
-  /* Auto-fill simulation (mimics SMS auto-read) */
-  React.useEffect(() => {
-    const t = setTimeout(() => {
-      setDigits(AUTO_FILL_CODE.split(""));
-      inputRefs.current[5]?.focus();
-    }, 3000);
-    return () => clearTimeout(t);
-  }, []);
+  /**
+   * **The auto-fill is gone.** It typed `123456` into the field after three
+   * seconds, which was P0 blocker B1 — marked *"never ship"* — and worse than
+   * a placeholder: it taught anyone reviewing the app what the code was.
+   *
+   * There is no honest web replacement. Android's SMS Retriever API is
+   * native-only, so no browser can read an SMS. What the web does offer is
+   * `autocomplete="one-time-code"`, which lets iOS and some Android keyboards
+   * suggest a code the OS itself parsed — that attribute is on the first input
+   * and is the whole of what is possible here.
+   */
 
   function handleDigit(index: number, value: string) {
     const d = value.replace(/\D/g, "").slice(-1);
@@ -216,7 +218,7 @@ function OtpInner() {
                 <span className="font-extrabold">Verify</span> to continue
               </>
             ) : (
-              "Waiting for auto-fill…"
+              "Enter the 6-digit code"
             )}
           </span>
         </p>

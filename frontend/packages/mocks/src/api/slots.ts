@@ -1,5 +1,6 @@
 import type { Slot } from "@cfc/types";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Customer 15 — arrival windows for one service on one day.
@@ -34,6 +35,11 @@ function dayHash(date: Date): number {
 }
 
 export async function getSlots(serviceId: string, isoDate: string) {
+  if (isLive("getSlots")) {
+    return fetchJson<Slot[]>(`/public/catalog/services/${serviceId}/slots`, {
+      query: { date: isoDate },
+    });
+  }
   await latency();
 
   const day = new Date(isoDate);

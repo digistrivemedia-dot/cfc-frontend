@@ -1,6 +1,8 @@
 import type { BookingStatus } from "@cfc/types";
 import { myBookings } from "../fixtures/my-bookings";
+import type { ConsumerBooking } from "@cfc/types";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Customer 25 through 29 — the customer's own bookings.
@@ -22,6 +24,11 @@ const TAB_STATUSES: Record<BookingTab, BookingStatus[]> = {
 };
 
 export async function getMyBookings(tab?: BookingTab) {
+  if (isLive("getMyBookings")) {
+    return fetchJson<ConsumerBooking[]>("/consumer/bookings", {
+      query: { tab },
+    });
+  }
   await latency();
   const rows = tab
     ? myBookings.filter((b) => TAB_STATUSES[tab].includes(b.status))
@@ -37,6 +44,13 @@ export async function getMyBookings(tab?: BookingTab) {
 }
 
 export async function getMyBooking(id: string) {
+  if (isLive("getMyBooking")) {
+    // The screen handles null for "not found", so a 404 becomes null rather
+    // than an error state — a stale link is not a broken app.
+    return fetchJson<ConsumerBooking>(`/consumer/bookings/${id}`).catch(
+      () => null,
+    );
+  }
   await latency();
   const found = myBookings.find((b) => b.id === id || b.reference === id);
   return applyScenario(found ?? null, null);
@@ -50,6 +64,9 @@ export async function getMyBooking(id: string) {
  * and the contents cannot disagree.
  */
 export async function getMyBookingCounts() {
+  if (isLive("getMyBookingCounts")) {
+    return fetchJson<Record<BookingTab, number>>("/consumer/bookings/counts");
+  }
   await latency();
   const counts: Record<BookingTab, number> = {
     upcoming: 0,
@@ -73,6 +90,11 @@ export async function getMyBookingCounts() {
  * see CONSUMER-OPEN-ITEMS 1.1. The screen says what it knows and no more.
  */
 export async function cancelBooking(id: string): Promise<void> {
+  if (isLive("cancelBooking")) {
+    return fetchJson<void>(`/consumer/bookings/${id}/cancel`, {
+      method: "POST",
+    });
+  }
   await latency();
   const found = myBookings.find((b) => b.id === id);
   if (!found) return;
@@ -98,6 +120,9 @@ export async function cancelBooking(id: string): Promise<void> {
  * now. Within the same status, the soonest wins.
  */
 export async function getActiveBooking() {
+  if (isLive("getActiveBooking")) {
+    return fetchJson<ConsumerBooking | null>("/consumer/bookings/active");
+  }
   await latency();
   const live = myBookings.filter((b) =>
     (["pending", "assigned", "in_progress"] as BookingStatus[]).includes(
@@ -128,6 +153,11 @@ export async function getActiveBooking() {
  * De-duplicated by service name so a monthly clean appears once, not six times.
  */
 export async function getRebookable() {
+  if (isLive("getRebookable")) {
+    return fetchJson<
+      { serviceName: string; lastBookedAt: string; totalPaise: number }[]
+    >("/consumer/bookings/rebookable");
+  }
   await latency();
   const seen = new Set<string>();
   const out: {

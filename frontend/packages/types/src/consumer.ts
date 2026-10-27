@@ -1,4 +1,4 @@
-import type { Id, Paise, Timestamp, Address } from "./primitives";
+import type { Id, Paise, Timestamp, Address, GeoPoint } from "./primitives";
 import type { BookingStatus } from "./booking";
 
 /**
@@ -119,8 +119,27 @@ export interface ConsumerBooking {
   /** Minutes until arrival, once a pro is travelling. Customer 27. */
   etaMinutes: number | null;
 
-  /** Where the pro is, as canvas percentages for `MapView`. Customer 27. */
+  /**
+   * Where the pro is, as canvas percentages for `MapView`. Customer 27.
+   *
+   * A **derived presentation value**, not the truth: `MapView` draws a styled
+   * canvas rather than a real map, and takes 0–100 within it. Computed from
+   * `proPoint` relative to the customer's own location.
+   */
   proPosition: { x: number; y: number } | null;
+
+  /**
+   * Where the pro actually is.
+   *
+   * BACKEND-PLAN.md §4.2: `proPosition` alone could not support real tracking,
+   * because canvas percentages are not coordinates. This is the geographic
+   * truth, from the pro's location pings, and it is what a live Maps SDK will
+   * consume when `MapView`'s internals are replaced — at which point
+   * `proPosition` can go.
+   *
+   * Null before a pro is assigned, and until they have pinged at least once.
+   */
+  proPoint: GeoPoint | null;
 
   /** Customer 28 — proof of work, before and after. */
   beforePhotoUrls: string[];

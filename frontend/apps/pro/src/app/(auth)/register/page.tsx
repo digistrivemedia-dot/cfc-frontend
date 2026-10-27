@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Search } from "lucide-react";
 import { getRegisterableServices, getServiceAreas, sendProOtp } from "@cfc/mocks";
+import { saveRegistrationDraft } from "@/lib/pro-session";
 import {
   Badge,
   Button,
@@ -105,6 +106,17 @@ export default function ProRegisterPage() {
       // The OTP is sent before the record is created: verifying the number is
       // what makes the registration real, and creating a record for an
       // unverified number would fill the platform with unreachable pros.
+      //
+      // So the form's answers are held until the code is confirmed, and the
+      // OTP screen creates the record. Previously they were simply discarded —
+      // nothing in this app called `registerPro` at all.
+      saveRegistrationDraft({
+        name: name.trim(),
+        phone: `+91${digits}`,
+        // Ids, not names: the catalogue is admin-owned and renameable.
+        serviceIds: chosen,
+        areas: [area],
+      });
       await sendProOtp(`+91${digits}`);
       router.push(
         `/otp?phone=${encodeURIComponent(digits)}&from=register`,

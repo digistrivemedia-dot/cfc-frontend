@@ -37,7 +37,6 @@ import { useSession } from "@/lib/session";
 
 const LENGTH = 6;
 const RESEND_SECONDS = 30;
-const DEMO_CODE = "123456";
 
 type Step = "phone" | "code";
 
@@ -307,11 +306,6 @@ function CodeStep({
           {error}
         </p>
       )}
-
-      <p className="text-center text-caption text-ink-muted">
-        For this demo the code is{" "}
-        <span className="tabular font-semibold text-ink">{DEMO_CODE}</span>
-      </p>
 
       <div className="flex items-center justify-between">
         <button

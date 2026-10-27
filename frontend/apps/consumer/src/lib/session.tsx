@@ -1,35 +1,41 @@
 "use client";
 
 import * as React from "react";
+import { getToken, signOutConsumer } from "@cfc/mocks";
 
 /**
  * Whether the visitor is signed in.
  *
- * The consumer app had no concept of this at all. Every screen assumed an
- * account, so the homepage showed a stranger who had just arrived from a search
- * result somebody else's live pest-control booking, a "Book again" row, and an
- * avatar with initials in it. That is the single worst thing a marketplace can
- * do to a first-time visitor: it is not merely wrong, it is unreadable, because
- * none of it refers to them.
+ * Phase 5 replaced what this was. Previously it was a boolean in
+ * `localStorage["cfc.consumer.signedIn"]` — `final/CONSUMER.md` §7.1 recorded
+ * it plainly: *"Signed in is only a flag."* There was no token, no user id, and
+ * no expiry, and `getConsumerProfile()` returned the same fixture customer
+ * regardless of who had signed in.
  *
- * Real authentication belongs to the backend team. What the frontend owes is
- * the distinction — signed out versus signed in — and the discipline of never
- * rendering personal content without it.
+ * Now the signed-in state **is** the presence of a real token, so there is one
+ * source rather than a flag that can disagree with one. `verifyOtp` stores it;
+ * this reads it.
  *
- * Persisted in `localStorage` rather than `sessionStorage`: a customer who
- * signs in and comes back tomorrow expects to still be signed in, which is how
- * every marketplace behaves. Cleared on sign-out.
+ * What has not changed is the thing that matters most to the screens: the
+ * three-state distinction. Null means "not yet known", and a screen that
+ * treats it as false flashes the guest view on every load for a customer who is
+ * perfectly well signed in.
  *
- * Switch state while reviewing without going through the OTP flow:
- *   __cfcSession.signIn()
- *   __cfcSession.signOut()
+ * `localStorage`, not session: a customer who signs in and comes back tomorrow
+ * expects to still be signed in. The admin panel chooses the opposite,
+ * deliberately.
  */
 
-const STORAGE_KEY = "cfc.consumer.signedIn";
-
 interface SessionValue {
-  /** Null while the stored value is being read — see `SessionGate`. */
+  /** Null while the stored token is being read — see the note above. */
   signedIn: boolean | null;
+  /**
+   * Marks the session live after a successful OTP.
+   *
+   * Takes no argument: `verifyOtp` has already stored the token, so this only
+   * tells React to re-read. Passing the token in would give two places that
+   * decide where it is kept.
+   */
   signIn: () => void;
   signOut: () => void;
 }
@@ -47,48 +53,34 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [signedIn, setSignedIn] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
-    try {
-      setSignedIn(localStorage.getItem(STORAGE_KEY) === "true");
-    } catch {
-      // Private browsing, or storage blocked. Treat as a guest.
-      setSignedIn(false);
-    }
+    setSignedIn(getToken() !== null);
   }, []);
 
   const signIn = React.useCallback(() => {
     setSignedIn(true);
-    try {
-      localStorage.setItem(STORAGE_KEY, "true");
-    } catch {
-      // Non-fatal: the session simply does not survive a reload.
-    }
   }, []);
 
   const signOut = React.useCallback(() => {
+    signOutConsumer();
     setSignedIn(false);
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // Nothing stored to clear.
-    }
   }, []);
 
-  // Console helpers, so a reviewer can flip between the two views without
-  // typing a phone number and an OTP each time.
+  /**
+   * Keeps two tabs in step.
+   *
+   * Without this, signing out in one tab leaves another showing a signed-in
+   * shell whose every request 401s — which reads as the app being broken
+   * rather than as a sign-out.
+   */
   React.useEffect(() => {
-    if (process.env.NODE_ENV !== "development") return;
-    (window as unknown as Record<string, unknown>).__cfcSession = {
-      signIn: () => {
-        signIn();
-        window.location.reload();
-      },
-      signOut: () => {
-        signOut();
-        window.location.reload();
-      },
-      state: () => signedIn,
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "cfc.token" || e.key === null) {
+        setSignedIn(getToken() !== null);
+      }
     };
-  }, [signIn, signOut, signedIn]);
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   const value = React.useMemo(
     () => ({ signedIn, signIn, signOut }),

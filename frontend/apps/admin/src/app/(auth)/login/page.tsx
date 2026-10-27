@@ -12,68 +12,56 @@ import {
   Lock,
   Mail,
 } from "lucide-react";
-import { Button, Combobox, FormField, InlineAlert, Input, cn } from "@cfc/ui";
+import { ApiError } from "@cfc/types";
+import { adminLogin } from "@cfc/mocks";
+import { Button, FormField, InlineAlert, Input, cn } from "@cfc/ui";
 import { AuthShell } from "@/components/auth-shell";
-import { useSignIn } from "@/lib/actor";
+import { useSession } from "@/lib/actor";
 
 /**
  * Admin 1 — Admin login.
  *
  * Inventory: "Email + password, 2FA support."
  *
- * Frontend only. No session, no token, no network call — the backend team owns
- * all of that. What this screen owes is the interaction, and that is where it
- * was thin: fields that say when they are wrong, a code entry that behaves like
- * every OTP field a person has used, a button that cannot be pressed twice.
+ * Real as of Phase 2: a request to `/api/admin/auth/login`, a signed token, and
+ * an identity the server decided. Three things the previous version did are
+ * gone, and each for a reason worth keeping written down.
  *
- * The role selector lives in the shell rather than in this form: one segmented
- * control above the fields at every width, with the selected role's scope named
- * beneath it. Keeping it in the shell means the form owns only the credentials,
- * and the three-letter tab labels are never the only thing telling someone what
- * they picked.
+ * **The role picker is gone.** It let the person signing in choose between
+ * Super Admin, Sub Admin and Area Admin — which is the entire RBAC hole in one
+ * segmented control, because a sub-admin would simply pick Super Admin. A role
+ * is a property of an account, so it now arrives from the server and this form
+ * asks only for credentials.
  *
- * Only Area Admin asks a second question, because only that role is scoped to a
- * place.
+ * **The area field is gone**, for the same reason. An Area Admin's area is on
+ * their record; letting them pick it at sign-in would let them pick someone
+ * else's.
  *
- * The demo credentials below stand in for the check the backend team will
- * make. They are not shown on the screen — a client looking at this should see
- * a sign-in screen, not a test harness.
+ * **The demo credentials are gone.** They were a hardcoded email and password
+ * compared in the browser. The Super Admin's credentials now live in the
+ * server's `.env` (BACKEND-PLAN.md §0.2) — the one deliberately temporary piece
+ * of this phase, and the only one.
  *
- *   admin@cityfamilycare.in / cfc-admin, then code 123456
+ * 2FA is **not built** (§0.2). Rather than keep a code step that accepts
+ * `123456` — the same lie as §2.2's *"a switch claiming to be on"* — the step
+ * is driven by the server's `twoFactorRequired`, which is false until TOTP
+ * exists. The UI is kept so enrolment later needs no rebuild.
  */
-
-const DEMO_EMAIL = "admin@cityfamilycare.in";
-const DEMO_PASSWORD = "cfc-admin";
-const DEMO_CODE = "123456";
-
-/** Trichy areas an Area Admin can be assigned to. */
-const AREAS = [
-  { value: "srirangam", label: "Srirangam" },
-  { value: "thillai-nagar", label: "Thillai Nagar" },
-  { value: "woraiyur", label: "Woraiyur" },
-  { value: "kk-nagar", label: "K.K. Nagar" },
-  { value: "cantonment", label: "Cantonment" },
-  { value: "golden-rock", label: "Golden Rock" },
-];
 
 type Step = "credentials" | "code" | "verified";
 
-/**
- * The picker stores slugs; the rest of the platform scopes on the display
- * name. Without this an Area Admin for "srirangam" would match no bookings at
- * all, because every row carries "Srirangam".
- */
-function areaLabel(value: string | null): string | undefined {
-  if (value === null) return undefined;
-  return AREAS.find((a) => a.value === value)?.label;
-}
-
 export default function AdminLoginPage() {
   const router = useRouter();
-  const signIn = useSignIn();
+  const { refresh } = useSession();
   const [step, setStep] = React.useState<Step>("credentials");
-  const [role, setRole] = React.useState("super");
-  const [area, setArea] = React.useState<string | null>(null);
+
+  // Signing in is what makes the session real; the provider has to re-read it
+  // before any screen behind the guard renders, or the dashboard mounts with a
+  // null actor and bounces straight back to here.
+  const enter = React.useCallback(async () => {
+    await refresh();
+    router.push("/");
+  }, [refresh, router]);
 
   return (
     <AuthShell
@@ -91,17 +79,12 @@ export default function AdminLoginPage() {
             ? undefined
             : "Use the email your CFC admin account was created with."
       }
-      {...(step === "credentials"
-        ? { role, onRoleChange: setRole }
-        : {})}
     >
       {step === "credentials" && (
         <CredentialsStep
-          role={role}
-          onDone={(picked) => {
-            setArea(picked);
-            setStep("code");
-          }}
+          onSignedIn={(twoFactorRequired) =>
+            setStep(twoFactorRequired ? "code" : "verified")
+          }
         />
       )}
       {step === "code" && (
@@ -113,10 +96,7 @@ export default function AdminLoginPage() {
       {step === "verified" && (
         <VerifiedStep
           onContinue={() => {
-            // The role picker was previously cosmetic: every session landed as
-            // Super Admin whatever was chosen here.
-            signIn(role, areaLabel(area));
-            router.push("/");
+            void enter();
           }}
         />
       )}
@@ -127,38 +107,35 @@ export default function AdminLoginPage() {
 // -- Step 1 ------------------------------------------------------------------
 
 function CredentialsStep({
-  role,
-  onDone,
+  onSignedIn,
 }: {
-  role: string;
-  /** Carries the area up: only this step knows which one was picked. */
-  onDone: (area: string | null) => void;
+  /** Carries the server's 2FA answer up, so the step order is its decision. */
+  onSignedIn: (twoFactorRequired: boolean) => void;
 }) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [reveal, setReveal] = React.useState(false);
   const [remember, setRemember] = React.useState(true);
-  const [area, setArea] = React.useState<string | null>(null);
   const [errors, setErrors] = React.useState<{
     email?: string;
     password?: string;
-    area?: string;
     form?: string;
   }>({});
   const [busy, setBusy] = React.useState(false);
 
-  const scoped = role === "area";
   const clear = () => setErrors({});
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Client-side validation is still worth doing — it catches an empty field
+    // without a round trip — but it is not a check, it is a courtesy. The
+    // server validates the same things and does not trust any of this.
     const found: typeof errors = {};
     if (email.trim() === "") found.email = "Enter your email address.";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       found.email = "That does not look like an email address.";
     if (password === "") found.password = "Enter your password.";
-    if (scoped && area === null) found.area = "Choose the area you manage.";
 
     if (Object.keys(found).length > 0) {
       setErrors(found);
@@ -168,25 +145,33 @@ function CredentialsStep({
     setErrors({});
     setBusy(true);
 
-    // Stands in for the request the backend team will make. The delay exists so
-    // the button's busy state is a real state and not a single frame.
-    window.setTimeout(() => {
+    try {
+      const session = await adminLogin(email.trim(), password, { remember });
+      onSignedIn(session.twoFactorRequired);
+    } catch (err) {
+      // The server sends one message for a wrong password and for an unknown
+      // account, on purpose — distinguishing them would let anyone test which
+      // addresses have admin accounts. It is rendered as sent.
+      setErrors({
+        form:
+          err instanceof ApiError
+            ? err.message
+            : "Could not sign in. Please try again.",
+      });
       setBusy(false);
-      if (
-        email.trim().toLowerCase() === DEMO_EMAIL &&
-        password === DEMO_PASSWORD
-      ) {
-        onDone(area);
-      } else {
-        setErrors({
-          form: "That email and password do not match an admin account.",
-        });
-      }
-    }, 600);
+    }
+    // No `setBusy(false)` on success: the form is about to be replaced, and
+    // re-enabling the button first lets a second submit through.
   };
 
   return (
-    <form className="space-y-5" onSubmit={submit} noValidate>
+    <form
+      className="space-y-5"
+      onSubmit={(e) => {
+        void submit(e);
+      }}
+      noValidate
+    >
       {errors.form && <InlineAlert tone="critical">{errors.form}</InlineAlert>}
 
       <div className="space-y-4">
@@ -202,7 +187,7 @@ function CredentialsStep({
               setEmail(e.target.value);
               clear();
             }}
-            placeholder={DEMO_EMAIL}
+            placeholder="you@cfcservice.in"
             icon={<Mail />}
             autoComplete="email"
             autoFocus
@@ -241,33 +226,13 @@ function CredentialsStep({
             }
           />
         </FormField>
-
-        {/* Only an Area Admin is scoped to a place, so only that role is asked.
-            The field appears rather than sitting disabled — a control nobody
-            can use is worse than one that is not there. */}
-        {scoped && (
-          <FormField
-            label="Area"
-            required
-            help="You will only see bookings and pros in this area."
-            {...(errors.area ? { error: errors.area } : {})}
-          >
-            <Combobox
-              options={AREAS}
-              value={area}
-              onChange={(v) => {
-                setArea(v);
-                clear();
-              }}
-              placeholder="Choose your area"
-              searchPlaceholder="Search areas"
-              aria-label="Area"
-            />
-          </FormField>
-        )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Decides whether closing the tab ends the session — localStorage
+            versus sessionStorage — not how long the token lasts. No screen
+            states a session length: PLATFORM-FACTS.md lists that under
+            "not stated anywhere — do not claim". */}
         <label className="flex cursor-pointer items-center gap-2 text-small text-ink-muted">
           <input
             type="checkbox"
@@ -292,7 +257,7 @@ function CredentialsStep({
         className="w-full"
         loading={busy}
       >
-        Continue
+        Sign in
       </Button>
     </form>
   );
@@ -302,6 +267,20 @@ function CredentialsStep({
 
 const LENGTH = 6;
 
+/**
+ * The 2FA code step. **Unreachable today** — the server always reports
+ * `twoFactorRequired: false` because TOTP is not built (§0.2).
+ *
+ * Kept, rather than deleted, because the interaction is finished work: paste
+ * handling, backspace into the previous box, auto-submit on the last digit.
+ * Enrolment later needs a verify endpoint and this screen, not a rebuild.
+ *
+ * `verify` **throws** instead of checking a code. It used to compare against a
+ * hardcoded `123456` in the browser, which is security theatre of exactly the
+ * kind the plan's §2.2 catalogues. If 2FA is ever switched on server-side
+ * before the endpoint exists, this fails loudly — which is the correct
+ * behaviour, and far better than a code field that accepts a constant.
+ */
 function CodeStep({
   onBack,
   onDone,
@@ -327,16 +306,13 @@ function CodeStep({
     (code: string) => {
       setBusy(true);
       setError(null);
-      window.setTimeout(() => {
-        setBusy(false);
-        if (code === DEMO_CODE) {
-          onDone();
-        } else {
-          setError("That code is not right. Check your authenticator app.");
-          setDigits(Array.from({ length: LENGTH }, () => ""));
-          refs.current[0]?.focus();
-        }
-      }, 600);
+      void code;
+      void onDone;
+      // No endpoint to call. Never accept a code the browser checked itself.
+      setBusy(false);
+      setError(
+        "Two-factor authentication is not available yet. Contact your administrator.",
+      );
     },
     [onDone],
   );

@@ -18,6 +18,10 @@ dist/
 .env
 .env*.local
 
+# uploaded files — user content, never committed. `private/` holds KYC
+# documents, which must not reach a repository under any circumstances.
+uploads/
+
 # typescript
 *.tsbuildinfo
 

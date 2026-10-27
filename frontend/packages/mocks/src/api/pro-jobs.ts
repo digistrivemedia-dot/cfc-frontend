@@ -9,6 +9,7 @@ import { AREAS, CUSTOMER_NAMES, SERVICE_CATALOG } from "../fixtures/seed";
 import { pros } from "../fixtures/pros";
 import { commissionFor } from "./pro-earnings";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Pro 10, 12, 13, 15, 18, 20, 21 — the pro's jobs.
@@ -366,6 +367,9 @@ function builtFor(proId: string): Built {
 
 /** Pro 10 — the dashboard's figures. */
 export async function getProDayStats(proId: string): Promise<ProDayStats> {
+  if (isLive("getProDayStats")) {
+    return fetchJson<ProDayStats>("/pro/stats");
+  }
   await latency();
   return applyScenario(builtFor(proId).stats, {
     todayNetPaise: 0,
@@ -388,6 +392,12 @@ export async function getProActiveJobs(
   proId: string,
   limit = 4,
 ): Promise<ProJob[]> {
+  if (isLive("getProActiveJobs")) {
+    const jobs = await fetchJson<ProJob[]>("/pro/jobs", {
+      query: { tab: "active" },
+    });
+    return jobs.slice(0, limit);
+  }
   await latency();
   const rows = builtFor(proId)
     .jobs.filter((j) => PRO_JOB_TAB_STATUSES.active.includes(j.status))
@@ -404,6 +414,9 @@ export async function getProJobs(
   proId: string,
   tab: ProJobTab,
 ): Promise<ProJob[]> {
+  if (isLive("getProJobs")) {
+    return fetchJson<ProJob[]>("/pro/jobs", { query: { tab } });
+  }
   await latency();
   const statuses = PRO_JOB_TAB_STATUSES[tab];
   const rows = builtFor(proId)
@@ -421,6 +434,9 @@ export async function getProJobs(
 export async function getProJobCounts(
   proId: string,
 ): Promise<Record<ProJobTab, number>> {
+  if (isLive("getProJobCounts")) {
+    return fetchJson<Record<ProJobTab, number>>("/pro/jobs/counts");
+  }
   await latency();
   const jobs = builtFor(proId).jobs;
   const counts = {
@@ -443,6 +459,11 @@ export async function getProJob(
   proId: string,
   jobId: string,
 ): Promise<ProJob | null> {
+  if (isLive("getProJob")) {
+    // Null for not-found, which the screen already handles — another pro's job
+    // is a 404 and that is not an error state worth rendering.
+    return fetchJson<ProJob>(`/pro/jobs/${jobId}`).catch(() => null);
+  }
   await latency();
   const found = builtFor(proId).jobs.find((j) => j.id === jobId) ?? null;
   return applyScenario(found, null);

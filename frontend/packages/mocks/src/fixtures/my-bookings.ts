@@ -97,6 +97,7 @@ export const myBookings: ConsumerBooking[] = [
     completionOtp: null,
     etaMinutes: null,
     proPosition: null,
+    proPoint: null,
     beforePhotoUrls: [],
     afterPhotoUrls: [],
     events: [{ at: hoursFromNow(-1), label: "Booking placed" }],
@@ -118,6 +119,7 @@ export const myBookings: ConsumerBooking[] = [
     completionOtp: otpFor(2),
     etaMinutes: 18,
     proPosition: { x: 38, y: 62 },
+    proPoint: { lat: 10.8505, lng: 78.6837 },
     beforePhotoUrls: [],
     afterPhotoUrls: [],
     events: [
@@ -143,6 +145,7 @@ export const myBookings: ConsumerBooking[] = [
     completionOtp: otpFor(5),
     etaMinutes: null,
     proPosition: { x: 50, y: 50 },
+    proPoint: { lat: 10.8231, lng: 78.6952 },
     beforePhotoUrls: ["/mock/jobs/before-1.jpg", "/mock/jobs/before-2.jpg"],
     afterPhotoUrls: [],
     events: [
@@ -170,6 +173,7 @@ export const myBookings: ConsumerBooking[] = [
     completionOtp: null,
     etaMinutes: null,
     proPosition: null,
+    proPoint: null,
     beforePhotoUrls: ["/mock/jobs/before-3.jpg"],
     afterPhotoUrls: ["/mock/jobs/after-1.jpg", "/mock/jobs/after-2.jpg"],
     events: [
@@ -196,6 +200,7 @@ export const myBookings: ConsumerBooking[] = [
     completionOtp: null,
     etaMinutes: null,
     proPosition: null,
+    proPoint: null,
     beforePhotoUrls: [],
     afterPhotoUrls: ["/mock/jobs/after-3.jpg"],
     events: [
@@ -222,6 +227,7 @@ export const myBookings: ConsumerBooking[] = [
     completionOtp: null,
     etaMinutes: null,
     proPosition: null,
+    proPoint: null,
     beforePhotoUrls: [],
     afterPhotoUrls: [],
     events: [

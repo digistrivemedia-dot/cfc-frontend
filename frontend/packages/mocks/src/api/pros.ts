@@ -9,6 +9,7 @@ import { ApiError } from "@cfc/types";
 import { proListItems, pros, walletEntries } from "../fixtures/pros";
 import { proWarnings, payouts } from "../fixtures/discipline";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 export interface ProQuery {
   search?: string | undefined;
@@ -20,6 +21,18 @@ export interface ProQuery {
 }
 
 export async function getPros(query: ProQuery = {}): Promise<Page<ProListItem>> {
+  if (isLive("getPros")) {
+    return fetchJson<Page<ProListItem>>("/admin/pros", {
+      query: {
+        search: query.search,
+        approvalStatus: query.approvalStatus,
+        area: query.area,
+        online: query.online,
+        page: query.page,
+        pageSize: query.pageSize,
+      },
+    });
+  }
   await latency();
   const { search, approvalStatus = "all", area, online = "all", page = 1, pageSize = 20 } = query;
 
@@ -46,6 +59,9 @@ export async function getPros(query: ProQuery = {}): Promise<Page<ProListItem>> 
 }
 
 export async function getPro(id: string): Promise<ProDetail> {
+  if (isLive("getPro")) {
+    return fetchJson<ProDetail>(`/admin/pros/${id}`);
+  }
   await latency();
   const found = pros.find((p) => p.id === id);
   return applyScenario(

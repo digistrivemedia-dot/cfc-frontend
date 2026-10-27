@@ -127,8 +127,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           actor={actor}
           onProfile={() => router.push("/settings?tab=profile")}
           onSignOut={() => {
-            signOut();
-            router.push("/login");
+            // Awaited before navigating: pushing first races the token clear,
+            // and a login page that mounts while the token still exists reads
+            // the session as valid and bounces straight back in.
+            void signOut().then(() => router.push("/login"));
           }}
         />
       </header>
@@ -196,8 +198,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               showName
               onProfile={() => router.push("/settings?tab=profile")}
               onSignOut={() => {
-                signOut();
-                router.push("/login");
+                void signOut().then(() => router.push("/login"));
               }}
             />
           </header>

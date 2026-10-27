@@ -1,6 +1,7 @@
 import { Toaster, TooltipProvider } from "@cfc/ui";
 import { AppShell } from "@/components/app-shell";
 import { NavCountsProvider } from "@/lib/nav-counts";
+import { RequireAdmin } from "@/lib/actor";
 
 /**
  * Every screen except login and forgot-password sits behind the sidebar
@@ -17,13 +18,22 @@ export default function AppGroupLayout({
   children: React.ReactNode;
 }) {
   return (
-    <NavCountsProvider>
-      <TooltipProvider delayDuration={300}>
-        <AppShell>
-          {children}
-          <Toaster />
-        </AppShell>
-      </TooltipProvider>
-    </NavCountsProvider>
+    // `RequireAdmin` is outermost so nothing below it renders without an actor.
+    // `AppShell` calls `useActor()`, which now throws rather than defaulting to
+    // a Super Admin preset — so mounting the shell before the session resolves
+    // would be a crash, not a flash of the wrong sidebar.
+    //
+    // This is a convenience, not a security control. The data behind every
+    // screen comes from endpoints that verify the token themselves.
+    <RequireAdmin>
+      <NavCountsProvider>
+        <TooltipProvider delayDuration={300}>
+          <AppShell>
+            {children}
+            <Toaster />
+          </AppShell>
+        </TooltipProvider>
+      </NavCountsProvider>
+    </RequireAdmin>
   );
 }

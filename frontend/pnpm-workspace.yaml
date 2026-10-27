@@ -2,7 +2,9 @@ packages:
   - "apps/*"
   - "packages/*"
 # sharp backs next/image optimisation; unrs-resolver backs the eslint import
-# resolver. Both are expected native builds.
+# resolver; esbuild backs tsx, which runs the server. All are expected native
+# builds — without its build script esbuild has no binary to run.
 allowBuilds:
+  esbuild: true
   sharp: true
   unrs-resolver: true

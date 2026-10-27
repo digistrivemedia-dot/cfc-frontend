@@ -11,6 +11,20 @@
 
 export { setScenario, getScenario, type Scenario } from "./control";
 
+/**
+ * The HTTP boundary. Exported so the auth screens can store the token the
+ * server issued — nothing else in an app should need these.
+ */
+export {
+  API_BASE,
+  isLive,
+  getToken,
+  setToken,
+  clearToken,
+  tokenRole,
+  isAdminToken,
+} from "./http";
+
 export {
   getBooking,
   getBookings,
@@ -32,7 +46,12 @@ export {
   getCustomers,
   type CustomerQuery,
 } from "./api/customers";
-export { getQuotations, getQuotation, type QuotationQuery } from "./api/quotations";
+export {
+  getQuotations,
+  getQuotation,
+  decideQuotation,
+  type QuotationQuery,
+} from "./api/quotations";
 export {
   getCategories,
   getSubCategories,
@@ -40,6 +59,23 @@ export {
   getServices,
   getPricingRules,
   getCommissionRules,
+  // Admin 22–29 writes. Live-only — see the note in api/catalog.ts.
+  createCategory,
+  updateCategory,
+  reorderCategories,
+  deleteCategory,
+  createSubCategory,
+  updateSubCategory,
+  deleteSubCategory,
+  createService,
+  updateService,
+  deleteService,
+  updatePricingRule,
+  updateCommissionRule,
+  uploadCatalogImage,
+  type CategoryInput,
+  type SubCategoryInput,
+  type ServiceInput,
 } from "./api/catalog";
 export {
   getTransactions,
@@ -67,6 +103,22 @@ export {
 } from "./api/reports";
 
 export { getSubAdmins } from "./api/admin-users";
+export {
+  reviewProDocument,
+  approveProKyc,
+  rejectProKyc,
+  requestMoreDocuments,
+  blockPro,
+  unblockPro,
+  getProDispatchStatus,
+  getProDocumentUrl,
+} from "./api/pro-admin";
+export {
+  adminLogin,
+  adminMe,
+  adminLogout,
+  type AdminSession,
+} from "./api/admin-auth";
 export { getDashboardKpis, getJobFeed } from "./api/dashboard";
 
 export { AREA_OPTIONS } from "./fixtures/bookings";
@@ -78,6 +130,7 @@ export {
   verifyOtp,
   getConsumerProfile,
   updateConsumerProfile,
+  signOutConsumer,
 } from "./api/consumer-auth";
 export {
   getReviews,
@@ -136,6 +189,7 @@ export {
 } from "./api/referral";
 export {
   priceBooking,
+  priceBookingLive,
   applyCoupon,
   getAvailableCoupons,
   createBooking,
@@ -175,6 +229,7 @@ export {
   OFFER_WINDOW_SECONDS,
   PROS_NOTIFIED_PER_JOB,
   type OfferOutcome,
+  type LiveOffer,
 } from "./api/pro-offers";
 export {
   submitQuotation,
@@ -221,6 +276,18 @@ export {
   type ProNotificationFilter,
 } from "./api/pro-notifications";
 export { getProFaqs, getProTickets } from "./api/pro-support";
+export { setProOnline, pingProLocation } from "./api/pro-dispatch";
+export { startJob, uploadJobPhoto } from "./api/pro-lifecycle";
+export {
+  getLiveMap,
+  getDispatchAlerts,
+  getAssignCandidates,
+  assignProManually,
+  type LiveMapPro,
+  type LiveMapJob,
+  type DispatchAlertRow,
+  type AssignCandidate,
+} from "./api/admin-dispatch";
 export {
   sendProOtp,
   verifyProOtp,

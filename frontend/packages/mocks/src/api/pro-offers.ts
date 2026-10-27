@@ -1,9 +1,11 @@
 import type { ProJob } from "@cfc/types";
+import { ApiError } from "@cfc/types";
 import { AREAS, CUSTOMER_NAMES, SERVICE_CATALOG } from "../fixtures/seed";
 import { pros } from "../fixtures/pros";
 import { commissionFor } from "./pro-earnings";
 import { checklistFor } from "./pro-jobs";
 import { latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Pro 12 — a job offer, and what happens to it.
@@ -53,6 +55,11 @@ function rnd(): number {
  * never came. Area and distance are what the decision needs.
  */
 export async function nextOffer(proId: string): Promise<ProJob | null> {
+  if (isLive("nextOffer")) {
+    // `proId` is ignored by the server, which reads it from the token — a
+    // client-sent id would let any pro poll any other pro's offers.
+    return fetchJson<LiveOffer | null>("/pro/offers/next");
+  }
   await latency();
 
   const pro = pros.find((p) => p.id === proId);
@@ -138,6 +145,17 @@ export type OfferOutcome =
  * phone, which the offer withheld.
  */
 export async function acceptOffer(offer: ProJob): Promise<OfferOutcome> {
+  if (isLive("acceptOffer")) {
+    const offerId = (offer as LiveOffer).offerId;
+    if (!offerId) {
+      // A live offer always carries one. Without it there is nothing to accept,
+      // and guessing would risk accepting the wrong job.
+      throw new ApiError(400, "That offer is no longer available.", "NO_OFFER_ID");
+    }
+    return fetchJson<OfferOutcome>(`/pro/offers/${offerId}/accept`, {
+      method: "POST",
+    });
+  }
   await latency();
 
   // A small chance another pro won the race. Low enough not to be a nuisance
@@ -179,7 +197,31 @@ export async function acceptOffer(offer: ProJob): Promise<OfferOutcome> {
  * call so the real implementation has a place to record the decline, which
  * matters: a pattern of declines is what an admin reviews.
  */
-export async function declineOffer(_offer: ProJob): Promise<OfferOutcome> {
+export async function declineOffer(offer: ProJob): Promise<OfferOutcome> {
+  if (isLive("declineOffer")) {
+    const offerId = (offer as LiveOffer).offerId;
+    // Nothing to record without an id, and a decline is not worth an error
+    // thrown in the pro's face — the offer will expire on its own.
+    if (!offerId) return { kind: "declined" };
+    return fetchJson<OfferOutcome>(`/pro/offers/${offerId}/decline`, {
+      method: "POST",
+    });
+  }
   await latency();
   return { kind: "declined" };
+}
+
+/**
+ * A live offer carries two fields the fixture shape does not.
+ *
+ * `offerId` identifies the offer rather than the job — three pros hold three
+ * different offers for one booking, so accepting needs to say *which*.
+ *
+ * `expiresInSeconds` is the **server's** countdown. The screen could count down
+ * from 30 on its own, but then a pro whose app was backgrounded for 20 seconds
+ * would see a full window that the server has already closed.
+ */
+export interface LiveOffer extends ProJob {
+  offerId?: string;
+  expiresInSeconds?: number;
 }

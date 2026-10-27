@@ -22,11 +22,23 @@ import {
   getPricingRules,
   getServices,
   getSubCategories,
+  createCategory,
+  updateCategory,
+  reorderCategories,
+  createSubCategory,
+  updateSubCategory,
+  createService,
+  updateService,
+  deleteService,
+  updatePricingRule,
+  uploadCatalogImage,
 } from "@cfc/mocks";
+import { ApiError } from "@cfc/types";
 import type {
   Category,
   CommissionRule,
   PricingRule,
+  ServiceAddOn,
   ServiceDetail,
   ServiceVariant,
   SubCategory,
@@ -103,6 +115,134 @@ const TOUCH_TARGET =
 
 const TAB_PARAM = "tab";
 type ServicesTab = "categories" | "sub-categories" | "services" | "pricing";
+
+/**
+ * Reports a write that failed.
+ *
+ * The server's own message is shown when there is one. Those messages are
+ * written for an operator and say what is in the way — *"That category still
+ * has 3 sub-categories"* — which a generic "Could not save" would throw away.
+ * The fallback is only for a network failure, where there is no server message
+ * to show.
+ */
+function reportFailure(err: unknown, fallback: string): void {
+  toast.error(err instanceof ApiError ? err.message : fallback);
+}
+
+/** Admin 27 — how many images a service can carry. */
+const MAX_IMAGES = 3;
+
+/**
+ * Uploads service images and shows what is there.
+ *
+ * Replaces three dashed buttons that had no `onClick` and no file input — they
+ * looked like an uploader and did nothing at all.
+ *
+ * The upload happens **immediately on choosing a file**, not on saving the
+ * dialog. Deferring it would mean holding `File` objects in state and sending a
+ * multipart body alongside the service JSON, and a failure then arrives while
+ * the operator is trying to save something else. Uploading first means the
+ * service only ever carries paths, and a rejected image is reported next to the
+ * picker where it was chosen.
+ *
+ * The cost is an orphaned file if someone uploads and then cancels the dialog.
+ * `ponytail:` orphans are left on disk; add a sweep for unreferenced uploads if
+ * it ever amounts to anything worth reclaiming.
+ */
+function ImagePicker({
+  paths,
+  onChange,
+}: {
+  paths: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const [busy, setBusy] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement | null>(null);
+
+  const pick = async (file: File | undefined) => {
+    if (!file || busy) return;
+    setBusy(true);
+    try {
+      const { path } = await uploadCatalogImage(file);
+      onChange([...paths, path].slice(0, MAX_IMAGES));
+    } catch (err) {
+      // The server checks the real bytes, not the extension, so a renamed file
+      // is refused here with a message saying what is supported.
+      reportFailure(err, "Could not upload that image.");
+    } finally {
+      setBusy(false);
+      // Cleared so choosing the same file twice in a row fires onChange again.
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 gap-2">
+        {paths.map((src, i) => (
+          <div
+            key={src}
+            className="group relative aspect-square overflow-hidden rounded-control border border-border"
+          >
+            {/* Plain <img>: the path is proxied to the API by the /uploads
+                rewrite in next.config.js, so no loader config is involved. */}
+            <img
+              src={src}
+              alt={i === 0 ? "Cover image" : `Image ${i + 1}`}
+              className="size-full object-cover"
+            />
+            {i === 0 && (
+              <span className="absolute left-1 top-1 rounded-pill bg-ink/75 px-2 py-0.5 text-caption text-white">
+                Cover
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => onChange(paths.filter((p) => p !== src))}
+              aria-label={`Remove image ${i + 1}`}
+              className={cn(
+                "absolute right-1 top-1 rounded-full bg-ink/75 p-1 text-white",
+                "transition-opacity duration-fast",
+                // Always visible on touch, where there is no hover to reveal it.
+                "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 coarse:opacity-100",
+              )}
+            >
+              <Trash2 className="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        ))}
+
+        {paths.length < MAX_IMAGES && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+            className={cn(
+              "flex aspect-square flex-col items-center justify-center gap-1",
+              "rounded-control border border-dashed border-border-strong",
+              "text-caption text-ink-muted",
+              "transition-colors duration-fast hover:bg-canvas hover:text-ink",
+              "disabled:cursor-not-allowed disabled:opacity-60",
+            )}
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            {busy ? "Uploading…" : "Upload"}
+          </button>
+        )}
+      </div>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={(e) => {
+          void pick(e.target.files?.[0]);
+        }}
+      />
+    </div>
+  );
+}
 
 function ServiceAndPricingInner() {
   const router = useRouter();
@@ -195,18 +335,48 @@ function CategoriesTab() {
 
   const { draggingIndex, overIndex, rowProps, move } = useReorder({
     items: rows ?? [],
+    // Moves optimistically so the row follows the pointer, then persists on
+    // drop. A reorder that waited for the server would lag behind the drag.
     onChange: (next) => setRows(renumber(next)),
-    onCommit: () =>
-      toast.success("Order updated — the app home grid follows this order"),
+    onCommit: (next) => {
+      void reorderCategories(renumber(next).map((c) => c.id))
+        .then((saved) => {
+          setRows(saved);
+          toast.success("Order updated — the app home grid follows this order");
+        })
+        .catch((err: unknown) => {
+          // The optimistic move already happened, so a failure has to put the
+          // list back. Leaving it would show an order the app does not use.
+          reportFailure(err, "Could not save the new order.");
+          load();
+        });
+    },
   });
 
   const toggle = (id: string) => {
-    setRows(
-      (rs) =>
-        rs?.map((c) => (c.id === id ? { ...c, active: !c.active } : c)) ?? rs,
-    );
+    const row = rows?.find((c) => c.id === id);
+    if (!row) return;
+    const next = !row.active;
+
+    setRows((rs) => rs?.map((c) => (c.id === id ? { ...c, active: next } : c)) ?? rs);
+
+    void updateCategory(id, { active: next })
+      .then(() => {
+        toast.success(
+          next
+            ? `${row.name} is visible in the app`
+            : `${row.name} is hidden from the app`,
+        );
+      })
+      .catch((err: unknown) => {
+        setRows((rs) =>
+          rs?.map((c) => (c.id === id ? { ...c, active: row.active } : c)) ?? rs,
+        );
+        reportFailure(err, "Could not change that category.");
+      });
   };
 
+  /** Merges a row the server has already saved. */
   const upsert = (c: Category) => {
     setRows((rs) => {
       if (!rs) return [c];
@@ -412,18 +582,45 @@ function CategoryDialog({
     setActive(category?.active ?? true);
   }, [open, category, nextOrder]);
 
-  const save = () => {
-    onSaved({
-      id: category?.id ?? `cat_${Date.now()}`,
-      name: name.trim(),
-      description: description.trim(),
-      iconName,
-      sortOrder,
-      active,
-      serviceCount: category?.serviceCount ?? 0,
-    });
-    toast.success(editing ? `${name.trim()} updated` : `${name.trim()} added`);
-    setOpen(false);
+  const [saving, setSaving] = React.useState(false);
+
+  /**
+   * Saves through the API and merges what comes back.
+   *
+   * The id comes from the **server**, not from `cat_${Date.now()}` as this did
+   * before — a client-minted id looks real until a reload replaces it with the
+   * database's own and every link made in between breaks.
+   */
+  const save = async () => {
+    if (name.trim() === "" || saving) return;
+    setSaving(true);
+    try {
+      const saved = editing
+        ? await updateCategory(category.id, {
+            name: name.trim(),
+            description: description.trim(),
+            iconName,
+            sortOrder,
+            active,
+          })
+        : await createCategory({
+            name: name.trim(),
+            description: description.trim(),
+            iconName,
+            active,
+          });
+
+      onSaved(saved);
+      toast.success(editing ? `${saved.name} updated` : `${saved.name} added`);
+      setOpen(false);
+    } catch (err) {
+      // The dialog stays open with the typed values intact. Closing it on a
+      // duplicate-name refusal would discard what the operator wrote and tell
+      // them nothing about why.
+      reportFailure(err, "Could not save that category.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -517,8 +714,11 @@ function CategoryDialog({
         <DialogFooter>
           <Button
             variant="primary"
-            onClick={save}
+            onClick={() => {
+              void save();
+            }}
             disabled={name.trim() === ""}
+            loading={saving}
           >
             {editing ? "Save changes" : "Add category"}
           </Button>
@@ -556,12 +756,23 @@ function SubCategoriesTab() {
   React.useEffect(() => load(), [load]);
 
   const toggle = (id: string) => {
-    setSubs(
-      (ss) =>
-        ss?.map((s) => (s.id === id ? { ...s, active: !s.active } : s)) ?? ss,
-    );
+    const row = subs?.find((s) => s.id === id);
+    if (!row) return;
+    const next = !row.active;
+
+    // Optimistic, then reverted on failure — a switch that waits for a round
+    // trip before moving feels broken, and one that never reverts lies.
+    setSubs((ss) => ss?.map((s) => (s.id === id ? { ...s, active: next } : s)) ?? ss);
+
+    void updateSubCategory(id, { active: next }).catch((err: unknown) => {
+      setSubs((ss) =>
+        ss?.map((s) => (s.id === id ? { ...s, active: row.active } : s)) ?? ss,
+      );
+      reportFailure(err, "Could not change that sub-category.");
+    });
   };
 
+  /** Merges a row the server has already saved. */
   const upsert = (s: SubCategory) => {
     setSubs((ss) => {
       if (!ss) return [s];
@@ -728,18 +939,34 @@ function SubCategoryDialog({
   const parent = categories.find((c) => c.id === categoryId);
   const canSave = name.trim() !== "" && parent !== undefined;
 
-  const save = () => {
-    if (!parent) return;
-    onSaved({
-      id: subCategory?.id ?? `sub_${Date.now()}`,
-      categoryId: parent.id,
-      categoryName: parent.name,
-      name: name.trim(),
-      iconName,
-      active,
-    });
-    toast.success(editing ? `${name.trim()} updated` : `${name.trim()} added`);
-    setOpen(false);
+  const [saving, setSaving] = React.useState(false);
+
+  const save = async () => {
+    if (!parent || saving) return;
+    setSaving(true);
+    try {
+      const saved = editing
+        ? await updateSubCategory(subCategory.id, {
+            name: name.trim(),
+            categoryId: parent.id,
+            iconName,
+            active,
+          })
+        : await createSubCategory({
+            name: name.trim(),
+            categoryId: parent.id,
+            iconName,
+            active,
+          });
+
+      onSaved(saved);
+      toast.success(editing ? `${saved.name} updated` : `${saved.name} added`);
+      setOpen(false);
+    } catch (err) {
+      reportFailure(err, "Could not save that sub-category.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -818,7 +1045,14 @@ function SubCategoryDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="primary" onClick={save} disabled={!canSave}>
+          <Button
+            variant="primary"
+            onClick={() => {
+              void save();
+            }}
+            disabled={!canSave}
+            loading={saving}
+          >
             {editing ? "Save changes" : "Add sub-category"}
           </Button>
         </DialogFooter>
@@ -879,11 +1113,27 @@ function PricingSection() {
   React.useEffect(() => load(), [load]);
 
   const save = (rule: PricingRule) => {
-    setRows(
-      (rs) =>
-        rs?.map((r) => (r.serviceId === rule.serviceId ? rule : r)) ?? rs,
-    );
-    toast.success(`${rule.serviceName} pricing updated`);
+    // Not optimistic. Every other write on this screen moves first and reverts
+    // on failure, but this one changes what a customer is charged — showing a
+    // new price that did not save is the one failure here worth avoiding
+    // outright, so the row waits for the server's own figures.
+    void updatePricingRule(rule.serviceId, {
+      basePricePaise: rule.basePricePaise,
+      platformFeePaise: rule.platformFeePaise,
+      visitChargePaise: rule.visitChargePaise,
+      nightSurchargePaise: rule.nightSurchargePaise,
+      cityOverride: rule.cityOverride ?? null,
+    })
+      .then((saved) => {
+        setRows(
+          (rs) =>
+            rs?.map((r) => (r.serviceId === saved.serviceId ? saved : r)) ?? rs,
+        );
+        toast.success(`${saved.serviceName} pricing updated`);
+      })
+      .catch((err: unknown) =>
+        reportFailure(err, "Could not update that pricing."),
+      );
   };
 
   const visible = React.useMemo(() => {
@@ -1402,6 +1652,7 @@ function ServicesTab() {
   const [rows, setRows] = React.useState<ServiceDetail[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [editing, setEditing] = React.useState<ServiceDetail | "new" | null>(null);
+  const [deleting, setDeleting] = React.useState<ServiceDetail | null>(null);
 
   const load = React.useCallback((q?: string) => {
     setError(null);
@@ -1409,10 +1660,26 @@ function ServicesTab() {
   }, []);
 
   const toggleActive = (id: string) => {
-    setRows(
-      (rs) =>
-        rs?.map((s) => (s.id === id ? { ...s, active: !s.active } : s)) ?? rs,
-    );
+    const row = rows?.find((s) => s.id === id);
+    if (!row) return;
+    const next = !row.active;
+
+    setRows((rs) => rs?.map((s) => (s.id === id ? { ...s, active: next } : s)) ?? rs);
+
+    void updateService(id, { active: next })
+      .then(() => {
+        toast.success(
+          next
+            ? `${row.name} is bookable`
+            : `${row.name} is hidden — existing bookings are unaffected`,
+        );
+      })
+      .catch((err: unknown) => {
+        setRows((rs) =>
+          rs?.map((s) => (s.id === id ? { ...s, active: row.active } : s)) ?? rs,
+        );
+        reportFailure(err, "Could not change that service.");
+      });
   };
 
   React.useEffect(() => {
@@ -1455,6 +1722,18 @@ function ServicesTab() {
             onCheckedChange={() => toggleActive(s.id)}
             aria-label={`${s.name} is ${s.active ? "active" : "hidden"}`}
           />
+          {/* Hiding is the reversible action and the one an operator almost
+              always wants; deleting is beside it but confirms first, because a
+              service removed by accident takes its variants, add-ons and
+              pricing with it. */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setDeleting(s)}
+            aria-label={`Delete ${s.name}`}
+          >
+            <Trash2 />
+          </Button>
         </span>
       ),
     },
@@ -1515,7 +1794,59 @@ function ServicesTab() {
         open={editing !== null}
         service={editing === "new" ? null : editing}
         onOpenChange={(open) => { if (!open) setEditing(null); }}
+        onSaved={(saved) => {
+          setRows((rs) => {
+            if (!rs) return [saved];
+            const exists = rs.some((x) => x.id === saved.id);
+            return exists
+              ? rs.map((x) => (x.id === saved.id ? saved : x))
+              : [...rs, saved];
+          });
+        }}
       />
+
+      {/* Confirmed, not immediate. Deleting a service takes its variants,
+          add-ons and pricing with it, and there is no undo. */}
+      <Dialog
+        open={deleting !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleting(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {deleting?.name}?</DialogTitle>
+            <DialogDescription>
+              This removes the service, its variants, add-ons and pricing. It
+              cannot be undone. To stop customers booking it while keeping the
+              record, switch it to Hidden instead.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setDeleting(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                const target = deleting;
+                if (!target) return;
+                void deleteService(target.id)
+                  .then(() => {
+                    setRows((rs) => rs?.filter((x) => x.id !== target.id) ?? rs);
+                    setDeleting(null);
+                    toast.success(`${target.name} deleted`);
+                  })
+                  .catch((err: unknown) =>
+                    reportFailure(err, "Could not delete that service."),
+                  );
+              }}
+            >
+              Delete service
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1538,10 +1869,12 @@ function ServiceDialog({
   open,
   service,
   onOpenChange,
+  onSaved,
 }: {
   open: boolean;
   service: ServiceDetail | null;
   onOpenChange: (open: boolean) => void;
+  onSaved: (service: ServiceDetail) => void;
 }) {
   const isEdit = service !== null;
 
@@ -1551,6 +1884,34 @@ function ServiceDialog({
   const [warrantyDays, setWarrantyDays] = React.useState(30);
   const [active, setActive] = React.useState(true);
   const [variants, setVariants] = React.useState<ServiceVariant[]>([]);
+  const [saving, setSaving] = React.useState(false);
+
+  /**
+   * Which sub-category the service belongs to, and what it costs.
+   *
+   * **Both fields were missing from this dialog** (BACKEND-PLAN.md §0.8). A
+   * service with no sub-category belongs to no category, so it would appear in
+   * this admin table and nowhere a customer could reach it — and a service with
+   * no price is not bookable. The form could not create a usable service, which
+   * is the whole purpose of the form.
+   *
+   * The base price is here *and* on the Pricing tab on purpose: the full set of
+   * rates (platform fee, visit charge, night surcharge, city override) belongs
+   * on Admin 28, but making an operator visit a second tab before their new
+   * service works at all is a trap rather than a workflow.
+   */
+  const [subCategoryId, setSubCategoryId] = React.useState<string | null>(null);
+  const [basePriceRupees, setBasePriceRupees] = React.useState(0);
+  const [subs, setSubs] = React.useState<SubCategory[]>([]);
+  const [imagePaths, setImagePaths] = React.useState<string[]>([]);
+  const [addOns, setAddOns] = React.useState<ServiceAddOn[]>([]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    getSubCategories()
+      .then(setSubs)
+      .catch(() => setSubs([]));
+  }, [open]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -1559,6 +1920,11 @@ function ServiceDialog({
     setInclusions((service?.inclusions ?? []).join("\n"));
     setWarrantyDays(service?.warrantyDays ?? 30);
     setActive(service?.active ?? true);
+    setBasePriceRupees(Math.round((service?.basePricePaise ?? 0) / 100));
+    // `imageUrls` comes back as the same relative paths that were stored, so
+    // they round-trip without conversion.
+    setImagePaths(service?.imageUrls ?? []);
+    setAddOns(service?.addOns ?? []);
     setVariants(
       service?.variants ?? [
         {
@@ -1573,7 +1939,18 @@ function ServiceDialog({
     );
   }, [open, service]);
 
-  const base = service?.basePricePaise ?? 0;
+  // On edit the service knows its sub-category by name only, so it is matched
+  // once the list arrives rather than guessed from the service itself.
+  React.useEffect(() => {
+    if (!open || subs.length === 0) return;
+    setSubCategoryId(
+      service
+        ? (subs.find((s) => s.name === service.subCategoryName)?.id ?? null)
+        : (subs[0]?.id ?? null),
+    );
+  }, [open, service, subs]);
+
+  const base = basePriceRupees * 100;
 
   const addVariant = () =>
     setVariants((vs) => [
@@ -1608,12 +1985,47 @@ function ServiceDialog({
     setVariants((vs) => vs.map((v) => ({ ...v, isDefault: v.id === id })));
 
   const namedVariants = variants.filter((v) => v.name.trim() !== "");
-  const canSave = name.trim() !== "" && namedVariants.length === variants.length;
+  const canSave =
+    name.trim() !== "" &&
+    namedVariants.length === variants.length &&
+    subCategoryId !== null;
 
-  const handleSave = () => {
-    if (!canSave) return;
-    toast.success(isEdit ? `${name.trim()} saved` : `${name.trim()} added`);
-    onOpenChange(false);
+  const handleSave = async () => {
+    if (!canSave || !subCategoryId || saving) return;
+    setSaving(true);
+    try {
+      const payload = {
+        name: name.trim(),
+        subCategoryId,
+        description: description.trim(),
+        // One inclusion per line, blank lines dropped. The textarea is the
+        // input an operator actually wants; the array is what the API takes.
+        inclusions: inclusions
+          .split("\n")
+          .map((line) => line.trim())
+          .filter((line) => line !== ""),
+        warrantyDays,
+        active,
+        variants,
+        imagePaths,
+        // Dropped if the name was left blank — a nameless add-on would show as
+        // a blank row with a price beside it on the customer's booking screen.
+        addOns: addOns.filter((a) => a.name.trim() !== ""),
+        basePricePaise: base,
+      };
+
+      const saved = isEdit
+        ? await updateService(service.id, payload)
+        : await createService(payload);
+
+      onSaved(saved);
+      toast.success(isEdit ? `${saved.name} saved` : `${saved.name} added`);
+      onOpenChange(false);
+    } catch (err) {
+      reportFailure(err, "Could not save that service.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -1637,6 +2049,53 @@ function ServiceDialog({
             />
           </FormField>
 
+          {/* Without this the service belongs to no category, so it shows in
+              the admin table and nowhere a customer can reach it. */}
+          <FormField
+            label="Sub-category"
+            required
+            help={
+              subs.length === 0
+                ? "Create a category and a sub-category first — a service has to live under one."
+                : "Decides where customers find this service when browsing."
+            }
+          >
+            <Combobox
+              options={subs.map((s) => ({
+                value: s.id,
+                label: s.name,
+                description: s.categoryName,
+              }))}
+              value={subCategoryId}
+              onChange={setSubCategoryId}
+              placeholder="Choose a sub-category"
+              searchPlaceholder="Search sub-categories"
+              aria-label="Sub-category"
+            />
+          </FormField>
+
+          {/* Editable here on create *and* edit. It is the service's own
+              price and the figure every variant is a delta against, so sending
+              an operator to another tab to correct a typo is a trap. The rest
+              of the rates — fee, visit charge, surcharge, city override — stay
+              on the Pricing tab, where they are tuned together. The server
+              applies the same `services.edit_pricing` gate either way. */}
+          <FormField
+            label="Base price"
+            required
+            help="In rupees. The platform fee, visit charge and surcharges are set on the Pricing tab."
+          >
+            <Input
+              type="number"
+              min={0}
+              value={basePriceRupees}
+              onChange={(e) =>
+                setBasePriceRupees(Math.max(0, Number(e.target.value) || 0))
+              }
+              aria-label="Base price in rupees"
+            />
+          </FormField>
+
           <FormField label="Description" required>
             <Textarea
               value={description}
@@ -1648,25 +2107,9 @@ function ServiceDialog({
 
           <FormField
             label="Images"
-            help="First image is used as the cover on the service card."
+            help="First image is used as the cover on the service card. JPG, PNG or WebP, up to 5 MB."
           >
-            <div className="grid grid-cols-3 gap-2">
-              {[0, 1, 2].map((i) => (
-                <button
-                  key={i}
-                  type="button"
-                  className={cn(
-                    "flex aspect-square items-center justify-center gap-1",
-                    "rounded-control border border-dashed border-border-strong",
-                    "text-caption text-ink-muted",
-                    "transition-colors duration-fast hover:bg-canvas hover:text-ink",
-                  )}
-                >
-                  <Plus className="size-4" aria-hidden="true" />
-                  Upload
-                </button>
-              ))}
-            </div>
+            <ImagePicker paths={imagePaths} onChange={setImagePaths} />
           </FormField>
 
           {/* Admin 27 — variants. */}
@@ -1781,6 +2224,149 @@ function ServiceDialog({
             </div>
           </FormField>
 
+          {/* Admin 27 — add-ons. Customer 14 prices these at checkout, and
+              until now there was no way for an admin to create one: the
+              customer side was priced against data nobody could enter
+              (CONSUMER-OPEN-ITEMS 7.15). Unlike a variant, an add-on is
+              additive, independent, and priced absolutely rather than as a
+              delta — so no default, and none is a perfectly normal service. */}
+          <FormField
+            label="Add-ons"
+            help="Optional extras a customer can add to the booking. Priced in full, not as a difference."
+          >
+            <div className="space-y-2">
+              {addOns.map((a) => (
+                <div key={a.id} className="rounded-control border border-border p-3">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      inputSize="sm"
+                      value={a.name}
+                      onChange={(e) =>
+                        setAddOns((as) =>
+                          as.map((x) =>
+                            x.id === a.id ? { ...x, name: e.target.value } : x,
+                          ),
+                        )
+                      }
+                      placeholder="e.g. Deep clean of outdoor unit"
+                      aria-label="Add-on name"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() =>
+                        setAddOns((as) => as.filter((x) => x.id !== a.id))
+                      }
+                      aria-label={`Remove ${a.name || "this add-on"}`}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </div>
+
+                  <Input
+                    inputSize="sm"
+                    value={a.description}
+                    onChange={(e) =>
+                      setAddOns((as) =>
+                        as.map((x) =>
+                          x.id === a.id
+                            ? { ...x, description: e.target.value }
+                            : x,
+                        ),
+                      )
+                    }
+                    placeholder="One line — what the customer gets"
+                    aria-label="Add-on description"
+                    className="mt-2"
+                  />
+
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <label className="block">
+                      <span className="mb-1 block text-caption text-ink-muted">
+                        Price
+                      </span>
+                      <Input
+                        inputSize="sm"
+                        type="number"
+                        min={0}
+                        value={String(a.pricePaise / 100)}
+                        onChange={(e) =>
+                          setAddOns((as) =>
+                            as.map((x) =>
+                              x.id === a.id
+                                ? {
+                                    ...x,
+                                    pricePaise:
+                                      Math.max(
+                                        0,
+                                        Math.round(Number(e.target.value) * 100),
+                                      ) || 0,
+                                  }
+                                : x,
+                            ),
+                          )
+                        }
+                        trailing="₹"
+                        aria-label={`Price for ${a.name || "add-on"}`}
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1 block text-caption text-ink-muted">
+                        Extra time
+                      </span>
+                      <Input
+                        inputSize="sm"
+                        type="number"
+                        min={0}
+                        value={String(a.durationMinutes)}
+                        onChange={(e) =>
+                          setAddOns((as) =>
+                            as.map((x) =>
+                              x.id === a.id
+                                ? {
+                                    ...x,
+                                    durationMinutes:
+                                      Math.max(
+                                        0,
+                                        Math.round(Number(e.target.value)),
+                                      ) || 0,
+                                  }
+                                : x,
+                            ),
+                          )
+                        }
+                        trailing="min"
+                        aria-label={`Extra time for ${a.name || "add-on"}`}
+                      />
+                    </label>
+                  </div>
+                </div>
+              ))}
+
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() =>
+                  setAddOns((as) => [
+                    ...as,
+                    {
+                      id: `a_${Date.now()}`,
+                      name: "",
+                      description: "",
+                      pricePaise: 0,
+                      durationMinutes: 0,
+                      active: true,
+                    },
+                  ])
+                }
+              >
+                <Plus />
+                Add an add-on
+              </Button>
+            </div>
+          </FormField>
+
           <FormField
             label="Inclusions"
             help="One per line — shown as a checklist on the service detail screen."
@@ -1829,7 +2415,14 @@ function ServiceDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="primary" onClick={handleSave} disabled={!canSave}>
+          <Button
+            variant="primary"
+            onClick={() => {
+              void handleSave();
+            }}
+            disabled={!canSave}
+            loading={saving}
+          >
             {isEdit ? "Save service" : "Add service"}
           </Button>
         </DialogFooter>

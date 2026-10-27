@@ -1,168 +1,154 @@
 "use client";
 
 import * as React from "react";
-import type { Actor } from "@cfc/types";
+import { useRouter } from "next/navigation";
+import type { Actor, AdminSection } from "@cfc/types";
+import { adminLogout, adminMe, getToken } from "@cfc/mocks";
 
 /**
  * The signed-in admin.
  *
- * Authentication is another team's work and out of scope here, so the actor is
- * supplied rather than derived from a session. Screens read it through
- * `useActor()` and ask the permission helpers what it may do — they never check
- * `role === "..."` inline.
+ * Phase 2 replaced what this used to be. Previously the login screen handed it
+ * a role string and it looked up one of three hardcoded presets — so **the
+ * client chose its own role**, which is the entire RBAC hole in one function.
+ * There was no token, no user id, and no server that could disagree.
  *
- * The login screen calls `useSignIn()` with the role picked there, so signing
- * in as an Area Admin actually produces an Area Admin: the picker was
- * previously cosmetic and every session landed as Super Admin regardless.
+ * Now the actor comes from the server, derived from a signed token, and this
+ * file is a cache of that answer rather than the answer itself. The security
+ * boundary is the API: these values decide what to *draw*, and the server
+ * decides what is *allowed*. A tampered actor here changes the sidebar and
+ * nothing else — every endpoint re-checks.
  *
- * The choice is kept in sessionStorage because the sign-in redirect is a real
- * navigation — React state does not survive it. Session rather than local
- * storage so closing the tab ends the session, which is the closest honest
- * approximation of one without a backend.
- *
- * Switch roles while reviewing without signing in again:
- *   __cfcActor("area_admin")
- *   __cfcActor("super_admin")
+ * `sections` is server-computed too (`openableSections`), so the sidebar cannot
+ * offer a section the server would refuse.
  */
 
-const STORAGE_KEY = "cfc.admin.actor";
+interface ActorState {
+  /** Null while the session is being restored, and after sign-out. */
+  actor: Actor | null;
+  sections: AdminSection[];
+  /**
+   * True until the first `/me` resolves.
+   *
+   * Screens must distinguish this from "signed out", or every reload flashes
+   * the login screen at an admin who is perfectly well signed in. The route
+   * guard below waits on it rather than redirecting.
+   */
+  loading: boolean;
+}
 
-const DEFAULT_ACTOR: Actor = {
-  id: "adm_0001",
-  name: "Chandrasekar R.",
-  role: "super_admin",
-};
-
-// The two presets mirror the seeded rows in Admin 49, so switching role here
-// shows exactly what that record grants.
-const AREA_ADMIN: Actor = {
-  id: "adm_0002",
-  name: "Meenakshi S.",
-  role: "area_admin",
-  area: "Srirangam",
-  sections: ["bookings", "quotations", "pros"],
-};
-
-const SUB_ADMIN: Actor = {
-  id: "adm_0003",
-  name: "Vignesh T.",
-  role: "sub_admin",
-  sections: ["bookings", "quotations", "pros", "support"],
-};
-
-const PRESETS: Record<string, Actor> = {
-  super_admin: DEFAULT_ACTOR,
-  area_admin: AREA_ADMIN,
-  sub_admin: SUB_ADMIN,
-  // A role with no admin permissions at all, to exercise the denied state.
-  pro: { id: "pro_0001", name: "Murugan V.", role: "pro" },
-};
-
-/** The login screen's role values, which are shorter than the actor keys. */
-const LOGIN_ROLE_TO_ACTOR: Record<string, keyof typeof PRESETS> = {
-  super: "super_admin",
-  sub: "sub_admin",
-  area: "area_admin",
-};
-
-interface ActorContextValue {
-  actor: Actor;
-  signIn: (loginRole: string, area?: string | undefined) => void;
-  signOut: () => void;
+interface ActorContextValue extends ActorState {
+  /** Re-reads the session from the server. Called after signing in. */
+  refresh: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const ActorContext = React.createContext<ActorContextValue>({
-  actor: DEFAULT_ACTOR,
-  signIn: () => {},
-  signOut: () => {},
+  actor: null,
+  sections: [],
+  loading: true,
+  refresh: async () => {},
+  signOut: async () => {},
 });
 
 export function ActorProvider({ children }: { children: React.ReactNode }) {
-  const [actor, setActor] = React.useState<Actor>(DEFAULT_ACTOR);
+  const [state, setState] = React.useState<ActorState>({
+    actor: null,
+    sections: [],
+    loading: true,
+  });
 
-  // Restore after mount, never during render: the server has no
-  // sessionStorage, and reading it while rendering would mismatch hydration.
-  React.useEffect(() => {
+  const refresh = React.useCallback(async () => {
+    // No token means signed out — and asking the server would be a guaranteed
+    // 401 and a pointless round trip on every visit to the login page.
+    if (!getToken()) {
+      setState({ actor: null, sections: [], loading: false });
+      return;
+    }
+
     try {
-      const saved = sessionStorage.getItem(STORAGE_KEY);
-      if (saved) setActor(JSON.parse(saved) as Actor);
+      const { actor, sections } = await adminMe();
+      setState({ actor, sections, loading: false });
     } catch {
-      // A private window or blocked storage just means the default actor.
+      // An expired or rejected token is signed out. Not an error state: there
+      // is nothing for the admin to retry, they simply need to sign in again.
+      setState({ actor: null, sections: [], loading: false });
     }
   }, []);
 
-  const signIn = React.useCallback(
-    (loginRole: string, area?: string | undefined) => {
-      const key = LOGIN_ROLE_TO_ACTOR[loginRole] ?? "super_admin";
-      const preset = PRESETS[key] ?? DEFAULT_ACTOR;
-      // An Area Admin is scoped to the area chosen on the form, not to
-      // whichever one the preset happens to carry.
-      const next: Actor =
-        preset.role === "area_admin" && area
-          ? { ...preset, area }
-          : preset;
-
-      setActor(next);
-      try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // Non-fatal: the session simply does not survive a reload.
-      }
-    },
-    [],
-  );
-
   React.useEffect(() => {
-    if (process.env.NODE_ENV !== "development") return;
-    (window as unknown as Record<string, unknown>).__cfcActor = (
-      key: keyof typeof PRESETS,
-    ) => {
-      const next = PRESETS[key];
-      if (!next) {
-        console.warn(`Unknown actor: ${String(key)}`);
-        return;
-      }
-      setActor(next);
-      try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // Ignored — the switch still applies for this render.
-      }
-    };
-  }, []);
+    void refresh();
+  }, [refresh]);
 
-  const signOut = React.useCallback(() => {
-    setActor(DEFAULT_ACTOR);
-    try {
-      sessionStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // Non-fatal: nothing was stored to clear.
-    }
+  const signOut = React.useCallback(async () => {
+    await adminLogout();
+    setState({ actor: null, sections: [], loading: false });
   }, []);
 
   const value = React.useMemo(
-    () => ({ actor, signIn, signOut }),
-    [actor, signIn, signOut],
+    () => ({ ...state, refresh, signOut }),
+    [state, refresh, signOut],
   );
 
   return <ActorContext.Provider value={value}>{children}</ActorContext.Provider>;
 }
 
-export function useActor(): Actor {
-  return React.useContext(ActorContext).actor;
-}
-
-/** Sets the signed-in admin from the role chosen on the login form. */
-export function useSignIn(): (role: string, area?: string | undefined) => void {
-  return React.useContext(ActorContext).signIn;
+/** The full session, including the loading distinction. */
+export function useSession(): ActorContextValue {
+  return React.useContext(ActorContext);
 }
 
 /**
- * Ends the session.
+ * The signed-in admin.
  *
- * Without clearing the stored actor, signing out and back in as a different
- * role would silently restore the previous one.
+ * Throws if called outside the authenticated route group. That is deliberate:
+ * the previous version returned a Super Admin preset as its default, so a
+ * screen rendered outside a session silently got full permissions. A loud
+ * failure in development beats that quiet one in production.
+ *
+ * Every caller of this sits under `RequireAdmin`, which does not render its
+ * children until there is an actor.
  */
-export function useSignOut(): () => void {
+export function useActor(): Actor {
+  const { actor } = React.useContext(ActorContext);
+  if (!actor) {
+    throw new Error(
+      "useActor() outside an authenticated screen. Wrap it in RequireAdmin, " +
+        "or use useSession() if the signed-out case is expected.",
+    );
+  }
+  return actor;
+}
+
+/** Sections the server says this admin may open. Drives the sidebar. */
+export function useSections(): AdminSection[] {
+  return React.useContext(ActorContext).sections;
+}
+
+export function useSignOut(): () => Promise<void> {
   return React.useContext(ActorContext).signOut;
+}
+
+/**
+ * The route guard for the authenticated group.
+ *
+ * Renders nothing until the session is known, then either the screen or a
+ * redirect to login. **This is a convenience, not a security control** — the
+ * data behind every screen comes from endpoints that check the token
+ * themselves, so a determined visitor who bypassed this would see an empty
+ * shell and a row of 401s.
+ */
+export function RequireAdmin({ children }: { children: React.ReactNode }) {
+  const { actor, loading } = useSession();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!loading && !actor) router.replace("/login");
+  }, [loading, actor, router]);
+
+  // Deliberately blank rather than a spinner: the session resolves in one
+  // request and a flash of loading UI is more jarring than a brief blank.
+  if (loading || !actor) return null;
+
+  return <>{children}</>;
 }

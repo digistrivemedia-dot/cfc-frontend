@@ -1,6 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { ApiError } from "@cfc/types";
+import { setProOnline } from "@cfc/mocks";
+import { toast } from "@cfc/ui";
 
 /**
  * Who is signed in, and whether they are accepting jobs.
@@ -89,6 +92,8 @@ function read(): boolean {
 
 function write(next: boolean): void {
   if (read() === next) return;
+
+  const previous = read();
   online = next;
   try {
     sessionStorage.setItem(ONLINE_KEY, next ? "1" : "0");
@@ -96,6 +101,38 @@ function write(next: boolean): void {
     // The value still holds in memory for this page.
   }
   for (const l of listeners) l();
+
+  /**
+   * Tells the server, from the one place every caller already goes through.
+   *
+   * This used to be local only, which with no backend was right and is now the
+   * thing that matters most about it: **online state is dispatch behaviour, not
+   * a UI preference.** An online pro is in the pool that gets alerted, so a
+   * toggle that only moved a local flag would show a pro as available while the
+   * server never offered them a single job — and they would conclude the
+   * platform had no work.
+   *
+   * Optimistic, then reverted: the switch should move under the thumb rather
+   * than after a round trip. Changing `write` rather than the twelve call sites
+   * means `setOnline`, `goOnJob` and `finishJob` all became real at once.
+   */
+  void setProOnline(next).catch((err: unknown) => {
+    online = previous;
+    try {
+      sessionStorage.setItem(ONLINE_KEY, previous ? "1" : "0");
+    } catch {
+      // In-memory revert still applies.
+    }
+    for (const l of listeners) l();
+
+    // A pending or blocked pro is refused a 403 here, and that is worth
+    // reading: it tells them why no work is arriving.
+    toast.error(
+      err instanceof ApiError
+        ? err.message
+        : "Could not update your availability. Check your connection.",
+    );
+  });
 }
 
 function subscribe(listener: () => void): () => void {
@@ -132,4 +169,49 @@ export function useOnlineState(): {
     goOnJob: () => write(false),
     finishJob: () => write(true),
   };
+}
+
+/**
+ * The registration draft, held across the OTP redirect.
+ *
+ * Pro 3 collects a name, services and an area, then sends an OTP and navigates
+ * away — which loses React state. Before this, that data was simply **dropped**:
+ * `registerPro` was never called from anywhere in the app, so a pro completed
+ * the form and no record was created.
+ *
+ * `sessionStorage` rather than a query string: a name and a service list in a
+ * URL ends up in browser history and in any proxy log between here and there,
+ * for no benefit. Cleared as soon as the record is created.
+ */
+
+const DRAFT_KEY = "cfc_pro_registration";
+
+export interface RegistrationDraft {
+  name: string;
+  phone: string;
+  /** Catalogue service ids, never names. */
+  serviceIds: string[];
+  areas: string[];
+}
+
+export function saveRegistrationDraft(draft: RegistrationDraft): void {
+  try {
+    sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // Private mode. The OTP screen will find no draft and say so, rather than
+    // registering someone with half their details.
+  }
+}
+
+export function takeRegistrationDraft(): RegistrationDraft | null {
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    // Read and removed together: a draft left behind would re-register on a
+    // back-navigation into the OTP screen.
+    sessionStorage.removeItem(DRAFT_KEY);
+    return JSON.parse(raw) as RegistrationDraft;
+  } catch {
+    return null;
+  }
 }

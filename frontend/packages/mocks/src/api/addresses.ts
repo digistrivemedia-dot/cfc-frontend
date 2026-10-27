@@ -1,6 +1,7 @@
 import type { Address } from "@cfc/types";
 import { AREAS } from "../fixtures/seed";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Customer 16 and 17 — saved addresses, and adding or editing one.
@@ -45,6 +46,9 @@ const addresses: Address[] = [
 ];
 
 export async function getAddresses() {
+  if (isLive("getAddresses")) {
+    return fetchJson<Address[]>("/consumer/addresses");
+  }
   await latency();
   return applyScenario([...addresses], []);
 }
@@ -58,6 +62,12 @@ export async function getAddresses() {
 export async function saveAddress(
   draft: Omit<Address, "id"> & { id?: string | undefined },
 ): Promise<Address> {
+  if (isLive("saveAddress")) {
+    return fetchJson<Address>("/consumer/addresses", {
+      method: "PUT",
+      body: draft,
+    });
+  }
   await latency();
 
   const saved: Address = {
@@ -86,6 +96,9 @@ export async function saveAddress(
 }
 
 export async function deleteAddress(id: string): Promise<void> {
+  if (isLive("deleteAddress")) {
+    return fetchJson<void>(`/consumer/addresses/${id}`, { method: "DELETE" });
+  }
   await latency();
   const index = addresses.findIndex((a) => a.id === id);
   if (index < 0) return;

@@ -2,6 +2,7 @@ import type { ConsumerProfile, OtpSendResult, OtpVerifyResult } from "@cfc/types
 import { latency, applyScenario } from "../control";
 import { CUSTOMER_NAMES, AREAS } from "../fixtures/seed";
 import { getAddresses } from "./addresses";
+import { clearToken, fetchJson, isLive, setToken } from "../http";
 
 /**
  * Consumer auth mock API.
@@ -12,6 +13,11 @@ import { getAddresses } from "./addresses";
 
 /** Send a one-time password to the given mobile number. */
 export async function sendOtp(phone: string): Promise<OtpSendResult> {
+  if (isLive("sendOtp")) {
+    return fetchJson<OtpSendResult>("/consumer/auth/otp/send", {
+      body: { phone },
+    });
+  }
   await latency();
   return applyScenario({ phone, resendAfterSeconds: 30 });
 }
@@ -26,6 +32,17 @@ export async function verifyOtp(
   phone: string,
   code: string,
 ): Promise<OtpVerifyResult> {
+  if (isLive("verifyOtp")) {
+    const result = await fetchJson<OtpVerifyResult>(
+      "/consumer/auth/otp/verify",
+      { body: { phone, code } },
+    );
+    // `localStorage`, not session: a customer who signs in and comes back
+    // tomorrow expects to still be signed in, which is how every marketplace
+    // behaves. The admin panel chooses the opposite, deliberately.
+    setToken(result.token, "local");
+    return result;
+  }
   await latency();
   if (code.length !== 6) {
     throw new Error("Please enter a 6-digit code.");
@@ -71,6 +88,9 @@ const profile: ConsumerProfile = {
  * needs to be reviewable against.
  */
 export async function getConsumerProfile(): Promise<ConsumerProfile> {
+  if (isLive("getConsumerProfile")) {
+    return fetchJson<ConsumerProfile>("/consumer/auth/me");
+  }
   await latency();
   // Addresses are read from their own module so the two never disagree.
   const addresses = await getAddresses();
@@ -101,6 +121,12 @@ export async function updateConsumerProfile(patch: {
   area?: string;
   avatarUrl?: string | undefined;
 }): Promise<ConsumerProfile> {
+  if (isLive("updateConsumerProfile")) {
+    return fetchJson<ConsumerProfile>("/consumer/auth/me", {
+      method: "PATCH",
+      body: { name: patch.name, area: patch.area },
+    });
+  }
   await latency();
   if (patch.name !== undefined && patch.name.trim() !== "") {
     profile.name = patch.name.trim();
@@ -112,4 +138,14 @@ export async function updateConsumerProfile(patch: {
 
   const addresses = await getAddresses();
   return applyScenario({ ...profile, addresses });
+}
+/**
+ * Signs the customer out.
+ *
+ * Just discards the token — it is stateless, so that is what actually ends the
+ * session. No request to make: there is no server-side record to clear, and the
+ * audit value an admin sign-out has does not apply to a customer closing an app.
+ */
+export function signOutConsumer(): void {
+  clearToken();
 }

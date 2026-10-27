@@ -6,7 +6,8 @@ import { ArrowRight, Info } from "lucide-react";
 import {
   OTP_RESEND_SECONDS,
   PRO_OTP_LENGTH,
-  getPro,
+  getApprovalState,
+  registerPro,
   sendProOtp,
   verifyProOtp,
 } from "@cfc/mocks";
@@ -15,7 +16,7 @@ import {
   OnboardingCard,
   OnboardingShell,
 } from "@/components/onboarding-shell";
-import { signIn } from "@/lib/pro-session";
+import { signIn, takeRegistrationDraft } from "@/lib/pro-session";
 
 /**
  * Pro 4 — verify the number.
@@ -88,26 +89,45 @@ function OtpInner() {
       setBusy(true);
       setWrong(false);
       try {
+        // Stores the session token, so every step after this is authenticated.
         await verifyProOtp(`+91${digits}`, value);
 
         if (fromRegister) {
-          // A new registration continues the sequence. No session yet — the
-          // pro has nothing to sign in to until they are approved.
+          // The code is confirmed, so the record can be created now. The form's
+          // answers were held across the redirect rather than sent with the
+          // OTP — an unverified number must not produce a pro record.
+          const draft = takeRegistrationDraft();
+          if (!draft) {
+            // No draft means a direct arrival at this URL, or storage blocked.
+            // Registering a nameless pro would be worse than starting again.
+            toast.error("Your details were not carried over. Please start again.");
+            router.push("/register");
+            return;
+          }
+
+          const { proId } = await registerPro({
+            name: draft.name,
+            phone: draft.phone,
+            serviceIds: draft.serviceIds,
+            areas: draft.areas,
+          });
+
+          signIn(proId);
           router.push("/profile-setup");
           return;
         }
 
         // Signing in. Where they land depends on their approval state, which
         // is why this reads the record rather than assuming the dashboard.
-        signIn("pro_0002");
-        try {
-          const pro = await getPro("pro_0002");
-          router.push(
-            pro.approvalStatus === "approved" ? "/dashboard" : "/approval",
-          );
-        } catch {
-          router.push("/dashboard");
+        const state = await getApprovalState("");
+        if (!state) {
+          // Verified, but never finished registering. Sending them to the
+          // dashboard would show an app with no account behind it.
+          router.push("/register");
+          return;
         }
+        signIn(state.proId);
+        router.push(state.status === "approved" ? "/dashboard" : "/approval");
       } catch {
         setWrong(true);
         setCode("");

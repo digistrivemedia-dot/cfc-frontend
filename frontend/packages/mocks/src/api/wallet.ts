@@ -4,6 +4,7 @@ import {
   walletTransactions,
 } from "../fixtures/wallet";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Customer 36, 37 — the wallet and its statement.
@@ -25,11 +26,19 @@ const FILTER_KINDS: Record<WalletFilter, WalletTransaction["kind"][]> = {
 };
 
 export async function getWalletBalance(): Promise<number> {
+  if (isLive("getWalletBalance")) {
+    return fetchJson<number>("/consumer/wallet/balance");
+  }
   await latency();
   return applyScenario(WALLET_BALANCE_PAISE, 0);
 }
 
 export async function getWalletTransactions(filter: WalletFilter = "all") {
+  if (isLive("getWalletTransactions")) {
+    return fetchJson<WalletTransaction[]>("/consumer/wallet/transactions", {
+      query: { filter },
+    });
+  }
   await latency();
   const kinds = FILTER_KINDS[filter];
   const rows = walletTransactions.filter((t) => kinds.includes(t.kind));
@@ -46,6 +55,15 @@ export async function getWalletTransactions(filter: WalletFilter = "all") {
 export async function addMoney(
   amountPaise: number,
 ): Promise<{ ok: boolean; amountPaise: number }> {
+  if (isLive("addMoney")) {
+    // Answers 503 NOT_CONFIGURED until Razorpay has keys. The screen already
+    // says the gateway arrives with the payment integration, so the error is
+    // the honest version of what it promises — not a fake credit.
+    return fetchJson<{ ok: boolean; amountPaise: number }>(
+      "/consumer/wallet/topup",
+      { body: { amountPaise } },
+    );
+  }
   await latency();
   return applyScenario(
     { ok: true, amountPaise },

@@ -13,7 +13,8 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
-import { getQuotation, getQuotations } from "@cfc/mocks";
+import { decideQuotation, getQuotation, getQuotations } from "@cfc/mocks";
+import { ApiError } from "@cfc/types";
 import {
   QUOTATION_STATUSES,
   QUOTATION_STATUS_LABEL,
@@ -154,20 +155,71 @@ function QuotationManagementInner() {
     router.push(`/quotations?id=${id}`, { scroll: false });
   const closeDetail = () => router.push("/quotations", { scroll: false });
 
-  // No backend to persist against, so the row leaves the visible queue — the
-  // effect a real status change would have, without pretending to write.
-  const decide = (q: QuotationDetail, outcome: "approved" | "rejected") => {
-    setData((d) =>
-      d
-        ? { ...d, items: d.items.filter((r) => r.id !== q.id), total: d.total - 1 }
-        : d,
-    );
-    toast.success(
+  /**
+   * Admin 5 — record the decision.
+   *
+   * This used to filter the row out of local state and show a toast, with a
+   * comment saying there was no backend to write to. The quotation stayed
+   * `pending` for the pro standing in the customer's house, and the operator
+   * had no way to tell.
+   *
+   * The row leaves the queue only **after** the server confirms. An optimistic
+   * removal would be the same lie in a shorter window: a failed approval would
+   * make the quote invisible until someone reloaded, while its fifteen minutes
+   * ran out.
+   *
+   * `edited` is passed explicitly rather than inferred by comparing totals —
+   * moving a cost between materials and labour without changing the total is
+   * still an edit, and the pro should see that it happened.
+   */
+  const decide = (
+    q: QuotationDetail,
+    outcome: "approved" | "rejected",
+    edited = false,
+  ) => {
+    const call =
       outcome === "approved"
-        ? `${q.jobRef} approved — the customer has been notified`
-        : `${q.jobRef} sent back to ${q.proName}`,
-    );
-    if (openId === q.id) closeDetail();
+        ? decideQuotation(q.id, {
+            outcome: "approved",
+            // Only sent when the figures were actually changed. Omitting them
+            // approves exactly what the pro submitted.
+            ...(edited
+              ? { materials: q.materials, labourPaise: q.laborPaise }
+              : {}),
+          })
+        : decideQuotation(q.id, {
+            outcome: "rejected",
+            reason: q.rejectionReason ?? "",
+          });
+
+    void call
+      .then(() => {
+        setData((d) =>
+          d
+            ? {
+                ...d,
+                items: d.items.filter((r) => r.id !== q.id),
+                total: d.total - 1,
+              }
+            : d,
+        );
+        toast.success(
+          outcome === "approved"
+            ? `${q.jobRef} approved — the customer has been notified`
+            : `${q.jobRef} sent back to ${q.proName}`,
+        );
+        if (openId === q.id) closeDetail();
+      })
+      .catch((err: unknown) => {
+        // The server refuses a decision past the fifteen minutes, and says so.
+        // That message matters more than anything written here: the pro has
+        // already been told the quote lapsed.
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Could not record that decision.",
+        );
+      });
   };
 
   // Most urgent first. An operator triages by clock, never by submission order.
@@ -353,7 +405,11 @@ function QueueRow({
 }: {
   quote: QuotationDetail;
   onOpen: () => void;
-  onDecide: (q: QuotationDetail, outcome: "approved" | "rejected") => void;
+  onDecide: (
+    q: QuotationDetail,
+    outcome: "approved" | "rejected",
+    edited?: boolean,
+  ) => void;
 }) {
   const left = quote.minutesRemaining;
   const overdue = left !== null && left <= 0;
@@ -495,7 +551,11 @@ function ApproveButton({
   onDecide,
 }: {
   quote: QuotationDetail;
-  onDecide: (q: QuotationDetail, outcome: "approved" | "rejected") => void;
+  onDecide: (
+    q: QuotationDetail,
+    outcome: "approved" | "rejected",
+    edited?: boolean,
+  ) => void;
 }) {
   const needsCall = quote.totalPaise > CALL_THRESHOLD_PAISE;
 
@@ -565,7 +625,11 @@ function EditApproveDialog({
   onDecide,
 }: {
   quote: QuotationDetail;
-  onDecide: (q: QuotationDetail, outcome: "approved" | "rejected") => void;
+  onDecide: (
+    q: QuotationDetail,
+    outcome: "approved" | "rejected",
+    edited?: boolean,
+  ) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const [materials, setMaterials] = React.useState(quote.materials);
@@ -602,6 +666,8 @@ function EditApproveDialog({
     onDecide(
       { ...quote, materials, laborPaise: labour, totalPaise: total },
       "approved",
+      // Edit & approve. The server keeps the pro's original figures alongside.
+      true,
     );
     setOpen(false);
   };
@@ -757,7 +823,11 @@ function RejectDialog({
   onDecide,
 }: {
   quote: QuotationDetail;
-  onDecide: (q: QuotationDetail, outcome: "approved" | "rejected") => void;
+  onDecide: (
+    q: QuotationDetail,
+    outcome: "approved" | "rejected",
+    edited?: boolean,
+  ) => void;
 }) {
   const [reason, setReason] = React.useState("");
 
@@ -848,7 +918,11 @@ function QuotationDetailPanel({
   onDecide,
 }: {
   id: string;
-  onDecide: (q: QuotationDetail, outcome: "approved" | "rejected") => void;
+  onDecide: (
+    q: QuotationDetail,
+    outcome: "approved" | "rejected",
+    edited?: boolean,
+  ) => void;
 }) {
   const [quote, setQuote] = React.useState<QuotationDetail | null>(null);
   const [loading, setLoading] = React.useState(true);

@@ -4,8 +4,10 @@ import type {
   ProEarning,
   QuotationMaterialLine,
 } from "@cfc/types";
+import { CFC_COMMISSION_BPS } from "@cfc/types";
 import { settleJob } from "./pro-earnings";
 import { latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Pro 15, 16, 17, 18, 19 — doing the work and closing the job.
@@ -83,6 +85,22 @@ export function quoteTotal(draft: {
 export async function submitQuotation(
   draft: QuoteDraft,
 ): Promise<QuoteSubmission> {
+  if (isLive("submitQuotation")) {
+    /**
+     * `beforePhotoCount` is not sent.
+     *
+     * The server counts the job's own uploaded photos, because a client-sent
+     * count would make the two-photo minimum advisory — and that rule is the
+     * only evidence an admin has that the work is needed.
+     */
+    return fetchJson<QuoteSubmission>(`/pro/jobs/${draft.jobId}/quotation`, {
+      body: {
+        description: draft.description,
+        materials: draft.materials,
+        labourPaise: draft.labourPaise,
+      },
+    });
+  }
   await latency();
 
   if (draft.beforePhotoCount < QUOTATION_MIN_BEFORE_PHOTOS) {
@@ -147,7 +165,60 @@ export async function completeJob(input: {
   afterPhotoCount: number;
   distanceM: number | null;
   gpsLimitM: number;
+  /** The device's own fix. Null means no fix — which must not block. */
+  proPoint?: { lat: number; lng: number } | null;
 }): Promise<CompletionResult> {
+  if (isLive("completeJob")) {
+    /**
+     * The server re-runs every gate and owns all of them.
+     *
+     * Most of this input is now advisory: `expectedOtp`, `grossPaise`,
+     * `jobsCompletedBefore`, `afterPhotoCount` and `distanceM` were computed
+     * client-side when there was nothing else to compute them, and a client
+     * that could set its own `expectedOtp` could close any job. The signature
+     * is kept so the screens do not change; only the point is sent, because
+     * only the device can know it.
+     */
+    const result = await fetchJson<{
+      ok: boolean;
+      earning?: {
+        grossPaise: number;
+        cfcFeePaise: number;
+        netPaise: number;
+        commissionFree: boolean;
+      };
+      error?: CompletionRejection;
+    }>(`/pro/jobs/${input.jobId}/complete`, {
+      body: {
+        otp: input.otp,
+        ...(input.proPoint
+          ? { lat: input.proPoint.lat, lng: input.proPoint.lng }
+          : {}),
+      },
+    });
+
+    if (!result.ok || !result.earning) {
+      return {
+        ok: false,
+        error: result.error ?? { reason: "wrong-otp" },
+      };
+    }
+
+    return {
+      ok: true,
+      earning: {
+        bookingId: input.jobId,
+        grossPaise: result.earning.grossPaise,
+        cfcFeePaise: result.earning.cfcFeePaise,
+        // Carried rather than recomputed, so a screen can state the rate it
+        // charged without knowing the offer's rules.
+        cfcFeeBps: result.earning.commissionFree ? 0 : CFC_COMMISSION_BPS,
+        netPaise: result.earning.netPaise,
+        commissionFree: result.earning.commissionFree,
+        completedAt: new Date().toISOString(),
+      },
+    };
+  }
   await latency();
 
   // The OTP first: it is the customer's own confirmation that the work is done,
@@ -197,6 +268,11 @@ export async function addExtraCharge(
   label: string,
   amountPaise: Paise,
 ): Promise<ExtraCharge> {
+  if (isLive("addExtraCharge")) {
+    return fetchJson<ExtraCharge>(`/pro/jobs/${jobId}/extra-charge`, {
+      body: { label, amountPaise },
+    });
+  }
   await latency();
   return { id: `xc_${jobId}_${Date.now()}`, label, amountPaise };
 }

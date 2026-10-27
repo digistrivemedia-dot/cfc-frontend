@@ -12,6 +12,7 @@ import { services } from "../fixtures/catalog";
 import { pricingRules } from "../fixtures/catalog";
 import { commissionFor } from "./pro-earnings";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Pro 26–29 — profile, services, availability.
@@ -157,6 +158,9 @@ export async function updateProProfile(
  * directly would also break the rule that screens import api functions only.
  */
 export async function getServiceAreas(): Promise<string[]> {
+  if (isLive("getServiceAreas")) {
+    return fetchJson<string[]>("/public/service-areas");
+  }
   await latency();
   return applyScenario([...AREAS], []);
 }

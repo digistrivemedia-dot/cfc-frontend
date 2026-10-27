@@ -146,7 +146,11 @@ export type OfferOutcome =
  */
 export async function acceptOffer(offer: ProJob): Promise<OfferOutcome> {
   if (isLive("acceptOffer")) {
-    const offerId = (offer as LiveOffer).offerId;
+    // Guarded against a null offer, not only a missing id. The offer stream
+    // returns null when there is nothing to take — ordinary, and a caller that
+    // reaches here with it should get a readable ApiError rather than a
+    // TypeError that renders as a stack trace on a pro's phone.
+    const offerId = (offer as LiveOffer | null)?.offerId;
     if (!offerId) {
       // A live offer always carries one. Without it there is nothing to accept,
       // and guessing would risk accepting the wrong job.
@@ -199,7 +203,7 @@ export async function acceptOffer(offer: ProJob): Promise<OfferOutcome> {
  */
 export async function declineOffer(offer: ProJob): Promise<OfferOutcome> {
   if (isLive("declineOffer")) {
-    const offerId = (offer as LiveOffer).offerId;
+    const offerId = (offer as LiveOffer | null)?.offerId;
     // Nothing to record without an id, and a decline is not worth an error
     // thrown in the pro's face — the offer will expire on its own.
     if (!offerId) return { kind: "declined" };

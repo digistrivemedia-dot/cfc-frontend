@@ -276,6 +276,21 @@ export {
   type ProNotificationFilter,
 } from "./api/pro-notifications";
 export { getProFaqs, getProTickets } from "./api/pro-support";
+export {
+  getProPayouts,
+  getProLedger,
+  type ProPayoutRow,
+  type ProLedgerRow,
+} from "./api/pro-payouts";
+export {
+  getPayoutQueue,
+  approvePayouts,
+  rejectPayout,
+  getProWallet,
+  adjustProWallet,
+  type AdminPayoutRow,
+  type ProWallet,
+} from "./api/admin-payouts";
 export { setProOnline, pingProLocation } from "./api/pro-dispatch";
 export { startJob, uploadJobPhoto } from "./api/pro-lifecycle";
 export {

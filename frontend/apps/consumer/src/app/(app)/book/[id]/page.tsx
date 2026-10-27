@@ -274,6 +274,17 @@ function BookInner() {
     [serviceId, variant, addOnsPaise, discountPaise, quantity],
   );
 
+  /**
+   * Identifies this booking attempt, for the whole life of this screen.
+   *
+   * `useRef` rather than state: it must not change on re-render, and nothing
+   * renders from it. Minted once so every retry of the same submission carries
+   * the same value.
+   */
+  const attemptKey = React.useRef(
+    `bk-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
+  ).current;
+
   /** Rewrites one search param without adding a history entry. */
   const setParam = (key: string, value: string | null) => {
     const q = new URLSearchParams(search.toString());
@@ -294,6 +305,11 @@ function BookInner() {
       addressId,
       paymentMethod: method,
       couponCode: coupon?.code ?? null,
+      // One key per visit to this screen, so a double-tap on a slow connection
+      // is one booking while a deliberate second booking of the same slot is
+      // genuinely two. The mock layer's fallback buckets by the minute and
+      // would silently collapse the latter into the former.
+      idempotencyKey: attemptKey,
     })
       .then((result) => {
         setReference(result.reference);

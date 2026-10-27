@@ -1,5 +1,6 @@
 import type {
   Page,
+  Payout,
   ProApprovalStatus,
   ProDetail,
   ProListItem,
@@ -76,6 +77,11 @@ export async function getProWarnings(proId?: string) {
 }
 
 export async function getPayouts(status?: string) {
+  if (isLive("getPayouts")) {
+    return fetchJson<Payout[]>("/admin/payouts", {
+      query: { status: status ?? "all" },
+    });
+  }
   await latency();
   const rows = status && status !== "all" ? payouts.filter((p) => p.status === status) : payouts;
   return applyScenario(rows, []);
@@ -88,6 +94,12 @@ export async function getPayouts(status?: string) {
  * the headline figure and the lines behind it always agree.
  */
 export async function getWalletEntries(proId: string): Promise<WalletEntry[]> {
+  if (isLive("getWalletEntries")) {
+    const wallet = await fetchJson<{ entries: WalletEntry[] }>(
+      `/admin/payouts/wallet/${proId}`,
+    );
+    return wallet.entries;
+  }
   await latency();
   return applyScenario(walletEntries[proId] ?? [], []);
 }

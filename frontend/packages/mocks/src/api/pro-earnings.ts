@@ -10,6 +10,7 @@ import {
 } from "@cfc/types";
 import { pros } from "../fixtures/pros";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Pro 19, 22, 23 — what a pro earns.
@@ -143,6 +144,9 @@ function historyFor(proId: string): ProEarning[] {
 }
 
 export async function getProEarnings(proId: string): Promise<ProEarning[]> {
+  if (isLive("getProEarnings")) {
+    return fetchJson<ProEarning[]>("/pro/earnings/history");
+  }
   await latency();
   return applyScenario(historyFor(proId), []);
 }
@@ -183,6 +187,11 @@ export async function getEarningsSummary(
   proId: string,
   period: EarningsPeriod,
 ): Promise<EarningsSummary> {
+  if (isLive("getEarningsSummary")) {
+    return fetchJson<EarningsSummary>("/pro/earnings/summary", {
+      query: { period },
+    });
+  }
   await latency();
 
   const cutoff = cutoffFor(period);
@@ -216,6 +225,9 @@ export async function getEarningsSummary(
 export async function getCommissionFreeRemaining(
   proId: string,
 ): Promise<number> {
+  if (isLive("getCommissionFreeRemaining")) {
+    return fetchJson<number>("/pro/earnings/commission-free-remaining");
+  }
   await latency();
   const pro = pros.find((p) => p.id === proId);
   const done = pro?.jobsCompleted ?? 0;
@@ -241,6 +253,14 @@ export async function getEarningsSeries(
   proId: string,
   period: EarningsPeriod,
 ): Promise<EarningsPoint[]> {
+  if (isLive("getEarningsSeries")) {
+    // The server builds this from the **same cutoff** the summary uses, so the
+    // chart and the headline cannot disagree — which they did, by ₹1,205 on a
+    // Wednesday, when each computed its own window.
+    return fetchJson<EarningsPoint[]>("/pro/earnings/series", {
+      query: { period },
+    });
+  }
   await latency();
 
   // The SAME cutoff the summary uses.
@@ -314,6 +334,39 @@ export const PAYOUT_WINDOW_HOURS = 48;
 export async function getPendingSettlements(
   proId: string,
 ): Promise<PendingSettlement[]> {
+  if (isLive("getPendingSettlements")) {
+    const rows = await fetchJson<
+      {
+        bookingId: string;
+        bookingReference: string;
+        netPaise: number;
+        grossPaise: number;
+        cfcFeePaise: number;
+        completedAt: string;
+        hoursRemaining: number;
+        overdue: boolean;
+      }[]
+    >("/pro/earnings/pending");
+
+    // Overdue rows come back first: past 48 hours the pro is owed money
+    // against a stated commitment, which is the platform's failure rather
+    // than a rounding detail.
+    return rows.map((r) => ({
+      earning: {
+        bookingId: r.bookingId,
+        grossPaise: r.grossPaise,
+        cfcFeePaise: r.cfcFeePaise,
+        cfcFeeBps:
+          r.grossPaise > 0
+            ? Math.round((r.cfcFeePaise / r.grossPaise) * 10_000)
+            : 0,
+        commissionFree: r.cfcFeePaise === 0,
+        netPaise: r.netPaise,
+        completedAt: r.completedAt,
+      },
+      hoursRemaining: r.hoursRemaining,
+    }));
+  }
   await latency();
 
   const cutoff = Date.now() - PAYOUT_WINDOW_HOURS * 3_600_000;
@@ -363,6 +416,9 @@ export interface PayoutBalance {
 const PAYOUT_MINIMUM_PAISE = 0;
 
 export async function getPayoutBalance(proId: string): Promise<PayoutBalance> {
+  if (isLive("getPayoutBalance")) {
+    return fetchJson<PayoutBalance>("/pro/earnings/balance");
+  }
   await latency();
 
   const cutoffMs = Date.now() - PAYOUT_WINDOW_HOURS * 3_600_000;
@@ -404,6 +460,9 @@ export interface PayoutDestination {
 export async function getPayoutDestinations(
   proId: string,
 ): Promise<PayoutDestination[]> {
+  if (isLive("getPayoutDestinations")) {
+    return fetchJson<PayoutDestination[]>("/pro/earnings/destinations");
+  }
   await latency();
 
   const pro = pros.find((p) => p.id === proId);
@@ -442,6 +501,36 @@ export async function requestPayout(
   proId: string,
   destination: PayoutDestination,
 ): Promise<PayoutRequest> {
+  if (isLive("requestPayout")) {
+    const result = await fetchJson<
+      | {
+          ok: true;
+          amountPaise: number;
+          method: "bank" | "upi";
+          destinationLast4: string;
+          expectedBy: string;
+        }
+      | { ok: false; reason: string }
+    >("/pro/earnings/payout", { body: { method: destination.kind } });
+
+    if (!result.ok) {
+      // `already-pending` and `no-destination` are live-only outcomes the
+      // fixture shape has no member for. Reported as the closest the screen
+      // renders rather than inventing a new branch it cannot handle.
+      return {
+        ok: false,
+        reason:
+          result.reason === "below-minimum" ? "below-minimum" : "nothing-available",
+      };
+    }
+
+    return {
+      ok: true,
+      amountPaise: result.amountPaise,
+      destination,
+      expectedBy: result.expectedBy,
+    };
+  }
   await latency();
 
   const balance = await getPayoutBalance(proId);

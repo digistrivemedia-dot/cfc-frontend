@@ -240,6 +240,14 @@ export async function createBooking(draft: {
   couponCode: string | null;
   notes?: string | null;
   /**
+   * A key identifying this booking attempt.
+   *
+   * Generate it **once** when the checkout screen mounts and send the same
+   * value on every retry, so a double-tap on a slow connection is one booking
+   * and a deliberate second booking is two.
+   */
+  idempotencyKey?: string;
+  /**
    * The total the customer was shown.
    *
    * Sent to be **compared, not used**. If the price moved while they were
@@ -259,7 +267,11 @@ export async function createBooking(draft: {
            * booking rather than two. Generated here because only the client
            * knows that two requests are the same user action.
            */
-          idempotencyKey: newIdempotencyKey(draft),
+          // Supplied by the caller where it can be — a key held in the
+          // checkout screen's state is the only thing that truly distinguishes
+          // "they tapped twice" from "they booked again". Falls back to a
+          // derived key for callers that have not been updated.
+          idempotencyKey: draft.idempotencyKey ?? newIdempotencyKey(draft),
         },
       },
     );
@@ -273,17 +285,18 @@ export async function createBooking(draft: {
 }
 
 /**
- * A stable key for one booking attempt.
+ * A fallback key, for callers that do not supply one.
  *
- * Derived from the draft rather than random, so a retry of the *same* booking
- * reuses it while a genuinely new booking of the same service gets a fresh one
- * — the minute bucket is what separates "they tapped twice" from "they booked
- * the same thing again later".
+ * **This has a real and now-demonstrated failure mode.** It buckets by the
+ * minute, so two deliberate bookings of the same service, slot and address
+ * inside one minute collapse into a single booking — the second request
+ * silently returns the first one's reference and no second job exists. That
+ * was written off as hypothetical and then happened within an hour of being
+ * written, which is the usual way.
  *
- * `ponytail:` a minute bucket, not a UUID held in component state. Two
- * deliberate identical bookings inside the same minute would collapse into
- * one; passing an explicit key from the checkout screen is the upgrade if that
- * ever matters.
+ * It is kept only because it is strictly better than no key at all for a
+ * caller that has not been updated. **Pass `idempotencyKey` from the checkout
+ * screen** and this is never used.
  */
 function newIdempotencyKey(draft: {
   serviceId: string;

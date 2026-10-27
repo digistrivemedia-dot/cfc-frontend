@@ -23,6 +23,8 @@ import {
   AREA_OPTIONS,
   SERVICE_NAMES,
   getPayouts,
+  getPayoutQueue,
+  approvePayouts,
   getPro,
   getProWarnings,
   getPros,
@@ -1743,7 +1745,7 @@ function PayoutsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }) {
 
   const load = React.useCallback(() => {
     setError(null);
-    getPayouts()
+    getPayoutQueue("all")
       .then(setRows)
       .catch((e: unknown) =>
         setError(e instanceof Error ? e.message : "Could not load."),
@@ -1756,22 +1758,60 @@ function PayoutsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }) {
   const failed = (rows ?? []).filter((p) => p.status === "failed");
   const pendingTotal = pending.reduce((s, p) => s + p.amountPaise, 0);
 
+  /**
+   * Admin 18 — approve, individually or in a batch.
+   *
+   * This used to map the rows to `approved` in local state and show a toast.
+   * The pro was still waiting, and the operator had no way to know — the worst
+   * version of that bug, because it is someone's pay.
+   *
+   * Not optimistic. Every other write on these screens moves first and reverts
+   * on failure, but this one commits CFC to a transfer: showing "approved" for
+   * money that did not get approved is the one failure here worth avoiding
+   * outright. One request for the whole batch, so a dropped connection cannot
+   * leave half the queue approved.
+   */
   const approve = (ids: string[]) => {
-    setRows(
-      (rs) =>
-        rs?.map((x) =>
-          ids.includes(x.id) ? { ...x, status: "approved" as const } : x,
-        ) ?? rs,
-    );
-    setSelected((sel) => sel.filter((id) => !ids.includes(id)));
     const total = (rows ?? [])
       .filter((r) => ids.includes(r.id))
       .reduce((s, r) => s + r.amountPaise, 0);
-    toast.success(
-      ids.length === 1
-        ? `${formatCurrency(total)} approved`
-        : `${ids.length} payouts approved — ${formatCurrency(total)} total`,
-    );
+
+    void approvePayouts(ids)
+      .then((result) => {
+        setRows(
+          (rs) =>
+            rs?.map((x) =>
+              result.approved.includes(x.id)
+                ? { ...x, status: "approved" as const }
+                : x,
+            ) ?? rs,
+        );
+        setSelected((sel) => sel.filter((id) => !ids.includes(id)));
+
+        if (result.approved.length > 0) {
+          toast.success(
+            result.approved.length === 1
+              ? `${formatCurrency(total)} approved`
+              : `${result.approved.length} payouts approved — ${formatCurrency(total)} total`,
+          );
+        }
+        // Already decided elsewhere — two operators on one queue. Said plainly
+        // rather than silently dropped, or the count will not match what they
+        // selected.
+        if (result.skipped.length > 0) {
+          toast.error(
+            `${result.skipped.length} had already been decided and were left alone.`,
+          );
+          load();
+        }
+      })
+      .catch((err: unknown) => {
+        toast.error(
+          err instanceof ApiError
+            ? err.message
+            : "Could not approve those payouts.",
+        );
+      });
   };
 
   const selectedTotal = (rows ?? [])

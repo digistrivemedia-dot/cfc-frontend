@@ -1,5 +1,7 @@
+import { ApiError } from "@cfc/types";
 import { myBookings } from "../fixtures/my-bookings";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Customer 30 — submitting a rating.
@@ -60,6 +62,24 @@ export async function submitReview({
   body: string;
   chips: readonly string[];
 }): Promise<ReviewSubmitResult> {
+  if (isLive("submitReview")) {
+    // The server enforces the same OTP gate, and reports the same two reasons
+    // the screen already renders as distinct sentences. Mapped from the error
+    // codes rather than the messages — the copy can change, the codes cannot.
+    try {
+      await fetchJson<{ ok: true }>("/consumer/reviews", {
+        method: "POST",
+        body: { bookingId, rating, body, chips },
+      });
+      return { ok: true };
+    } catch (e) {
+      const code = e instanceof ApiError ? e.code : undefined;
+      if (code === "ALREADY_RATED") return { ok: false, reason: "already-rated" };
+      if (code === "NOT_COMPLETED") return { ok: false, reason: "not-completed" };
+      throw e;
+    }
+  }
+
   await latency();
 
   const booking = myBookings.find((b) => b.id === bookingId);

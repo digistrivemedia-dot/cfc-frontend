@@ -104,6 +104,11 @@ module.exports = {
         strong: "var(--color-border-strong)",
       },
       scrim: "var(--color-scrim)",
+      // For a chip or control laid over a photo. `bg-ink/75` was the attempt
+      // before this existed, and opacity modifiers do not work on a var()
+      // colour — the utility generated nothing and the badge lost its
+      // background entirely.
+      "on-media": "var(--color-on-media)",
 
       // Structure — the navy rail. Never a button, link, or data mark.
       structure: {
@@ -450,6 +455,11 @@ module.exports = {
         "block-sm": "128px",
         "block-md": "160px",
         "block-lg": "384px",
+        // A document in the KYC viewer — a scan or an embedded PDF. Viewport
+        // relative because the thing being read is someone's Aadhaar number,
+        // and a fixed pixel height either crops it on a laptop or wastes two
+        // thirds of a desktop screen.
+        document: "60vh",
       },
       minWidth: {
         search: "224px",
@@ -462,6 +472,9 @@ module.exports = {
         "block-sm": "256px",
         // A select list scrolls past this rather than filling the viewport.
         "block-lg": "384px",
+        // Matches `height.document`: an image sizes to its own aspect ratio up
+        // to this cap, while an embedded PDF takes the height outright.
+        document: "60vh",
       },
 
       aspectRatio: {

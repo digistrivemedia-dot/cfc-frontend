@@ -126,13 +126,20 @@ function build(): ProDetail[] {
       };
     });
 
+    // Most pros cover more than one locality, and dispatch matches against all
+    // of them. `area` is the first of these, never an independent draw — two
+    // separate picks would show a pro working in one area and dispatched in
+    // another.
+    const areas = [...new Set([pick(AREAS), pick(AREAS)])];
+
     return {
       id: `pro_${(i + 1).toString().padStart(4, "0")}`,
       name,
       photoUrl: null,
       phone: `+91 ${9_000_000_000 + Math.floor(rand() * 999_999_999)}`,
       services,
-      area: pick(AREAS),
+      areas,
+      area: areas[0] ?? "",
       online: approvalStatus === "approved" && rand() < 0.45,
       rating,
       jobsCompleted,

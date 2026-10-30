@@ -1,5 +1,5 @@
-import type { DocumentType, ProApprovalStatus } from "@cfc/types";
-import { fetchJson, fetchObjectUrl } from "../http";
+import type { DocumentType, ProApprovalStatus, ProWarning } from "@cfc/types";
+import { fetchJson, fetchObjectUrl, type ObjectUrl } from "../http";
 
 /**
  * Admin 13–15 — the KYC queue and blocking.
@@ -94,6 +94,29 @@ export async function unblockPro(
 }
 
 /**
+ * Admin 17 — issue a warning, with an optional penalty.
+ *
+ * `penaltyPaise` is **positive**: the size of the fine. The server writes the
+ * matching negative wallet row itself, in the same request, so the discipline
+ * record and the pro's balance cannot end up disagreeing about whether money
+ * was taken. Pass 0 (or omit) for a warning that carries no deduction — the
+ * agreement's escalation path warns before it fines.
+ *
+ * Gated on `pros.block`, not `pros.approve_kyc`: a sub admin has onboarding
+ * delegated to them, and discipline is not delegated.
+ */
+export async function issueWarning(
+  proId: string,
+  reason: string,
+  penaltyPaise = 0,
+): Promise<ProWarning> {
+  return fetchJson(`/admin/pros/${proId}/warnings`, {
+    method: "POST",
+    body: { reason, penaltyPaise },
+  });
+}
+
+/**
  * Why a pro is or is not receiving offers.
  *
  * Exists so the list can explain an absence instead of leaving an operator to
@@ -120,6 +143,6 @@ export async function getProDispatchStatus(
 export async function getProDocumentUrl(
   proId: string,
   type: DocumentType,
-): Promise<string> {
+): Promise<ObjectUrl> {
   return fetchObjectUrl(`/admin/pros/${proId}/documents/${type}`);
 }

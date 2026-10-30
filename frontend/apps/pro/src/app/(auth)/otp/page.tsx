@@ -67,6 +67,7 @@ function OtpInner() {
   const [code, setCode] = React.useState("");
   const [busy, setBusy] = React.useState(false);
   const [wrong, setWrong] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = React.useState(OTP_RESEND_SECONDS);
 
   // The resend countdown. A wall-clock deadline rather than a decrementing
@@ -88,6 +89,7 @@ function OtpInner() {
       if (value.length !== PRO_OTP_LENGTH || busy) return;
       setBusy(true);
       setWrong(false);
+      setError(null);
       try {
         // Stores the session token, so every step after this is authenticated.
         await verifyProOtp(`+91${digits}`, value);
@@ -128,10 +130,15 @@ function OtpInner() {
         }
         signIn(state.proId);
         router.push(state.status === "approved" ? "/dashboard" : "/approval");
-      } catch {
+      } catch (e: unknown) {
         setWrong(true);
         setCode("");
-        toast.error("That code is not right. Check the SMS and try again.");
+        const message =
+          e instanceof Error && e.message
+            ? e.message
+            : "That code is not right. Check the SMS and try again.";
+        setError(message);
+        toast.error(message);
       } finally {
         setBusy(false);
       }
@@ -218,9 +225,13 @@ function OtpInner() {
           label="Verification code"
         />
 
+        {/* The server's own reason. This used to always read "that code is
+            not right", which is wrong for an expired record or a throttled
+            resend — the two a tester actually hits, and the two that message
+            sends them looking in the wrong place. */}
         {wrong && (
           <p className="mt-2 text-caption text-critical-ink">
-            That code is not right. Codes expire, so use the most recent SMS.
+            {error ?? "That code is not right. Check the SMS and try again."}
           </p>
         )}
 

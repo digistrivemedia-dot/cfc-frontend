@@ -55,6 +55,13 @@ export interface ProDocument {
 }
 
 export interface ProDetail extends ProListItem {
+  /**
+   * Every area the pro registered for. `ProListItem.area` is the first one, kept
+   * because the lists sort and filter on a single value — but dispatch matches
+   * against all of them, so a reviewer seeing only the first is reading an
+   * incomplete submission (§4.4).
+   */
+  areas: string[];
   bio: string;
   experienceYears: number;
   bankAccountLast4: string;

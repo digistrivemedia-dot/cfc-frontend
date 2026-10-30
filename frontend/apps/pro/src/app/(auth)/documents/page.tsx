@@ -4,7 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Check, ShieldCheck } from "lucide-react";
 import { REQUIRED_DOCUMENTS, uploadDocument } from "@cfc/mocks";
-import type { DocumentType } from "@cfc/types";
+import { ApiError, type DocumentType } from "@cfc/types";
 import {
   Button,
   InlineAlert,
@@ -72,12 +72,22 @@ export default function ProDocumentsPage() {
       // image uploads are slower than four in a row and much more likely to
       // have one fail.
       for (const doc of REQUIRED_DOCUMENTS) {
-        await uploadDocument("pro_new", doc.type);
+        const photo = files[doc.type]?.[0];
+        // Cannot happen — `complete` gates the button — but the server is the
+        // one that decides what is missing, and skipping beats sending nothing.
+        if (!photo) continue;
+        await uploadDocument("pro_new", doc.type, photo.file);
       }
       router.push("/bank-details");
-    } catch {
+    } catch (error) {
+      // The server's own message, not a guess. "That file is not a valid image"
+      // and "you appear to be offline" need different things from the pro, and
+      // one generic line for both leaves them re-tapping a button that will
+      // never work.
       toast.error(
-        "An upload did not go through. Check your connection and try again.",
+        error instanceof ApiError
+          ? error.message
+          : "An upload did not go through. Check your connection and try again.",
       );
     } finally {
       setBusy(false);

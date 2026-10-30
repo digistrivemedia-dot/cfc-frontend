@@ -3,7 +3,12 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Camera, Info } from "lucide-react";
-import { getServiceAreas, saveProfileSetup } from "@cfc/mocks";
+import {
+  getServiceAreas,
+  saveProfileSetup,
+  uploadProfilePhoto,
+} from "@cfc/mocks";
+import { ApiError } from "@cfc/types";
 import {
   Button,
   Checkbox,
@@ -82,10 +87,34 @@ export default function ProProfileSetupPage() {
         skills: [],
         experienceYears: yearsNum,
         areas,
+        bio: bio.trim(),
       });
+
+      // The photo is its own request — multipart, where the rest is JSON. Sent
+      // after the fields and allowed to fail on its own: the photo is optional,
+      // so losing it must not cost a pro the experience and areas they just
+      // typed. `photo: true` above was previously the *only* trace of it; the
+      // image itself was never sent anywhere.
+      const photo = photos[0];
+      if (photo) {
+        try {
+          await uploadProfilePhoto(photo.file);
+        } catch (error) {
+          toast.error(
+            error instanceof ApiError
+              ? `Your details are saved. The photo did not upload — ${error.message}`
+              : "Your details are saved, but the photo did not upload. You can add it later from your profile.",
+          );
+        }
+      }
+
       router.push("/documents");
-    } catch {
-      toast.error("Could not save. Check your connection and try again.");
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "Could not save. Check your connection and try again.",
+      );
     } finally {
       setBusy(false);
     }

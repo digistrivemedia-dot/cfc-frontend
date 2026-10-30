@@ -9,6 +9,7 @@ import {
   isValidUpi,
   saveBankDetails,
 } from "@cfc/mocks";
+import { ApiError } from "@cfc/types";
 import { Button, FormField, Input, InlineAlert, toast } from "@cfc/ui";
 import {
   OnboardingCard,
@@ -71,8 +72,15 @@ export default function ProBankDetailsPage() {
         upiId: upi.trim() === "" ? null : upi.trim(),
       });
       router.push("/terms");
-    } catch {
-      toast.error("Could not save. Check your connection and try again.");
+    } catch (error) {
+      // The server's own message. A rejected IFSC and a dropped connection need
+      // different things from the pro, and one line for both leaves them
+      // re-tapping a button that cannot work.
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "Could not save. Check your connection and try again.",
+      );
     } finally {
       setBusy(false);
     }

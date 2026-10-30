@@ -31,6 +31,9 @@ import { fetchJson, isLive } from "../http";
  * keep rather than having to work it out from a percentage.
  */
 export async function getProServices(proId: string): Promise<ProService[]> {
+  if (isLive("getProServices")) {
+    return fetchJson<ProService[]>("/pro/profile/services");
+  }
   await latency();
 
   const pro = pros.find((p) => p.id === proId);
@@ -68,6 +71,12 @@ export async function setProServiceEnabled(
   _serviceId: string,
   enabled: boolean,
 ): Promise<{ enabled: boolean }> {
+  if (isLive("setProServiceEnabled")) {
+    return fetchJson(`/pro/profile/services/${_serviceId}`, {
+      method: "PUT",
+      body: { enabled },
+    });
+  }
   await latency();
   return { enabled };
 }
@@ -96,6 +105,9 @@ const availabilityStore = new Map<string, ProAvailability>();
 export async function getProAvailability(
   proId: string,
 ): Promise<ProAvailability> {
+  if (isLive("getProAvailability")) {
+    return fetchJson<ProAvailability>("/pro/profile/availability");
+  }
   await latency();
 
   let current = availabilityStore.get(proId);
@@ -115,6 +127,12 @@ export async function saveProAvailability(
   proId: string,
   next: ProAvailability,
 ): Promise<ProAvailability> {
+  if (isLive("saveProAvailability")) {
+    return fetchJson<ProAvailability>("/pro/profile/availability", {
+      method: "PUT",
+      body: next,
+    });
+  }
   await latency();
   availabilityStore.set(proId, next);
   return next;

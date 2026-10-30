@@ -4,6 +4,7 @@ import type {
   ProApprovalStatus,
   ProDetail,
   ProListItem,
+  ProWarning,
   WalletEntry,
 } from "@cfc/types";
 import { ApiError } from "@cfc/types";
@@ -71,6 +72,11 @@ export async function getPro(id: string): Promise<ProDetail> {
 }
 
 export async function getProWarnings(proId?: string) {
+  if (isLive("getProWarnings")) {
+    return fetchJson<ProWarning[]>("/admin/pros/warnings", {
+      ...(proId !== undefined ? { query: { proId } } : {}),
+    });
+  }
   await latency();
   const rows = proId ? proWarnings.filter((w) => w.proId === proId) : proWarnings;
   return applyScenario(rows, []);

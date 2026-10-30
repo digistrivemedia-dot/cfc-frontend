@@ -69,6 +69,12 @@
 
   /* Modal and drawer scrim. */
   --color-scrim: rgb(15 23 40 / 0.45);
+  /* A chip or control sitting directly on a photograph — an image's "Cover"
+     badge, its remove button. Darker than the scrim because it carries white
+     text at caption size over an unknown image, and 0.45 is not enough contrast
+     against a bright one. Written here rather than as `bg-ink/75`, which is an
+     opacity modifier on a var() colour and silently generates no CSS at all. */
+  --color-on-media: rgb(15 23 40 / 0.75);
 
   /* Status — the default is neutral. Colour is the exception. --------------- */
   --color-neutral: #5c6472;

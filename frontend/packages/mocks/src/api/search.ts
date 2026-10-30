@@ -1,5 +1,7 @@
+import type { ServiceDetail } from "@cfc/types";
 import { services } from "../fixtures/catalog";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /** The text a service can be found by, lowercased once per row per search. */
 function haystack(s: (typeof services)[number]): string {
@@ -23,6 +25,15 @@ function haystack(s: (typeof services)[number]): string {
  * position both free) is what makes "ac repair" find "AC service & repair".
  */
 export async function searchServices(query: string) {
+  if (isLive("searchServices")) {
+    // The server applies the same per-word AND over name, category and
+    // sub-category. Empty query short-circuits here so a blank search box
+    // never costs a round trip.
+    if (query.trim() === "") return [];
+    return fetchJson<ServiceDetail[]>("/public/search/services", {
+      query: { q: query.trim() },
+    });
+  }
   await latency();
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return applyScenario([], []);
@@ -46,6 +57,13 @@ export async function searchServices(query: string) {
  * of a quick suggestion list.
  */
 export async function suggestServices(query: string, limit = 6) {
+  if (isLive("suggestServices")) {
+    if (query.trim() === "") return [];
+    return fetchJson<{ id: string; name: string; subCategoryName: string }[]>(
+      "/public/search/suggest",
+      { query: { q: query.trim(), limit } },
+    );
+  }
   await latency();
   const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return applyScenario([], []);
@@ -69,6 +87,9 @@ export async function suggestServices(query: string, limit = 6) {
  * "trending" label is the kind of thing that quietly becomes untrue.
  */
 export async function getTrendingSearches(limit = 6) {
+  if (isLive("getTrendingSearches")) {
+    return fetchJson<string[]>("/public/search/trending", { query: { limit } });
+  }
   await latency();
   const rows = [...services]
     .filter((s) => s.active)

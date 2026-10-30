@@ -2,6 +2,7 @@ import type { PublicPro, Review } from "@cfc/types";
 import { pros } from "../fixtures/pros";
 import { reviews } from "../fixtures/reviews";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Customer 13 — a professional's public profile.
@@ -16,6 +17,15 @@ import { applyScenario, latency } from "../control";
  * invites questions support cannot answer.
  */
 export async function getPublicPro(id: string) {
+  if (isLive("getPublicPro")) {
+    // 404 is the honest answer for a pro who is not approved, and the screens
+    // already render "not available" from a null.
+    try {
+      return await fetchJson<PublicPro>(`/public/pros/${id}`);
+    } catch {
+      return null;
+    }
+  }
   await latency();
 
   const found = pros.find((p) => p.id === id);
@@ -65,6 +75,11 @@ export async function getPublicPro(id: string) {
  * says so - but it is now at least attributed to the right person.
  */
 export async function getProReviews(proId: string, limit = 5) {
+  if (isLive("getProReviews")) {
+    return fetchJson<Review[]>("/public/reviews", {
+      query: { proId, limit },
+    });
+  }
   await latency();
   const mine: Review[] = reviews
     .filter((r) => r.proId === proId)

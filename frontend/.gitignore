@@ -4,6 +4,8 @@ node_modules/
 
 # next.js
 .next/
+# Throwaway build dir — see distDir in apps/*/next.config.js
+.next-verify/
 out/
 next-env.d.ts
 

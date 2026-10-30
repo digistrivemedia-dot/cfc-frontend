@@ -9,6 +9,22 @@ module.exports = {
   transpilePackages: ["@cfc/ui", "@cfc/tokens", "@cfc/types", "@cfc/mocks"],
 
   /**
+   * Where the build output goes. `.next` unless told otherwise.
+   *
+   * Exists because `next build` and `next dev` write incompatible things into
+   * the same directory: a build drops production manifests over the dev
+   * server's, and the running dev server then answers HTML with 500s for its
+   * own CSS and JS — a blank white page with no error on screen.
+   *
+   * So a build run only to verify something uses a throwaway directory:
+   *
+   *   NEXT_DIST_DIR=.next-verify npx next build
+   *
+   * A real deployment build sets nothing and behaves exactly as before.
+   */
+  distDir: process.env.NEXT_DIST_DIR ?? ".next",
+
+  /**
    * Uploaded images are served by the API, not from `public/`.
    *
    * Proxied rather than linked absolutely so a stored path stays relative

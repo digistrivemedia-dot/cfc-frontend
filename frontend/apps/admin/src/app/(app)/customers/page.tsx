@@ -15,6 +15,8 @@ import {
   getCustomerBookings,
   getCustomerComplaints,
   getCustomers,
+  blockCustomer,
+  unblockCustomer,
   AREA_OPTIONS,
 } from "@cfc/mocks";
 import type {
@@ -662,7 +664,7 @@ function CustomerDetailPanel({ id }: { id: string }) {
         <BlockCustomerDialog
           customer={customer}
           blocked={blocked}
-          onToggle={() => setBlocked((b) => !b)}
+          onToggled={setBlocked}
         />
       </div>
     </>
@@ -707,27 +709,42 @@ const BLOCK_REASONS = [
 function BlockCustomerDialog({
   customer,
   blocked,
-  onToggle,
+  onToggled,
 }: {
   customer: CustomerDetail;
   blocked: boolean;
-  onToggle: () => void;
+  onToggled: (next: boolean) => void;
 }) {
   const [open, setOpen] = React.useState(false);
   const [reason, setReason] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) setReason("");
   }, [open]);
 
+  // The state comes back from the server rather than being toggled locally: a
+  // block that failed must not leave the panel claiming it succeeded.
   const confirm = () => {
-    onToggle();
-    toast.success(
-      blocked
-        ? `${customer.name} can book again`
-        : `${customer.name} has been blocked`,
-    );
-    setOpen(false);
+    if (busy) return;
+    setBusy(true);
+    const call = blocked
+      ? unblockCustomer(customer.id)
+      : blockCustomer(customer.id, reason.trim());
+    call
+      .then((r) => {
+        onToggled(r.blocked);
+        toast.success(
+          r.blocked
+            ? `${customer.name} has been blocked`
+            : `${customer.name} can book again`,
+        );
+        setOpen(false);
+      })
+      .catch((e: unknown) =>
+        toast.error(e instanceof Error ? e.message : "Could not apply."),
+      )
+      .finally(() => setBusy(false));
   };
 
   if (blocked) {

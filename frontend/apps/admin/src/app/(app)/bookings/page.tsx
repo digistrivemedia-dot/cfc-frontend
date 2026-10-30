@@ -20,7 +20,7 @@ import {
   getBookings,
   getBookingsForExport,
   getPros,
-  previewStatusOverride,
+  overrideBookingStatus,
 } from "@cfc/mocks";
 import {
   BOOKING_STATUSES,
@@ -957,7 +957,7 @@ function StatusOverrideDialog({
   const apply = () => {
     if (!next || reason.trim() === "") return;
     setBusy(true);
-    previewStatusOverride(booking.id, next, reason)
+    overrideBookingStatus(booking.id, next, reason)
       .then((updated) => {
         onApplied(updated);
         toast.success(

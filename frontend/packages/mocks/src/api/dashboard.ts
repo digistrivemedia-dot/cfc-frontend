@@ -2,6 +2,7 @@ import type { DashboardKpis, JobFeedItem } from "@cfc/types";
 import { bookings } from "../fixtures/bookings";
 import { quotations } from "../fixtures/quotations";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Admin 3 — main dashboard.
@@ -23,6 +24,9 @@ function isToday(iso: string): boolean {
 }
 
 export async function getDashboardKpis(): Promise<DashboardKpis> {
+  if (isLive("getDashboardKpis")) {
+    return fetchJson<DashboardKpis>("/admin/dashboard/kpis");
+  }
   await latency();
 
   const newBookingsToday = bookings.filter((b) => isToday(b.scheduledAt)).length;
@@ -42,6 +46,9 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
 
 /** Most recent bookings, newest first — the "live job feed". */
 export async function getJobFeed(limit = 8): Promise<JobFeedItem[]> {
+  if (isLive("getJobFeed")) {
+    return fetchJson<JobFeedItem[]>("/admin/dashboard/feed", { query: { limit } });
+  }
   await latency();
 
   const items: JobFeedItem[] = [...bookings]

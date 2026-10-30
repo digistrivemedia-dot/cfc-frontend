@@ -2,6 +2,7 @@ import type { ServiceFaq, TicketDetail, TicketMessage } from "@cfc/types";
 import { tickets } from "../fixtures/promotions";
 import { faqs } from "../fixtures/faqs";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Customer 40, 41, 42 — help, a ticket thread, and the assistant.
@@ -24,12 +25,18 @@ function stripInternal(ticket: TicketDetail): TicketDetail {
 
 /** Customer 40 — the FAQ accordion. Reuses the service FAQs. */
 export async function getSupportFaqs(): Promise<ServiceFaq[]> {
+  if (isLive("getSupportFaqs")) {
+    return fetchJson<ServiceFaq[]>("/public/faqs", { query: { audience: "customer" } });
+  }
   await latency();
   return applyScenario(faqs, []);
 }
 
 /** Customer 41 — the customer's own tickets. */
 export async function getMyTickets() {
+  if (isLive("getMyTickets")) {
+    return fetchJson<TicketDetail[]>("/consumer/tickets");
+  }
   await latency();
   // The fixture is admin-wide; a customer sees only theirs. Filtered on the
   // seeded customer rather than every row.
@@ -41,6 +48,11 @@ export async function getMyTickets() {
 }
 
 export async function getMyTicket(id: string) {
+  if (isLive("getMyTicket")) {
+    // The server strips internal notes before they leave it — the customer
+    // never sees what an agent wrote about them.
+    return fetchJson<TicketDetail>(`/consumer/tickets/${id}`);
+  }
   await latency();
   const found = tickets.find((t) => t.id === id);
   return applyScenario(found ? stripInternal(found) : null, null);
@@ -51,6 +63,12 @@ export async function replyToTicket(
   id: string,
   body: string,
 ): Promise<TicketMessage | null> {
+  if (isLive("replyToTicket")) {
+    return fetchJson<TicketMessage>(`/consumer/tickets/${id}/reply`, {
+      method: "POST",
+      body: { body },
+    });
+  }
   await latency();
   const found = tickets.find((t) => t.id === id);
   if (!found) return null;
@@ -74,6 +92,12 @@ export async function replyToTicket(
 
 /** Customer 40 — raising a new ticket. */
 export async function raiseTicket(subject: string, body: string) {
+  if (isLive("raiseTicket")) {
+    return fetchJson<TicketDetail>("/consumer/tickets", {
+      method: "POST",
+      body: { subject, body },
+    });
+  }
   await latency();
   const ticket: TicketDetail = {
     id: `tkt_${Date.now().toString(36)}`,

@@ -29,7 +29,7 @@ export {
   getBooking,
   getBookings,
   getBookingsForExport,
-  previewStatusOverride,
+  overrideBookingStatus,
 } from "./api/bookings";
 export {
   getPayouts,
@@ -44,6 +44,8 @@ export {
   getCustomerBookings,
   getCustomerComplaints,
   getCustomers,
+  blockCustomer,
+  unblockCustomer,
   type CustomerQuery,
 } from "./api/customers";
 export {
@@ -88,6 +90,17 @@ export {
   getBanners,
   getTickets,
   getTicket,
+  // Admin 35–37 writes. Live-only — see the note in api/promotions.ts.
+  createCoupon,
+  updateCoupon,
+  toggleCoupon,
+  createBanner,
+  updateBanner,
+  deleteBanner,
+  replyToAdminTicket,
+  updateTicket,
+  type CouponInput,
+  type BannerInput,
 } from "./api/promotions";
 export {
   getRevenueSeries,
@@ -102,7 +115,13 @@ export {
   getRevenueByCategory,
 } from "./api/reports";
 
-export { getSubAdmins } from "./api/admin-users";
+export {
+  getSubAdmins,
+  createSubAdmin,
+  updateSubAdmin,
+  revokeSubAdmin,
+  restoreSubAdmin,
+} from "./api/admin-users";
 export {
   reviewProDocument,
   approveProKyc,
@@ -110,6 +129,7 @@ export {
   requestMoreDocuments,
   blockPro,
   unblockPro,
+  issueWarning,
   getProDispatchStatus,
   getProDocumentUrl,
 } from "./api/pro-admin";
@@ -308,6 +328,7 @@ export {
   verifyProOtp,
   registerPro,
   saveProfileSetup,
+  uploadProfilePhoto,
   uploadDocument,
   saveBankDetails,
   acceptTerms,

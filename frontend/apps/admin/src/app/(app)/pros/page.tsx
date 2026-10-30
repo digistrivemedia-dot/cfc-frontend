@@ -9,8 +9,10 @@ import {
   ChevronRight,
   CircleDollarSign,
   ClipboardCheck,
+  Download,
   FileCheck,
   FileText,
+  Maximize2,
   ShieldAlert,
   ShieldCheck,
   Star,
@@ -33,6 +35,7 @@ import {
   reviewProDocument,
   approveProKyc,
   rejectProKyc,
+  issueWarning,
 } from "@cfc/mocks";
 import { ApiError } from "@cfc/types";
 import {
@@ -806,6 +809,7 @@ function ApprovalCard({
               <DocumentTile
                 key={doc.type}
                 proId={pro.id}
+                proName={pro.name}
                 doc={doc}
                 onApprove={() => onDoc(pro.id, doc.type, "approved")}
                 onReject={() => {
@@ -878,37 +882,34 @@ function ApprovalCard({
 }
 
 /**
- * Admin 14 — one document, reviewed on its own.
+ * The document itself: thumbnail, and the viewer behind it.
  *
  * Inventory: "Document viewer, approve per document type."
  *
- * Each document is decided separately because they fail separately: a blurred
- * Aadhaar and a valid PAN are two different conversations with the pro. Once
- * decided the tile shows its verdict and offers to undo, rather than losing the
- * controls entirely — a mis-tap on someone's KYC should not be permanent.
- */
-/**
- * One document, with the document actually in it.
+ * **Shared by the review tiles and the read-only detail slider**, because both
+ * have to show the same scan and the fetch is the fiddly part — the file sits
+ * behind an authenticated route, so it is fetched with the token and shown from
+ * a blob URL, revoked on unmount or every document opened stays in memory for
+ * the life of the tab.
  *
- * This tile used to render a `FileText` icon and nothing else — so a reviewer
- * was asked to verify an Aadhaar they could not see, and "Verify" meant
- * "confirm a filename". The comment on `ApprovalsTab` had it right all along:
- * *"A registration is not approved by looking at a name."*
+ * Both places independently grew a `FileText` icon in a grey box that fetched
+ * nothing — a reviewer asked to verify an Aadhaar they could not see, and
+ * "Verify" meaning "confirm a filename". The comment on `ApprovalsTab` had it
+ * right all along: *"A registration is not approved by looking at a name."*
+ * Fixing it in one place and not the other is how the second one survived, so
+ * now there is only one.
  *
- * The file sits behind an authenticated route, so it is fetched with the token
- * and shown from a blob URL — revoked on unmount, or every document opened
- * stays in memory for the life of the tab.
+ * Carries no approve/reject controls. `DocumentTile` adds those; the slider is
+ * a record, not a queue.
  */
-function DocumentTile({
+function DocumentPreview({
   proId,
+  proName,
   doc,
-  onApprove,
-  onReject,
 }: {
   proId: string;
+  proName: string;
   doc: ProDocument;
-  onApprove: () => void;
-  onReject: () => void;
 }) {
   // An empty `imageUrl` means never uploaded. That is **not** the same as
   // awaiting review, and showing both as "pending" would leave an operator
@@ -916,7 +917,9 @@ function DocumentTile({
   const uploaded = doc.imageUrl !== "";
 
   const [src, setSrc] = React.useState<string | null>(null);
+  const [contentType, setContentType] = React.useState("");
   const [failed, setFailed] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!uploaded) return;
@@ -924,13 +927,14 @@ function DocumentTile({
     let cancelled = false;
 
     void getProDocumentUrl(proId, doc.type)
-      .then((objectUrl) => {
+      .then((file) => {
         if (cancelled) {
-          URL.revokeObjectURL(objectUrl);
+          URL.revokeObjectURL(file.url);
           return;
         }
-        url = objectUrl;
-        setSrc(objectUrl);
+        url = file.url;
+        setSrc(file.url);
+        setContentType(file.contentType);
       })
       .catch(() => {
         if (!cancelled) setFailed(true);
@@ -942,8 +946,10 @@ function DocumentTile({
     };
   }, [proId, doc.type, uploaded]);
 
+  const isPdf = contentType.includes("pdf");
+
   return (
-    <div className="space-y-2">
+    <>
       <div
         className={cn(
           "relative flex aspect-video items-center justify-center overflow-hidden rounded-control border",
@@ -956,21 +962,38 @@ function DocumentTile({
       >
         {src ? (
           <>
-            {/* Opens full size in a new tab — an Aadhaar number is unreadable
-                at tile size, and a reviewer has to actually read it. */}
-            <a
-              href={src}
-              target="_blank"
-              rel="noreferrer"
-              className="size-full"
-              aria-label={`Open ${DOCUMENT_TYPE_LABEL[doc.type]} full size`}
+            {/* Opens the viewer, not a raw blob tab. A blob: URL in the address
+                bar is an opaque uuid with no filename, no document label and no
+                way back — and nothing there says whose Aadhaar it is. */}
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              className="group size-full cursor-zoom-in"
+              aria-label={`View ${DOCUMENT_TYPE_LABEL[doc.type]} full size`}
             >
-              <img
-                src={src}
-                alt={`${DOCUMENT_TYPE_LABEL[doc.type]} scan`}
-                className="size-full object-cover"
-              />
-            </a>
+              {isPdf ? (
+                <span className="flex size-full flex-col items-center justify-center gap-1 text-ink-muted">
+                  <FileText className="size-6" aria-hidden="true" />
+                  <span className="text-caption">PDF</span>
+                </span>
+              ) : (
+                <img
+                  src={src}
+                  alt={`${DOCUMENT_TYPE_LABEL[doc.type]} scan`}
+                  className="size-full object-cover"
+                />
+              )}
+              <span
+                className={cn(
+                  "absolute inset-0 flex items-center justify-center",
+                  "bg-scrim opacity-0 transition-opacity duration-fast",
+                  "group-hover:opacity-100 group-focus-visible:opacity-100",
+                )}
+                aria-hidden="true"
+              >
+                <Maximize2 className="size-5 text-white" />
+              </span>
+            </button>
             {doc.status === "approved" && (
               <span className="absolute right-1 top-1 rounded-full bg-live p-1 text-white">
                 <Check className="size-3" aria-hidden="true" />
@@ -995,6 +1018,49 @@ function DocumentTile({
           </span>
         )}
       </div>
+
+      {src && (
+        <DocumentViewer
+          open={open}
+          onOpenChange={setOpen}
+          src={src}
+          isPdf={isPdf}
+          contentType={contentType}
+          doc={doc}
+          proName={proName}
+        />
+      )}
+    </>
+  );
+}
+
+/**
+ * Admin 14 — one document, reviewed on its own.
+ *
+ * The preview plus the verdict. Each document is decided separately because
+ * they fail separately: a blurred Aadhaar and a valid PAN are two different
+ * conversations with the pro. Once decided the tile keeps an Undo rather than
+ * losing the controls entirely — a mis-tap on someone's KYC should not be
+ * permanent.
+ */
+function DocumentTile({
+  proId,
+  proName,
+  doc,
+  onApprove,
+  onReject,
+}: {
+  proId: string;
+  proName: string;
+  doc: ProDocument;
+  onApprove: () => void;
+  onReject: () => void;
+}) {
+  const uploaded = doc.imageUrl !== "";
+
+  return (
+    <div className="space-y-2">
+      <DocumentPreview proId={proId} proName={proName} doc={doc} />
 
       <p className="text-caption font-medium text-ink">
         {DOCUMENT_TYPE_LABEL[doc.type]}
@@ -1025,16 +1091,126 @@ function DocumentTile({
       ) : (
         <div className="flex items-center justify-between gap-2">
           <DocumentStatusBadge status={doc.status} />
-          <button
-            type="button"
-            onClick={doc.status === "approved" ? onReject : onApprove}
-            className="rounded-pill text-caption text-action hover:underline"
-          >
-            Undo
-          </button>
+          {uploaded && (
+            <button
+              type="button"
+              onClick={doc.status === "approved" ? onReject : onApprove}
+              className="rounded-pill text-caption text-action hover:underline"
+            >
+              Undo
+            </button>
+          )}
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * A KYC document, full size, in the app.
+ *
+ * Replaces `<a target="_blank">` on the blob URL. That opened a tab whose
+ * address bar read `blob:http://localhost:3002/babc0061-…` — an opaque uuid
+ * with no filename, no indication of which document it was or whose, and no
+ * way back except closing the tab. An operator working through four documents
+ * for each of several pros accumulated a row of identical nameless tabs.
+ *
+ * So the document is shown here instead, labelled with the pro's name and its
+ * own review state, and the download is explicit and properly named.
+ *
+ * ## The download filename
+ *
+ * A blob URL downloads as its uuid. `download` on the anchor renames it, which
+ * matters the moment a reviewer saves two of these: `rohan-pro-aadhaar-front.jpg`
+ * against `babc0061-de03-40fc-87c6-bb7466036eb5`.
+ *
+ * ## No `window.open`
+ *
+ * The bytes are already in memory as a blob. Re-opening them in a tab would
+ * leave the same uuid URL this replaces.
+ */
+function DocumentViewer({
+  open,
+  onOpenChange,
+  src,
+  isPdf,
+  contentType,
+  doc,
+  proName,
+}: {
+  open: boolean;
+  onOpenChange: (next: boolean) => void;
+  src: string;
+  isPdf: boolean;
+  contentType: string;
+  doc: ProDocument;
+  proName: string;
+}) {
+  const label = DOCUMENT_TYPE_LABEL[doc.type];
+
+  // `image/jpeg` -> `jpg`. Falls back to `jpg` rather than leaving the file
+  // extensionless, which Windows opens with nothing at all.
+  const extension = isPdf
+    ? "pdf"
+    : (contentType.split("/")[1]?.replace("jpeg", "jpg").split("+")[0] ?? "jpg");
+  const filename = `${proName} ${label}`
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{label}</DialogTitle>
+          <DialogDescription>
+            {proName} · uploaded for identity verification
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex items-center gap-2">
+          <DocumentStatusBadge status={doc.status} />
+          {doc.rejectionReason !== undefined && (
+            <span className="text-caption text-critical-ink">
+              {doc.rejectionReason}
+            </span>
+          )}
+        </div>
+
+        <div className="mt-3 overflow-hidden rounded-control border border-border bg-canvas">
+          {isPdf ? (
+            // A PDF is a document, not an image. Rendering it into an <img>
+            // produces a broken-image icon over a file that uploaded fine.
+            <iframe
+              src={src}
+              title={`${label} — ${proName}`}
+              className="h-document w-full"
+            />
+          ) : (
+            /* `contain`, not `cover`: the tile crops to fit a grid, but a
+               reviewer has to read an Aadhaar number, and a cropped scan is
+               exactly where that number goes missing. */
+            <img
+              src={src}
+              alt={`${label} for ${proName}`}
+              className="max-h-document w-full bg-structure object-contain"
+            />
+          )}
+        </div>
+
+        <DialogFooter className="mt-4">
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+          <Button asChild>
+            <a href={src} download={`${filename}.${extension}`}>
+              <Download />
+              Download
+            </a>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1187,6 +1363,7 @@ function DocumentsTab() {
                     <DocumentTile
                       key={doc.type}
                       proId={p.id}
+                      proName={p.name}
                       doc={doc}
                       onApprove={() => decideDoc(p.id, doc.type, "approved")}
                       onReject={() => decideDoc(p.id, doc.type, "rejected")}
@@ -2042,9 +2219,16 @@ function WarningsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }) {
   );
   const penaltyTotal = (rows ?? []).reduce((s, w) => s + w.penaltyPaise, 0);
 
+  // The server returns the stored row, so the list shows what was actually
+  // recorded rather than what the dialog hoped would be. A penalty writes a
+  // wallet row in the same request, which is why the toast can name it.
   const issue = (w: ProWarning) => {
     setRows((rs) => [w, ...(rs ?? [])]);
-    toast.success(`Warning issued to ${w.proName}`);
+    toast.success(
+      w.penaltyPaise > 0
+        ? `Warning issued to ${w.proName} — ${formatCurrency(w.penaltyPaise)} deducted`
+        : `Warning issued to ${w.proName}`,
+    );
   };
 
   return (
@@ -2160,12 +2344,15 @@ function IssueWarningDialog({
   const [proId, setProId] = React.useState<string | null>(null);
   const [reason, setReason] = React.useState("");
   const [penalty, setPenalty] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (!open) {
       setProId(null);
       setReason("");
       setPenalty("");
+      setError(null);
       return;
     }
     getPros({ approvalStatus: "approved", pageSize: 100 }).then((r) =>
@@ -2177,17 +2364,20 @@ function IssueWarningDialog({
   const canIssue = pro !== undefined && reason.trim() !== "";
 
   const submit = () => {
-    if (!pro) return;
-    onIssued({
-      id: `warn_${Date.now()}`,
-      proId: pro.id,
-      proName: pro.name,
-      reason: reason.trim(),
-      penaltyPaise: Math.round(Number(penalty) * 100) || 0,
-      issuedAt: new Date().toISOString(),
-      issuedBy: "You",
-    });
-    setOpen(false);
+    if (!pro || busy) return;
+    setBusy(true);
+    setError(null);
+    // Rupees in the field, paise on the wire. `Math.round` before the cast,
+    // or 49.99 arrives as 4998 — a rounding error in somebody's fine.
+    issueWarning(pro.id, reason.trim(), Math.round(Number(penalty) * 100) || 0)
+      .then((w) => {
+        onIssued(w);
+        setOpen(false);
+      })
+      .catch((e: unknown) =>
+        setError(e instanceof Error ? e.message : "Could not issue the warning."),
+      )
+      .finally(() => setBusy(false));
   };
 
   return (
@@ -2270,9 +2460,19 @@ function IssueWarningDialog({
           </FormField>
         </div>
 
+        {error !== null && (
+          <InlineAlert tone="critical" title="The warning was not issued">
+            {error}
+          </InlineAlert>
+        )}
+
         <DialogFooter>
-          <Button variant="critical" onClick={submit} disabled={!canIssue}>
-            Issue warning
+          <Button
+            variant="critical"
+            onClick={submit}
+            disabled={!canIssue || busy}
+          >
+            {busy ? "Issuing…" : "Issue warning"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -2459,7 +2659,10 @@ function ProDetailPanel({ id }: { id: string }) {
                   }
                 />
                 <DetailRow label="Services" value={pro.services.join(", ")} />
-                <DetailRow label="Area" value={pro.area} />
+                <DetailRow
+                  label={pro.areas.length > 1 ? "Areas" : "Area"}
+                  value={pro.areas.join(", ")}
+                />
                 <DetailRow
                   label="Experience"
                   value={`${pro.experienceYears} years`}
@@ -2471,16 +2674,17 @@ function ProDetailPanel({ id }: { id: string }) {
           </TabsContent>
 
           <TabsContent value="documents">
+            {/* The real scans, clickable through to the full-size viewer and a
+                download. This was four grey `FileText` placeholders, so the
+                one screen that shows a pro's whole record showed none of it. */}
             <div className="grid gap-3 sm:grid-cols-2">
               {pro.documents.map((doc) => (
                 <DetailCard key={doc.type} title={DOCUMENT_TYPE_LABEL[doc.type]}>
-                  <div
-                    className="flex aspect-video items-center justify-center rounded-control bg-canvas text-ink-faint"
-                    role="img"
-                    aria-label={`${DOCUMENT_TYPE_LABEL[doc.type]} scan`}
-                  >
-                    <FileText className="size-6" aria-hidden="true" />
-                  </div>
+                  <DocumentPreview
+                    proId={pro.id}
+                    proName={pro.name}
+                    doc={doc}
+                  />
                   <div className="mt-3">
                     <DocumentStatusBadge status={doc.status} />
                   </div>

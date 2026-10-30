@@ -240,6 +240,20 @@ export async function fetchJson<T>(
   return parsed as T;
 }
 
+/** A protected file, fetched into memory. */
+export interface ObjectUrl {
+  /** Blob URL, for an `<img src>`, an `<iframe>` or a download link. */
+  url: string;
+  /**
+   * What the server actually sent.
+   *
+   * Returned because the caller cannot otherwise tell a JPEG from a PDF, and a
+   * PAN may legitimately be either. Rendering a PDF into an `<img>` produces a
+   * broken-image icon over a document that uploaded perfectly well.
+   */
+  contentType: string;
+}
+
 /**
  * Fetches a protected file and returns an object URL for it.
  *
@@ -253,7 +267,7 @@ export async function fetchJson<T>(
  * **The caller must `URL.revokeObjectURL` when done**, or every document opened
  * stays in memory for the life of the tab.
  */
-export async function fetchObjectUrl(path: string): Promise<string> {
+export async function fetchObjectUrl(path: string): Promise<ObjectUrl> {
   const token = getToken();
   const response = await fetch(buildUrl(path), {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -269,5 +283,11 @@ export async function fetchObjectUrl(path: string): Promise<string> {
     );
   }
 
-  return URL.createObjectURL(await response.blob());
+  const blob = await response.blob();
+  return {
+    url: URL.createObjectURL(blob),
+    // The blob's own type, not the header: the browser has already normalised
+    // it, and a header with a charset suffix would break a `startsWith` check.
+    contentType: blob.type || response.headers.get("Content-Type") || "",
+  };
 }

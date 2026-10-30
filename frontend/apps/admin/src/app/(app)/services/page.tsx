@@ -191,8 +191,11 @@ function ImagePicker({
               alt={i === 0 ? "Cover image" : `Image ${i + 1}`}
               className="size-full object-cover"
             />
+            {/* `bg-on-media`, not `bg-ink/75`: an opacity modifier on a var()
+                colour generates no CSS, so this badge and the button below it
+                were white text on the bare photograph. */}
             {i === 0 && (
-              <span className="absolute left-1 top-1 rounded-pill bg-ink/75 px-2 py-0.5 text-caption text-white">
+              <span className="absolute left-1 top-1 rounded-pill bg-on-media px-2 py-1 text-caption text-white">
                 Cover
               </span>
             )}
@@ -201,13 +204,13 @@ function ImagePicker({
               onClick={() => onChange(paths.filter((p) => p !== src))}
               aria-label={`Remove image ${i + 1}`}
               className={cn(
-                "absolute right-1 top-1 rounded-full bg-ink/75 p-1 text-white",
+                "absolute right-1 top-1 rounded-full bg-on-media p-1 text-white",
                 "transition-opacity duration-fast",
                 // Always visible on touch, where there is no hover to reveal it.
                 "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 coarse:opacity-100",
               )}
             >
-              <Trash2 className="size-3.5" aria-hidden="true" />
+              <Trash2 className="size-4" aria-hidden="true" />
             </button>
           </div>
         ))}

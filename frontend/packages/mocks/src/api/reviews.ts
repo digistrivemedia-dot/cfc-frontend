@@ -1,5 +1,7 @@
+import type { Review } from "@cfc/types";
 import { reviews } from "../fixtures/reviews";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Customer 7 — reviews shown on the home screen.
@@ -10,6 +12,11 @@ import { applyScenario, latency } from "../control";
  * and the label disappears — the screen needs no other change.
  */
 export async function getReviews(limit?: number) {
+  if (isLive("getReviews")) {
+    return fetchJson<Review[]>("/public/reviews", {
+      ...(limit !== undefined ? { query: { limit } } : {}),
+    });
+  }
   await latency();
   const rows = [...reviews].sort(
     (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt),
@@ -17,8 +24,15 @@ export async function getReviews(limit?: number) {
   return applyScenario(limit ? rows.slice(0, limit) : rows, []);
 }
 
-/** Whether the reviews above are sample copy rather than real submissions. */
-export const REVIEWS_ARE_PLACEHOLDER = true;
+/**
+ * Whether the reviews above are sample copy rather than real submissions.
+ *
+ * Derived from the live flag rather than hand-set. Once `getReviews` is served
+ * by the API every row is a real customer's rating of an OTP-closed job, so
+ * the "sample content" label the screens render must disappear — and tying the
+ * two together means it cannot be left on by somebody forgetting to flip it.
+ */
+export const REVIEWS_ARE_PLACEHOLDER = !isLive("getReviews");
 
 /**
  * Customer 12 — reviews for one service.
@@ -33,6 +47,11 @@ export const REVIEWS_ARE_PLACEHOLDER = true;
  * the catalogue id is not stored on a review.
  */
 export async function getServiceReviews(serviceName: string, limit?: number) {
+  if (isLive("getServiceReviews")) {
+    return fetchJson<Review[]>("/public/reviews", {
+      query: { serviceName, ...(limit !== undefined ? { limit } : {}) },
+    });
+  }
   await latency();
   const rows = reviews
     .filter((r) => r.serviceName === serviceName)
@@ -42,6 +61,12 @@ export async function getServiceReviews(serviceName: string, limit?: number) {
 
 /** How many reviews exist for a service, for a "see all" count. */
 export async function getServiceReviewCount(serviceName: string) {
+  if (isLive("getServiceReviewCount")) {
+    const r = await fetchJson<{ count: number }>("/public/reviews/count", {
+      query: { serviceName },
+    });
+    return r.count;
+  }
   await latency();
   return applyScenario(
     reviews.filter((r) => r.serviceName === serviceName).length,

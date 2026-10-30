@@ -7,6 +7,7 @@ import type {
 import { pros } from "../fixtures/pros";
 import { reviews } from "../fixtures/reviews";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Pro 30 and 31 — reviews and notifications.
@@ -174,6 +175,14 @@ export async function getProNotifications(
   proId: string,
   filter: ProNotificationFilter = "all",
 ): Promise<ProNotification[]> {
+  if (isLive("getProNotifications")) {
+    // `proId` is ignored on the live path: the server takes the recipient from
+    // the token, because a notification list is private activity and an id in
+    // the request is an invitation to read someone else's.
+    return fetchJson<ProNotification[]>("/pro/notifications", {
+      query: { filter },
+    });
+  }
   await latency();
   const rows = listFor(proId);
   return applyScenario(
@@ -184,6 +193,10 @@ export async function getProNotifications(
 
 /** Drives the bell in the shell. */
 export async function getProUnreadCount(proId: string): Promise<number> {
+  if (isLive("getProUnreadCount")) {
+    const r = await fetchJson<{ count: number }>("/pro/notifications/unread-count");
+    return r.count;
+  }
   await latency();
   return applyScenario(listFor(proId).filter((r) => !r.read).length, 0);
 }
@@ -192,6 +205,10 @@ export async function markProNotificationRead(
   proId: string,
   id: string,
 ): Promise<void> {
+  if (isLive("markProNotificationRead")) {
+    await fetchJson(`/pro/notifications/${id}/read`, { method: "POST" });
+    return;
+  }
   await latency();
   const found = listFor(proId).find((r) => r.id === id);
   if (found) found.read = true;
@@ -200,6 +217,10 @@ export async function markProNotificationRead(
 export async function markAllProNotificationsRead(
   proId: string,
 ): Promise<void> {
+  if (isLive("markAllProNotificationsRead")) {
+    await fetchJson("/pro/notifications/read-all", { method: "POST" });
+    return;
+  }
   await latency();
   for (const row of listFor(proId)) row.read = true;
 }
@@ -217,6 +238,9 @@ export async function getProOwnReviews(
   proId: string,
   limit = 20,
 ): Promise<Review[]> {
+  if (isLive("getProOwnReviews")) {
+    return fetchJson<Review[]>("/pro/reviews", { query: { limit } });
+  }
   await latency();
 
   const pro = pros.find((p) => p.id === proId);
@@ -243,6 +267,9 @@ export async function getProOwnReviews(
 export async function getProRatingBreakdown(
   proId: string,
 ): Promise<RatingBreakdown> {
+  if (isLive("getProRatingBreakdown")) {
+    return fetchJson<RatingBreakdown>("/pro/reviews/breakdown");
+  }
   await latency();
 
   const pro = pros.find((p) => p.id === proId);
@@ -315,6 +342,12 @@ export async function replyToReview(
   _reviewId: string,
   body: string,
 ): Promise<{ body: string; at: string }> {
+  if (isLive("replyToReview")) {
+    return fetchJson(`/pro/reviews/${_reviewId}/reply`, {
+      method: "POST",
+      body: { body },
+    });
+  }
   await latency();
   return { body, at: new Date().toISOString() };
 }

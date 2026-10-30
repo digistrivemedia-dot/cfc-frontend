@@ -120,12 +120,39 @@ export async function registerPro(
   };
 }
 
+/**
+ * Pro 5 — the profile photo.
+ *
+ * Separate from `saveProfileSetup` because it is multipart and that one is JSON,
+ * and because the two fail independently: a pro whose photo upload drops on a
+ * lift ride should not lose their experience and areas with it.
+ *
+ * This is **not** the KYC selfie. The selfie is private and proves identity; this
+ * is the picture a customer sees before opening their door.
+ */
+export async function uploadProfilePhoto(
+  file: File,
+): Promise<{ photoUrl: string }> {
+  const form = new FormData();
+  form.append("file", file);
+  return fetchJson<{ photoUrl: string }>("/pro/profile/photo", {
+    method: "POST",
+    form,
+  });
+}
+
 /** Pro 5 — the profile a pro sets up before review. */
 export interface ProProfileSetup {
   photo: boolean;
   skills: string[];
   experienceYears: number;
   areas: string[];
+  /**
+   * What a customer reads on the pro's profile. Pro 5 has always collected it
+   * and this shape has always dropped it, so it never reached the server — which
+   * accepts it, and did from the start.
+   */
+  bio: string;
 }
 
 export async function saveProfileSetup(
@@ -140,6 +167,7 @@ export async function saveProfileSetup(
       body: {
         experienceYears: setup.experienceYears,
         areas: setup.areas,
+        bio: setup.bio,
       },
     });
   }
@@ -181,10 +209,20 @@ export const REQUIRED_DOCUMENTS: {
   },
 ];
 
+/**
+ * `file` is **required**, not optional.
+ *
+ * It was optional, so that the fixture path — which has no file to store — could
+ * be called without one. That made `uploadDocument(id, type)` compile, and Pro 6
+ * called it exactly that way: four uploads that threw `NO_FILE` before a request
+ * left the browser, and a Continue button that did nothing. Required here means
+ * the compiler catches the next one; the `!file` guard stays for callers that
+ * reach this from untyped code.
+ */
 export async function uploadDocument(
   _proId: string,
   type: DocumentType,
-  file?: File,
+  file: File,
 ): Promise<{ type: DocumentType; status: "pending" }> {
   if (isLive("uploadDocument")) {
     if (!file) {

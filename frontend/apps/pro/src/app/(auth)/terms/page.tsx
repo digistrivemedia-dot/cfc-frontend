@@ -11,6 +11,7 @@ import {
   type GoldenRule,
   type PenaltyStep,
 } from "@cfc/mocks";
+import { ApiError } from "@cfc/types";
 import { Button, Checkbox, Skeleton, cn, toast } from "@cfc/ui";
 import { GoldenRules, PenaltyStructure } from "@/components/conduct-rules";
 import { OnboardingShell } from "@/components/onboarding-shell";
@@ -79,8 +80,12 @@ export default function ProTermsPage() {
     try {
       await acceptTerms("pro_new");
       router.push("/approval");
-    } catch {
-      toast.error("Could not record your acceptance. Try again.");
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "Could not record your acceptance. Try again.",
+      );
     } finally {
       setBusy(false);
     }

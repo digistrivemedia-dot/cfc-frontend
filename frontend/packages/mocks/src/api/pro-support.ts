@@ -1,6 +1,7 @@
 import type { ServiceFaq, TicketListItem } from "@cfc/types";
 import { tickets } from "../fixtures/promotions";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 import { SUPPORT_HOURS, SUPPORT_PHONE } from "./my-support";
 
 /**
@@ -105,6 +106,9 @@ const PRO_FAQS: ServiceFaq[] = [
 ];
 
 export async function getProFaqs(): Promise<ServiceFaq[]> {
+  if (isLive("getProFaqs")) {
+    return fetchJson<ServiceFaq[]>("/public/faqs", { query: { audience: "pro" } });
+  }
   await latency();
   return applyScenario(PRO_FAQS, []);
 }
@@ -133,6 +137,11 @@ export { SUPPORT_HOURS, SUPPORT_PHONE };
 export async function getProTickets(
   _proId: string,
 ): Promise<TicketListItem[]> {
+  if (isLive("getProTickets")) {
+    // The id is ignored on the live path: the server scopes to the token, so
+    // the cross-role leak this function was written to avoid cannot happen.
+    return fetchJson<TicketListItem[]>("/pro/tickets");
+  }
   await latency();
 
   const mine = tickets.filter((t) => t.fromRole === "pro").slice(0, 4);

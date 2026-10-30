@@ -61,11 +61,23 @@ export default function ProRegisterPage() {
   const [query, setQuery] = React.useState("");
 
   const [services, setServices] = React.useState<Service[] | null>(null);
-  const [areas, setAreas] = React.useState<string[]>([]);
+  const [areas, setAreas] = React.useState<string[] | null>(null);
   const [busy, setBusy] = React.useState(false);
+  /**
+   * Whether the lists failed to load, and a counter to retry them.
+   *
+   * Both exist because the failure here is silent and unrecoverable without
+   * them. `areas` was `[]` on failure and `[]` is also what an empty catalogue
+   * looks like, so the area card rendered **no buttons and no explanation** —
+   * and since `valid` requires an area, Continue could never enable no matter
+   * what the pro typed. A toast that has since faded was the only trace.
+   */
+  const [loadFailed, setLoadFailed] = React.useState(false);
+  const [reloadKey, setReloadKey] = React.useState(0);
 
   React.useEffect(() => {
     let cancelled = false;
+    setLoadFailed(false);
     void Promise.all([getRegisterableServices(), getServiceAreas()])
       .then(([s, a]) => {
         if (cancelled) return;
@@ -73,19 +85,24 @@ export default function ProRegisterPage() {
         setAreas(a);
       })
       .catch(() => {
-        if (!cancelled) {
-          setServices([]);
-          toast.error("Could not load the service list. Check your connection.");
-        }
+        if (cancelled) return;
+        setServices([]);
+        setAreas([]);
+        setLoadFailed(true);
+        toast.error("Could not load the service list. Check your connection.");
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [reloadKey]);
 
   const digits = phone.replace(/\D/g, "");
   const nameValid = name.trim().length >= 3;
-  const phoneValid = digits.length === 10;
+  // The **server's** rule, not just a length check. An Indian mobile starts
+  // 6-9, so "1234567890" passed this form and was rejected by the API every
+  // time — and the catch below reported it as a connection problem, which
+  // sent anyone debugging it to entirely the wrong place.
+  const phoneValid = /^[6-9]\d{9}$/.test(digits);
   const valid = nameValid && phoneValid && chosen.length > 0 && area !== "";
 
   const filtered = React.useMemo(() => {
@@ -121,8 +138,14 @@ export default function ProRegisterPage() {
       router.push(
         `/otp?phone=${encodeURIComponent(digits)}&from=register`,
       );
-    } catch {
-      toast.error("Could not send the code. Check your connection.");
+    } catch (e: unknown) {
+      // The server's own message. "Check your connection" is only true for one
+      // of the several ways this fails.
+      toast.error(
+        e instanceof Error && e.message
+          ? e.message
+          : "Could not send the code. Please try again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -218,8 +241,14 @@ export default function ProRegisterPage() {
               <ul className="mt-3 max-h-block-sm space-y-1 overflow-y-auto">
                 {filtered.length === 0 ? (
                   <li className="p-3 text-small text-ink-muted">
-                    Nothing matches “{query}”. Try a shorter word, or contact
-                    the office if your trade is not listed.
+                    {/* An unfiltered empty list is not a failed search. Saying
+                        'nothing matches ""' sends a pro looking for a typo in a
+                        box they never typed in. */}
+                    {query.trim() === ""
+                      ? loadFailed
+                        ? "The service list did not load."
+                        : "No services have been set up yet. Please contact the CFC office."
+                      : `Nothing matches “${query}”. Try a shorter word, or contact the office if your trade is not listed.`}
                   </li>
                 ) : (
                   filtered.map((service) => {
@@ -279,26 +308,42 @@ export default function ProRegisterPage() {
             later.
           </p>
 
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {areas.map((a) => (
-              <li key={a}>
-                <button
-                  type="button"
-                  onClick={() => setArea(a)}
-                  aria-pressed={area === a}
-                  className={cn(
-                    "flex h-touch items-center rounded-pill px-4",
-                    "text-small font-medium transition-colors duration-fast",
-                    area === a
-                      ? "bg-action text-on-action"
-                      : "border border-border bg-surface text-ink-muted hover:text-ink",
-                  )}
-                >
-                  {a}
-                </button>
-              </li>
-            ))}
-          </ul>
+          {areas === null ? (
+            <div className="mt-3 flex gap-2">
+              <Skeleton className="h-touch w-24 rounded-pill" />
+              <Skeleton className="h-touch w-24 rounded-pill" />
+            </div>
+          ) : areas.length === 0 ? (
+            // Never silently empty. An area is required, so no areas means the
+            // form cannot be completed — and the pro has to be told that rather
+            // than left tapping a disabled button.
+            <p className="mt-3 text-caption text-ink-muted">
+              {loadFailed
+                ? "The area list did not load."
+                : "No service areas have been set up yet. Please contact the CFC office."}
+            </p>
+          ) : (
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {areas.map((a) => (
+                <li key={a}>
+                  <button
+                    type="button"
+                    onClick={() => setArea(a)}
+                    aria-pressed={area === a}
+                    className={cn(
+                      "flex h-touch items-center rounded-pill px-4",
+                      "text-small font-medium transition-colors duration-fast",
+                      area === a
+                        ? "bg-action text-on-action"
+                        : "border border-border bg-surface text-ink-muted hover:text-ink",
+                    )}
+                  >
+                    {a}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </OnboardingCard>
 
         {/* The number, last. */}
@@ -309,7 +354,7 @@ export default function ProRegisterPage() {
             required
             help="We send a code to this number to confirm it. It becomes how you sign in."
             {...(phone !== "" && !phoneValid
-              ? { error: "Enter your 10-digit mobile number." }
+              ? { error: "Enter a 10-digit Indian mobile number, starting 6 to 9." }
               : {})}
           >
             <div className="flex items-center gap-2">
@@ -343,17 +388,45 @@ export default function ProRegisterPage() {
         </Button>
 
         {/* Why the button is unavailable. A disabled control with no reason is
-            the most frustrating thing in any form. */}
+            the most frustrating thing in any form — and worse when the reason
+            names something the pro cannot do, so a failed load says so and
+            offers the retry instead. */}
         {!valid && (
-          <p className="text-center text-caption text-on-structure-muted">
-            {!nameValid
-              ? "Enter your full name to continue."
-              : chosen.length === 0
-                ? "Choose at least one service."
-                : area === ""
-                  ? "Choose where you are based."
-                  : "Enter your mobile number."}
-          </p>
+          <div className="text-center text-caption text-on-structure-muted">
+            {loadFailed ? (
+              <>
+                <p>
+                  The service and area lists did not load, so this form cannot
+                  be completed yet.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="pro"
+                  className="mt-2 w-full"
+                  onClick={() => {
+                    setServices(null);
+                    setAreas(null);
+                    setReloadKey((n) => n + 1);
+                  }}
+                >
+                  Try again
+                </Button>
+              </>
+            ) : (
+              <p>
+                {!nameValid
+                  ? "Enter your full name to continue."
+                  : chosen.length === 0
+                    ? "Choose at least one service."
+                    : area === ""
+                      ? "Choose where you are based."
+                      : !phoneValid && phone !== ""
+                        ? "Enter a 10-digit Indian mobile number, starting 6 to 9."
+                        : "Enter your mobile number."}
+              </p>
+            )}
+          </div>
         )}
       </form>
     </OnboardingShell>

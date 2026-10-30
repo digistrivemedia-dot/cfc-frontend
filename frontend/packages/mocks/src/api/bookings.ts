@@ -8,6 +8,7 @@ import type {
 import { ApiError } from "@cfc/types";
 import { bookingDetails, bookings } from "../fixtures/bookings";
 import { applyScenario, latency } from "../control";
+import { fetchJson, isLive } from "../http";
 
 /**
  * Bookings api.
@@ -21,6 +22,11 @@ const DEFAULT_PAGE_SIZE = 20;
 export async function getBookings(
   query: BookingQuery & { area?: string | null } = {},
 ): Promise<Page<BookingListItem>> {
+  if (isLive("getBookings")) {
+    return fetchJson<Page<BookingListItem>>("/admin/bookings", {
+      query: queryParams(query),
+    });
+  }
   await latency();
 
   const {
@@ -94,6 +100,14 @@ export async function getBookings(
 export async function getBookingsForExport(
   query: BookingQuery & { area?: string | null } = {},
 ): Promise<BookingListItem[]> {
+  if (isLive("getBookings")) {
+    // Its own endpoint rather than a huge page: the server caps the export and
+    // skips the count query, and `bookings.export` is a permission an area
+    // admin does not have.
+    return fetchJson<BookingListItem[]>("/admin/bookings/export", {
+      query: queryParams(query),
+    });
+  }
   const all = await getBookings({ ...query, page: 1, pageSize: 10_000 });
   return all.items;
 }
@@ -106,6 +120,9 @@ export async function getBookingsForExport(
  * carry any of that.
  */
 export async function getBooking(id: string): Promise<BookingDetail> {
+  if (isLive("getBooking")) {
+    return fetchJson<BookingDetail>(`/admin/bookings/${id}`);
+  }
   await latency();
   const found = bookingDetails[id];
   if (!found) throw new ApiError(404, "Booking not found.");
@@ -113,35 +130,39 @@ export async function getBooking(id: string): Promise<BookingDetail> {
 }
 
 /**
- * Force a booking into a different state. Admin 8 — "Force status updates,
- * admin intervention on disputes".
+ * Admin 8 — force a booking into a different state.
  *
- * The mock layer is read-only by design, so this validates and returns what the
- * record WOULD become without mutating the fixture. The screen renders the
- * result; the backend team owns the write.
+ * Replaces `previewStatusOverride`, which validated and returned what the
+ * record *would* become without writing anything — the honest shape while the
+ * mock layer was read-only, and a lie once there is a server to write to.
+ *
+ * Live-only, like the other admin writes. The server allows an override to
+ * break the normal transition table (that is what forcing means) but refuses
+ * to reopen a completed or cancelled booking: completion has already settled
+ * money, and reopening would let a second completion pay the pro twice.
  */
-export async function previewStatusOverride(
+export async function overrideBookingStatus(
   id: string,
   next: BookingStatus,
   reason: string,
 ): Promise<BookingDetail> {
-  await latency();
-  const found = bookingDetails[id];
-  if (!found) throw new ApiError(404, "Booking not found.");
-  if (reason.trim() === "") {
-    throw new ApiError(400, "An override needs a reason for the audit trail.");
-  }
-  return applyScenario({
-    ...found,
-    status: next,
-    timeline: [
-      ...found.timeline,
-      {
-        label: `Status forced to ${next.replace(/_/g, " ")}`,
-        at: new Date().toISOString(),
-        actor: "You",
-        forced: true,
-      },
-    ],
+  return fetchJson<BookingDetail>(`/admin/bookings/${id}/status`, {
+    method: "POST",
+    body: { status: next, reason },
   });
+}
+
+/** The filters, flattened for the query string. Shared by list and export. */
+function queryParams(
+  query: BookingQuery & { area?: string | null },
+): Record<string, string | number> {
+  const out: Record<string, string | number> = {};
+  for (const key of ["search", "status", "from", "to", "sortBy", "sortDir"] as const) {
+    const v = query[key];
+    if (typeof v === "string" && v !== "") out[key] = v;
+  }
+  if (query.area) out["area"] = query.area;
+  if (query.page !== undefined) out["page"] = query.page;
+  if (query.pageSize !== undefined) out["pageSize"] = query.pageSize;
+  return out;
 }

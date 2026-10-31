@@ -22,7 +22,9 @@ export {
   setToken,
   clearToken,
   tokenRole,
+  tokenActor,
   isAdminToken,
+  type TokenActor,
 } from "./http";
 
 export {
@@ -266,12 +268,16 @@ export {
   type CompletionRejection,
 } from "./api/pro-work";
 export {
+  getMyProProfile,
   getProServices,
   setProServiceEnabled,
   getProAvailability,
   saveProAvailability,
   updateProProfile,
   getServiceAreas,
+  type ProOwnProfile,
+  type ProOwnDocument,
+  type ProOwnWarning,
 } from "./api/pro-profile";
 
 // The signed-in customer's own bookings — Customer 25 to 29, plus the home

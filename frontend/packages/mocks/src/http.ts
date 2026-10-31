@@ -110,6 +110,34 @@ export function clearToken(): void {
  * admin catalogue endpoint and got a 403 while simply browsing.
  */
 export function tokenRole(): string | null {
+  return tokenActor()?.role ?? null;
+}
+
+/** Who the stored token says we are. `null` when there is no usable token. */
+export interface TokenActor {
+  id: string;
+  name: string;
+  role: string;
+}
+
+/**
+ * The actor inside the stored token.
+ *
+ * The server puts `sub`, `name` and `role` in every token it signs, so the id
+ * and display name of the signed-in user are **already on the client** — no
+ * request needed to show "Murugan" in a navigation rail.
+ *
+ * That matters because the pro app's shell used to fetch a whole profile on
+ * every screen just to read a name, and the call it used was an admin route
+ * that answered 403 regardless. A request that cannot succeed, repeated on
+ * every navigation, to display something we were already holding.
+ *
+ * As with `tokenRole`, this decodes **without verifying**, which is safe for
+ * what it is used for: choosing a URL and rendering a label. The server
+ * verifies the signature and enforces every permission, so a tampered name
+ * here changes a word on the screen and nothing else.
+ */
+export function tokenActor(): TokenActor | null {
   const token = getToken();
   if (!token) return null;
 
@@ -120,8 +148,17 @@ export function tokenRole(): string | null {
     // base64url -> base64, then decode. `atob` is in every browser and in Node
     // 16+, so no Buffer import that would break the browser bundle.
     const json = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-    const parsed = JSON.parse(json) as { role?: unknown };
-    return typeof parsed.role === "string" ? parsed.role : null;
+    const parsed = JSON.parse(json) as {
+      sub?: unknown;
+      name?: unknown;
+      role?: unknown;
+    };
+    if (typeof parsed.role !== "string") return null;
+    return {
+      id: typeof parsed.sub === "string" ? parsed.sub : "",
+      name: typeof parsed.name === "string" ? parsed.name : "",
+      role: parsed.role,
+    };
   } catch {
     // A malformed token is treated as no token: the request goes to the public
     // endpoint, which is the safe direction to fail in.

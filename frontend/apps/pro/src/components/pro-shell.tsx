@@ -13,11 +13,10 @@ import {
   User,
   Wallet,
 } from "lucide-react";
-import { getPro, getUnreadNotificationCount } from "@cfc/mocks";
-import type { ProDetail } from "@cfc/types";
+import { getUnreadNotificationCount, tokenActor } from "@cfc/mocks";
 import { Avatar, AvatarFallback, Switch, cn, initials } from "@cfc/ui";
 import { Logo } from "@/components/logo";
-import { currentProId, useOnlineState } from "@/lib/pro-session";
+import { useOnlineState } from "@/lib/pro-session";
 
 /**
  * The Pro app's navigation shell.
@@ -60,28 +59,34 @@ function useIsActive(href: string): boolean {
 }
 
 /**
- * The signed-in pro.
+ * The signed-in pro, for the navigation only.
  *
- * Fetched here rather than passed down: both the rail and the mobile bar need
- * the name, photo and rating, and no caller should have to know which pro is
- * signed in. Null until it arrives, and every consumer of it renders a real
- * fallback rather than a guess at the shape.
+ * **Read from the session token, not fetched.** The shell needs an id and a
+ * name, and the server puts both in every token it signs — so this is already
+ * on the client and no request is needed to render a rail label.
+ *
+ * It used to call `getPro(currentProId())` on every pro screen. That function
+ * targets `GET /admin/pros/:id`, an admin route, so with a pro's token it
+ * answered 403 every time: a request that could never succeed, repeated on
+ * every navigation, to display a name we were already holding. The `catch` hid
+ * it, so the only symptom was a nameless rail.
+ *
+ * Reading it in an effect rather than during render because `sessionStorage` is
+ * not available on the server, and the first paint is server-rendered.
  */
-function usePro(): ProDetail | null {
-  const [pro, setPro] = React.useState<ProDetail | null>(null);
+function usePro(): { id: string; name: string } | null {
+  const [pro, setPro] = React.useState<{ id: string; name: string } | null>(
+    null,
+  );
 
   React.useEffect(() => {
-    let cancelled = false;
-    getPro(currentProId())
-      .then((p) => {
-        if (!cancelled) setPro(p);
-      })
-      .catch(() => {
-        // A failed profile fetch must not take the navigation down with it.
-      });
-    return () => {
-      cancelled = true;
-    };
+    const actor = tokenActor();
+    setPro(
+      actor && actor.role === "pro"
+        ? { id: actor.id, name: actor.name }
+        : // No token, or someone else's. The nav renders its fallback.
+          null,
+    );
   }, []);
 
   return pro;

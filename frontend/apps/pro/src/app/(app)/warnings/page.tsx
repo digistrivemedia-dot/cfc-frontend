@@ -9,8 +9,8 @@ import {
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
-import { getPro, getProWarnings } from "@cfc/mocks";
-import type { ProDetail, ProWarning } from "@cfc/types";
+import { getMyProProfile } from "@cfc/mocks";
+import type { ProOwnProfile, ProOwnWarning } from "@cfc/mocks";
 import {
   Button,
   EmptyState,
@@ -58,18 +58,21 @@ const AUTO_BLOCK_RATING = 2.5;
 export default function ProWarningsPage() {
   const proId = React.useMemo(() => currentProId(), []);
 
-  const [pro, setPro] = React.useState<ProDetail | null>(null);
-  const [warnings, setWarnings] = React.useState<ProWarning[] | null>(null);
+  const [pro, setPro] = React.useState<ProOwnProfile | null>(null);
+  const [warnings, setWarnings] = React.useState<ProOwnWarning[] | null>(null);
   const [failed, setFailed] = React.useState(false);
 
   const load = React.useCallback(() => {
     setFailed(false);
     let cancelled = false;
-    void Promise.all([getPro(proId), getProWarnings(proId)])
-      .then(([p, w]) => {
+    // One request, and neither half is an admin route. `getProWarnings` hit
+    // `/admin/pros/warnings` — there was no pro-side warnings route at all, so
+    // a pro could not read their own discipline record.
+    void getMyProProfile()
+      .then((me) => {
         if (cancelled) return;
-        setPro(p);
-        setWarnings(w);
+        setPro(me);
+        setWarnings(me.warnings);
       })
       .catch(() => {
         if (!cancelled) setFailed(true);
@@ -257,7 +260,7 @@ function RatingLine({ rating }: { rating: number }) {
   );
 }
 
-function WarningCard({ warning }: { warning: ProWarning }) {
+function WarningCard({ warning }: { warning: ProOwnWarning }) {
   return (
     <article className="rounded-card border border-clock-line bg-surface p-4">
       <div className="flex items-start gap-3">

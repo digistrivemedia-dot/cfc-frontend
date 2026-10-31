@@ -18,8 +18,9 @@ import {
   TriangleAlert,
   Wrench,
 } from "lucide-react";
-import { getPro, getProDayStats } from "@cfc/mocks";
-import type { ProDayStats, ProDetail } from "@cfc/types";
+import { getMyProProfile, getProDayStats } from "@cfc/mocks";
+import type { ProOwnProfile } from "@cfc/mocks";
+import type { ProDayStats } from "@cfc/types";
 import {
   Avatar,
   AvatarFallback,
@@ -67,14 +68,17 @@ import { currentProId, signOut } from "@/lib/pro-session";
 export default function ProProfilePage() {
   const proId = React.useMemo(() => currentProId(), []);
 
-  const [pro, setPro] = React.useState<ProDetail | null>(null);
+  const [pro, setPro] = React.useState<ProOwnProfile | null>(null);
   const [stats, setStats] = React.useState<ProDayStats | null>(null);
   const [failed, setFailed] = React.useState(false);
 
   const load = React.useCallback(() => {
     setFailed(false);
     let cancelled = false;
-    void Promise.all([getPro(proId), getProDayStats(proId)])
+    // `getMyProProfile` takes no id: the server reads it from the token, so
+    // this screen cannot ask for anyone else's profile. It replaced
+    // `getPro(proId)`, which hit the admin route and answered 403 every time.
+    void Promise.all([getMyProProfile(), getProDayStats(proId)])
       .then(([p, s]) => {
         if (cancelled) return;
         setPro(p);
@@ -218,7 +222,7 @@ export default function ProProfilePage() {
 
 // -- Identity ----------------------------------------------------------------
 
-function IdentityCard({ pro }: { pro: ProDetail }) {
+function IdentityCard({ pro }: { pro: ProOwnProfile }) {
   const proId = pro.id.replace("pro_", "");
 
   const copyId = async () => {
@@ -327,7 +331,7 @@ function RatingCard({
   pro,
   stats,
 }: {
-  pro: ProDetail;
+  pro: ProOwnProfile;
   stats: ProDayStats | null;
 }) {
   const atRisk =
@@ -390,7 +394,7 @@ function RatingCard({
  * to add one and finds nothing happens will conclude the app is broken; told
  * that the office approves skills, they know who to ask.
  */
-function SkillTags({ pro }: { pro: ProDetail }) {
+function SkillTags({ pro }: { pro: ProOwnProfile }) {
   return (
     <section className="mt-4 rounded-card border border-border bg-surface p-4">
       <h2 className="text-small font-semibold text-ink">Your skills</h2>

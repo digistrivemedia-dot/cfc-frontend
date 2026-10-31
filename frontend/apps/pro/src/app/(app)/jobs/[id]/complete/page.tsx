@@ -11,7 +11,7 @@ import {
   Satellite,
   TriangleAlert,
 } from "lucide-react";
-import { completeJob, getPro, getProJob } from "@cfc/mocks";
+import { completeJob, getMyProProfile, getProJob } from "@cfc/mocks";
 import type { ProEarning, ProJob } from "@cfc/types";
 import {
   AlertDialog,
@@ -83,7 +83,7 @@ export default function ProCompletePage() {
 
   React.useEffect(() => {
     let cancelled = false;
-    void Promise.all([getProJob(proId, params.id), getPro(proId)])
+    void Promise.all([getProJob(proId, params.id), getMyProProfile()])
       .then(([j, pro]) => {
         if (!cancelled) {
           setJob(j);

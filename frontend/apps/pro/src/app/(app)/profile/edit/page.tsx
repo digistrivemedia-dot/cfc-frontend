@@ -4,8 +4,8 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Info, Lock } from "lucide-react";
-import { getPro, getServiceAreas, updateProProfile } from "@cfc/mocks";
-import type { ProDetail } from "@cfc/types";
+import { getMyProProfile, getServiceAreas, updateProProfile } from "@cfc/mocks";
+import type { ProOwnProfile } from "@cfc/mocks";
 import {
   Badge,
   Button,
@@ -56,7 +56,7 @@ export default function ProEditProfilePage() {
   const router = useRouter();
   const proId = React.useMemo(() => currentProId(), []);
 
-  const [pro, setPro] = React.useState<ProDetail | null>(null);
+  const [pro, setPro] = React.useState<ProOwnProfile | null>(null);
   const [bio, setBio] = React.useState("");
   const [years, setYears] = React.useState("");
   const [areas, setAreas] = React.useState<string[]>([]);
@@ -67,7 +67,7 @@ export default function ProEditProfilePage() {
 
   React.useEffect(() => {
     let cancelled = false;
-    void Promise.all([getPro(proId), getServiceAreas()])
+    void Promise.all([getMyProProfile(), getServiceAreas()])
       .then(([p, list]) => {
         if (cancelled) return;
         setPro(p);
@@ -75,7 +75,7 @@ export default function ProEditProfilePage() {
         setYears(String(p.experienceYears));
         setAreas([p.area]);
         setPhone(p.phone);
-        setUpi(p.upiId ?? "");
+        setUpi(p.payments.upiId ?? "");
         setAllAreas(list);
       })
       .catch(() => {

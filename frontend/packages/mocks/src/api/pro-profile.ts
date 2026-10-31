@@ -1,5 +1,7 @@
 import type {
   DayAvailability,
+  DocumentType,
+  ProApprovalStatus,
   ProAvailability,
   ProProfileEdit,
   ProService,
@@ -22,6 +24,161 @@ import { fetchJson, isLive } from "../http";
  * services to the platform, they are approved for existing ones — so this reads
  * the catalogue rather than storing a parallel list that could drift from it.
  */
+
+/** One of the four KYC documents, as the pro's own screens see it. */
+export interface ProOwnDocument {
+  type: DocumentType;
+  label: string;
+  /** `missing` means not sent; `pending` means a human is looking at it. */
+  status: "missing" | "pending" | "approved" | "rejected";
+  uploaded: boolean;
+  rejectionReason: string | null;
+}
+
+/** A warning on the pro's own discipline record. */
+export interface ProOwnWarning {
+  id: string;
+  reason: string;
+  /** Positive — the size of the deduction. 0 for a warning with no penalty. */
+  penaltyPaise: number;
+  /** Who in the office issued it. Shown on the pro's own card. */
+  issuedBy: string;
+  issuedAt: string;
+}
+
+/**
+ * The signed-in pro's whole record.
+ *
+ * One shape for every pro screen that needs to know something about its own
+ * user: the shell, the splash routing decision, the profile, the edit form, the
+ * warnings screen and the job-completion screen. They each used to ask for a
+ * different slice, from an admin endpoint, and got a 403.
+ */
+export interface ProOwnProfile {
+  id: string;
+  name: string;
+  phone: string;
+  photoUrl: string | null;
+  /** Catalogue names, not ids — the pro reads "AC service & repair". */
+  services: string[];
+  areas: string[];
+  /** The first area. The screens show one line; dispatch matches all of them. */
+  area: string;
+  bio: string;
+  experienceYears: number;
+  joinedAt: string;
+
+  approvalStatus: ProApprovalStatus;
+  rejectionReason: string | null;
+  /** Blocked is not the same as rejected — see the note on the Pro model. */
+  blocked: boolean;
+  blockedReason: string | null;
+  online: boolean;
+  rating: number;
+  ratingCount: number;
+  jobsCompleted: number;
+
+  payments: {
+    accountName: string | null;
+    /** The last four only. The full number is never returned, even to its owner. */
+    accountLast4: string | null;
+    ifsc: string | null;
+    upiId: string | null;
+    availablePaise: number;
+    /** Completed-job money still inside the 48-hour clearing window. */
+    pendingPaise: number;
+    minimumPaise: number;
+    canWithdraw: boolean;
+    requestInFlight: boolean;
+  };
+
+  performance: {
+    grossPaise: number;
+    cfcFeePaise: number;
+    netPaise: number;
+    jobCount: number;
+    commissionFreeRemaining: number;
+    warningCount: number;
+  };
+
+  documents: ProOwnDocument[];
+  warnings: ProOwnWarning[];
+}
+
+/**
+ * The pro's own profile — everything their own screens need, in one request.
+ *
+ * **Not `getPro`.** That one fetches `/admin/pros/:id`, and six screens in the
+ * pro app were calling it with a pro's token. An admin route answers 403 to a
+ * pro, every time: the profile screen reported it as a connection problem, the
+ * shell quietly showed no name, and the splash screen treated the failure as
+ * "not approved" and sent every pro to onboarding.
+ *
+ * Takes **no id**. The server reads it from the token, so there is nothing here
+ * that could ask for someone else's record.
+ */
+export async function getMyProProfile(): Promise<ProOwnProfile> {
+  if (isLive("getMyProProfile")) {
+    return fetchJson<ProOwnProfile>("/pro/profile");
+  }
+  await latency();
+
+  const pro = pros[0];
+  if (pro === undefined) throw new Error("No pro in the fixtures.");
+  const docTypes: DocumentType[] = [
+    "aadhaar_front",
+    "aadhaar_back",
+    "pan",
+    "selfie",
+  ];
+  return applyScenario<ProOwnProfile>({
+    id: pro.id,
+    name: pro.name,
+    phone: pro.phone,
+    photoUrl: pro.photoUrl ?? null,
+    services: pro.services,
+    areas: [pro.area],
+    area: pro.area,
+    bio: pro.bio,
+    experienceYears: pro.experienceYears,
+    joinedAt: pro.joinedAt,
+    approvalStatus: pro.approvalStatus,
+    rejectionReason: null,
+    blocked: pro.blocked,
+    blockedReason: null,
+    online: pro.online && !pro.blocked,
+    rating: pro.rating,
+    ratingCount: 0,
+    jobsCompleted: pro.jobsCompleted,
+    payments: {
+      accountName: pro.name,
+      accountLast4: "0000",
+      ifsc: "HDFC0001234",
+      upiId: pro.upiId ?? null,
+      availablePaise: 0,
+      pendingPaise: 0,
+      minimumPaise: 0,
+      canWithdraw: false,
+      requestInFlight: false,
+    },
+    performance: {
+      grossPaise: 0,
+      cfcFeePaise: 0,
+      netPaise: 0,
+      jobCount: pro.jobsCompleted,
+      commissionFreeRemaining: 0,
+      warningCount: 0,
+    },
+    documents: docTypes.map((type) => ({
+      type,
+      label: type,
+      status: "pending" as const,
+      uploaded: true,
+      rejectionReason: null,
+    })),
+    warnings: [],
+  });
+}
 
 /**
  * The services this pro is approved for, with the admin's rate.

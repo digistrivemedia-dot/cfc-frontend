@@ -630,7 +630,7 @@ mock bodies swapped, the live flag enabled, the screens walked by hand.
 | **6** | Dispatch — offer, 30 s window, first-to-accept, manual assign | Dispatch engine | ✅ **done** 2026-10-27 |
 | **7** | Job lifecycle — photos, completion OTP, GPS gate, tracking | Job lifecycle | ✅ **done** 2026-10-27 |
 | **8** | Quotation — pro submits, admin 15-min window, customer accepts | Quotation flow | ✅ **done** 2026-10-27 |
-| **9** | Everything remaining: earnings, reviews, notifications, support, admin ops, reports, hardening | Pro earnings; Reviews/notifications/support; Admin operations; Hardening | ◀ **next** |
+| **9** | Everything remaining: earnings, reviews, notifications, support, admin ops, reports, hardening | Pro earnings; Reviews/notifications/support; Admin operations; Hardening | ◀ **in progress** — see §8c |
 
 **1 → 2 → 3 is a strict chain.** After 3, **4 and 5 are independent** — pro
 onboarding and customer booking touch different collections, and the demo path
@@ -1268,6 +1268,403 @@ never specified* (P10).
 
 **Exit:** client signs off. Production live on `cfcservice.in`. 10k load test
 passed. Restore proven.
+
+---
+
+## 8c. Phase 9 — the backlog, measured
+
+> Added 2026-10-28. Phase 9 is "everything remaining", which is not a plan.
+> This is what that actually is, counted from `packages/mocks/src/api/` —
+> every exported function still backed by a fixture rather than the API.
+
+**18 modules, ~62 functions.** Earnings is already done (Phases 1–8 took it),
+so what is left groups as:
+
+| Group | Modules | Fns | Notes |
+|---|---|---|---|
+| ✅ **Reviews** | `reviews`, `reviews-submit`, `public-pro` | 6 | **done 2026-10-28** |
+| ✅ **Search** | `search` | 3 | **done 2026-10-28** — was a hole in Phase 3, see below |
+| Notifications | `notifications`, `pro-notifications` | 11 | FCM is the delivery channel; needs a real device |
+| Support | `my-support`, `pro-support` | 8 | Admin side is a shell (§2.2) — threads, priority, assignment |
+| ✅ **Admin ops — core** | `customers`, `bookings`, `dashboard`, `finance` | 14 | **done 2026-10-28** — plus block/unblock and status override |
+| Admin ops — rest | `promotions`, `admin-users` | 5 | Coupon + banner CRUD, sub-admins |
+| ✅ **Reports** | `reports` | 10 | **done 2026-10-29** — Admin 38–42 |
+| Misc | `faqs`, `referral` | 2 | |
+| **Blocked on client** | `pro-conduct` | 3 | Golden Rules wording and the penalty schedule (§7.2). `PENALTY_AMOUNTS_NOT_SET` — do not invent these |
+
+### Done in Phase 9 so far
+
+**`issueWarning` (Admin 17).** The last hole in Pro management. The whole UI
+existed — dialog, reason chips, escalation counting, a threshold banner — and
+`issue()` was `setState` + toast, the §0.8 pattern exactly. Now a real
+collection, append-only like the ledger it writes to.
+
+A penalty writes its **wallet row in the same request**, so the discipline
+record and the pro's balance cannot disagree about whether money was taken.
+Positive on the warning (the size of the fine), negative in the ledger (a
+balance is a sum). Gated on `pros.block`, **not** `pros.approve_kyc` —
+onboarding is delegated to a sub admin and discipline is not, and fining
+someone is the discipline half. `warningCount` on the pro detail was hardcoded
+`0`; it is now counted.
+
+**Reviews (Customer 30, 2, 12, 13).** OTP-gated by construction: a review can
+only be written against a booking the pro closed with the customer's own
+completion code, so `verified` is a fact about the write path rather than a
+flag someone sets. The byline is shortened at write time ("Priya V.") — a full
+name beside an area is more identifying than a review needs.
+
+This closes a loop Phases 6–8 left open: **dispatch already orders by rating**,
+and ratings were fixture data. A review now `$inc`s the pro's `ratingSum` /
+`ratingCount`, so the ordering is real.
+
+`REVIEWS_ARE_PLACEHOLDER` is now **derived from the live flag** rather than
+hand-set, so the "sample content" label cannot be left on over real reviews.
+
+**Service stats.** `bookingCount`, `rating` and `reviewCount` were hardcoded
+zeroes with a note saying "until the phases that create them". Both phases have
+landed, so they are aggregated for real. Cancelled bookings do not count —
+"most booked" is a claim about work people went through with.
+
+### A hole in Phase 3, closed
+
+`searchServices`, `suggestServices` and `getTrendingSearches` had **no endpoint
+and no wiring**, despite §8b *Catalog* listing them as reads going live in
+Phase 3 and clause 4.8 naming search indexing as a contractual deliverable.
+Phase 3 was marked done with customer search still entirely on fixtures.
+
+Now served. Matching is **per-word, order and position free** — "ac repair" has
+to find "AC service & repair" — over the name, category and sub-category.
+Deliberately *not* `$text`: it matches whole words only, so "clea" would find
+nothing while someone is still typing "cleaning". The `service_search` text
+index already exists and serves the admin's full-word search; clause 4.8 is
+satisfied by that, not by the customer type-ahead.
+
+Trending is derived from the real booking count. Before anyone has booked
+anything it is simply empty, which the search screen already handles.
+
+**Admin operations — the core four (Admin 3, 6–8, 19–21, 30–34).**
+
+Everything here is **derived from bookings**, never from a parallel set of
+finance rows: the dashboard's "new bookings today" and the bookings list's own
+count have to agree, and the only way to guarantee that is for both to count
+the same collection. A transaction *is* a paid booking. A settlement *is* the
+split frozen onto the booking at completion, read back rather than recomputed
+so a later commission change cannot rewrite a settled job.
+
+Two writes replaced §0.8 handlers:
+
+- **`blockCustomer` / `unblockCustomer`** (Admin 21). Enforced at **sign-in**,
+so a blocked customer is refused at the door rather than let in to find every
+action failing one at a time. The panel takes the blocked state from the
+server's response rather than toggling locally — a block that failed must not
+leave the screen claiming it worked.
+- **`overrideBookingStatus`** (Admin 8), replacing `previewStatusOverride`,
+which validated and returned what the record *would* become without writing
+anything. That was the honest shape while the mock layer was read-only and a
+lie once there is a server. An override is allowed to **break the normal
+transition table** — that is what forcing means — but **cannot reopen a
+completed or cancelled booking**: completion has already written a settlement
+and paid the pro, so reopening would let a second completion credit them
+twice. That correction is a ledger adjustment, not a rewrite of history. The
+forced event lands on the customer-visible timeline marked `forced`.
+
+Area scoping is applied **in the query** on the list *and* the detail route.
+Without it on the detail, a row an area admin cannot see in their list is still
+readable by pasting its id.
+
+Three things return empty rather than fabricated rows, and each is the truthful
+answer:
+
+| Endpoint | Why empty |
+|---|---|
+| Customer complaints | No model, and nothing raises one. Arrives with support. |
+| Refunds | No refund model and no gateway to refund through (§0.3). |
+| Transactions `?status=failed` / `refunded` | Gateway-only states; Razorpay is inert. |
+
+`CustomerDetail.email` is `null` — nothing in the sign-up flow collects one.
+`complaintCount` and `noShowCount` are true zeroes, not placeholders.
+
+**Reports (Admin 38–42).** All ten aggregated from the collections the earlier
+phases fill. Nothing keeps its own counter, so a report and the screen it
+summarises cannot disagree.
+
+Three decisions a reader should not have to reverse-engineer:
+
+- **Every time series is zero-filled across all 14 days.** A chart that drops
+quiet days compresses its x-axis and makes a slow week look busy. Same for
+peak hours: all 24 are returned, so 2am is visibly empty rather than missing.
+- **Revenue is recognised at completion**, by `updatedAt`, matching the GST
+report. A booking placed last week and finished today is today's revenue.
+- **`repeatBookingRateBps` is defined**: of the customers who booked that day,
+the share who had booked at least once *before* it. The phrase could equally
+mean the platform-wide share of repeat customers — a different number that
+moves for different reasons.
+
+⚠️ **Two figures are honest but narrower than they look:**
+
+| Field | Reality |
+|---|---|
+| `ActiveUsersPoint.dau` / `.mau` | **"Active" means placed a booking.** Nothing records sessions or app opens, so a browse-only visit is invisible. These are a floor, and will read far lower than an analytics tool. The alternative was inventing a session counter so a chart had a bigger number on it. |
+| `ProPerformanceRow.noShowCount` | Always `0`. No-shows are not tracked anywhere (§2.6, Admin 20/40). A real zero, not a placeholder. |
+
+**A timezone bug caught by the tests, worth recording.** `$dateToString`
+defaults to **UTC**; the bucket keys were built from local date parts. Any
+booking completed after 18:30 UTC therefore fell into the next day's bucket,
+and "today" read zero while the money was plainly in the database. Both sides
+now name `Asia/Kolkata` explicitly. The same latent mismatch existed in the
+Phase-9 GST report's month grouping and is fixed with it.
+
+### Still open in Pro management
+
+Nothing. `issueWarning` was the last one. Penalties, wallet adjustments,
+block/unblock, document review, KYC approval and the dispatch-eligibility
+explanation are all live and covered by the self-check.
+
+---
+
+## 8d. Completion plan — everything left to a usable product
+
+> Added 2026-10-29, after the client set two more decisions. This is the single
+> plan for finishing; there is no separate go-live document.
+
+### 8d.0 The two decisions that shape this
+
+**Login stays dummy until DLT clears.** The client's words: *"until i get the
+dlt login can't be done so use the fake login and build other all feature."*
+So `AUTH_DUMMY_OTP=true` and the master code remain, and **everything else is
+built around them**. Nothing else waits on SMS. When the templates land it is
+one integration and one boolean — §0.2 was written for exactly this.
+
+⚠️ **This is the last thing to flip before launch, and it must not be
+forgotten.** The master code signs in *any* phone number: today a stranger
+could sign in as any pro and read their earnings. `env.ts` already refuses to
+boot with `AUTH_DUMMY_OTP=true` when `NODE_ENV=production`, which is the
+guardrail — do not weaken it to get a deploy out.
+
+**Razorpay is unblocked, with the developer's own keys.** The client: *"for
+razorpay i have my compnay razorpay api that i will use and later once client
+give me the api i will change."* So Razorpay moves from "deferred until there
+are keys" (§0.3) to buildable now. Keys live in `cfc-backend/.env`
+(gitignored); swapping to the client's account later is an env change, not a
+code change.
+
+This reverses §0.3's *"no fake gateway"* deferral for the right reason: the
+objection there was that signature verification and webhook reconciliation
+**cannot be written blind**. With real test keys they can be written and
+tested properly, which is the whole point.
+
+### 8d.1 Stage A — finish the feature surface *(no blockers)*
+
+| Order | Work | Fns |
+|---|---|---|
+| ✅ A1 | **In-app notifications** — **done 2026-10-29.** | 8 |
+| ✅ A2 | **Promotions + sub-admins** — **done 2026-10-29.** | 3 + writes |
+| ✅ A3 | **Support tickets + FAQs** — **done 2026-10-29.** | 10 |
+| ✅ A4 | **`PlatformConfig`** — **done 2026-10-29.** | — |
+| ✅ A5 | **Stragglers** — public pro profile, pro's own reviews and reply. **done 2026-10-29.** | 4 |
+
+**Exit:** no screen reads a fixture. Every `@cfc/mocks` function calls the API.
+
+**Reached 2026-10-29, with four deliberate exceptions.** Measured by scanning
+`packages/mocks/src/api/` for exported functions with no `fetchJson` or
+`isLive` on their path:
+
+| Still on fixtures | Why — all client decisions, none technical |
+|---|---|
+| `getGoldenRules`, `getPenaltyStructure`, `acceptConduct` | The 3 Golden Rules' wording and the offence→rupees table. `PENALTY_AMOUNTS_NOT_SET = true`. A fine on a document a pro signs. |
+| `getReferralProgramme` | No reward, minimum or cap is stated anywhere. A referral reward on screen is a promise the business must honour. |
+| `askAssistant` | `AI_ASSISTANT_IS_SHELL = true` — a scripted keyword matcher. Needs a model and a budget, or deletion. |
+
+Everything else — 100+ functions — calls the real API.
+
+#### A1 as built — notifications are *emitted*, not derived
+
+The read endpoints were the trivial part. The work was **emitting a row from
+every event that causes one**: assignment, work started, completion,
+settlement, quotation approved/rejected/expired, payout approved/rejected,
+warning issued, KYC approved/rejected, documents requested again.
+
+Three decisions worth keeping:
+
+- **One collection for both audiences.** A customer row and a pro row differ
+only in their `kind` vocabulary and where they link. Two collections would
+mean two mark-read endpoints and two chances for the badge to disagree with
+the list under it.
+- **`notify()` never throws into its caller.** A notification is a side effect
+of something that already succeeded. A failure to write the bell row must not
+roll back a completed job — it is logged and swallowed. A deliberate asymmetry
+with the rest of the system, where a failed write is an error.
+- **The recipient comes from the token, never a parameter.** `getProNotifications`
+still *takes* a `proId` so no screen changes, and the live path ignores it.
+
+**This is the record, not the delivery.** FCM will read from here. A push that
+arrives while the phone is off is gone, and the pro still has to open the app
+and see what happened — so the row is written first and always.
+
+#### A2 as built
+
+- **A coupon is switched off, never deleted** — redeemed coupons are
+referenced by the bookings that used them.
+- **Editing a coupon cannot reset `usedCount`.** Redemptions are history; the
+field is simply absent from the update.
+- **Banner scheduling** is the part that was never built (§2.2). Live means
+`active` *and* inside the window, and the predicate lives in the model so the
+admin preview and the consumer home screen cannot disagree about "live".
+- **A delegated admin is revoked, not deleted** — otherwise forty audit rows
+point at an id that resolves to nobody.
+- Sections granted to a sub admin are stored as asked and **intersected with
+the role** by `canOpen`, so a row cannot widen a role. There is a test proving
+a sub admin granted `settings` still cannot open it.
+
+#### A3 as built — one rule shapes the whole model
+
+**An internal note must never reach the person the ticket is about.** Agents
+write things like *"this customer has disputed two bookings before"* in them.
+
+Internal notes live in the **same** `messages` array as the customer's, not a
+separate collection, because that is what makes the admin view a real
+conversation — complaint, internal note, reply, in the order they happened.
+Two collections would have to be merged and sorted by every caller, and the
+one that forgot would show an agent replying to nothing.
+
+The cost is that stripping is mandatory on every customer-facing read, so
+`publicMessages()` is the only way messages leave the server toward a customer
+or pro, and a self-check asserts an internal note never appears in their
+response.
+
+Three behaviours worth recording:
+
+- **Replying picks the ticket up.** An untouched `open` ticket is the one an
+agent should take next, so answering one moves it to `in_progress` and assigns
+it to whoever replied. Otherwise the queue cannot be worked.
+- **A customer replying to a resolved ticket reopens it**, or the reply lands
+somewhere nobody is looking.
+- **Assignment validates against the admin list.** A ticket assigned to a
+misspelled name is assigned to nobody, and nobody notices until the customer
+chases it.
+
+FAQs are **one collection with an audience**, not three. The three screens
+(service detail, customer help, pro help) ask different questions of the same
+content — that is a filter, not three data sets. `serviceId: null` means it
+applies everywhere, so a new service's FAQ section is useful on day one rather
+than empty.
+
+#### A4 as built — §5's single source
+
+Every field **defaults to empty**, and that is the point. The real values are
+§7.1 items the client has not supplied, and a plausible-looking default is
+worse than a blank: *a wrong support number is one a customer actually rings.*
+Screens hide an empty row; they cannot hide a fabricated one.
+
+`GET /api/public/config` is what every screen reads — footer, `/support`, both
+home pages — so the 17 contradictions in `final/CONSUMER.md` §13 now have one
+place to be fixed instead of seventeen.
+
+#### A flaky test, root-caused
+
+The suite failed intermittently with *"no offer for booking"* — twice, in
+different suites. It was **not** dispatch: six tests waited on a fixed
+`setTimeout(400)` for an offer written by a non-blocking dispatch call against
+a **remote Atlas cluster**. Most runs 400 ms is plenty; occasionally the write
+lands at 600 ms and a working dispatch engine fails the suite.
+
+All six now poll to a deadline (`waitFor`), which is both faster in the normal
+case and reliable in the slow one. Worth remembering: a fixed sleep against a
+remote database is a race, not a wait.
+
+### 8d.2 Stage B — Razorpay *(keys in hand)*
+
+Its own stage because webhook reconciliation and idempotency are where payment
+integrations actually fail. Spec is §8b *Payments, wallet, invoices (ref)*,
+unchanged. The non-negotiables:
+
+- **Webhooks are the source of truth, not the client callback.** A customer who
+closes the tab mid-payment must still end with a correct booking.
+- **Idempotent webhook handling** — Razorpay retries, and a retried capture
+must not credit twice.
+- Signature verification on every callback.
+- The ledger stays **append-only**; a correction is a compensating row.
+
+Switches on: online payment, wallet top-up, the 50% quotation advance (§4.3),
+and refunds — which is also what makes Admin 33 stop returning an empty list.
+
+### 8d.3 Stage C — the remaining integrations *(each lands with its credential)*
+
+| Integration | Switches on | Needed |
+|---|---|---|
+| Firebase FCM | Push on job offer — a web app cannot wake a sleeping phone, which is why the 30-second window needs it | Service-account JSON |
+| Google Maps | Address geocoding, real `proPosition` (§4.2), real ETAs | API key, billing on |
+| MSG91 + DLT | **Real OTP. `AUTH_DUMMY_OTP=false`.** | DLT templates |
+| WhatsApp BSP | WhatsApp notifications | Client-managed |
+
+### 8d.4 Stage D — content and launch blockers *(client-owned)*
+
+B3–B7 of §6, none of them code:
+
+- Legal text — Terms, Privacy, Refund are **headings with no body**. Binding
+documents; a developer must not write them.
+- Six **fabricated testimonials**, named people in named neighbourhoods.
+- `promo-salon.png` and `promo-ac.png` — **a competitor's branding**, still on
+disk.
+- Unsourced home-page claims: ₹10,000 insurance, 11 cities, 5 languages, and a
+*"100 metre GPS check on arrival"* that is actually a check **on completion**.
+- Real service photography.
+
+### 8d.5 Stage E — hardening
+
+Clause 4.8's three obligations are deliverables:
+
+- **Load test at 10,000 concurrent users.** Dispatch is where concurrency is
+structural. Add Redis only if this fails, and let the test name the hot path.
+Run it **early** in this stage, not the week of launch.
+- **Search indexing verified**, not assumed.
+- **Daily automated backup *restoration* test** — a daily proven restore, not a
+daily backup. An untested backup is not a backup.
+
+Plus:
+
+- **Rotate the MongoDB password** (§0.6). It was transmitted in chat and the
+app connects as a cluster admin. Create a least-privilege user scoped to `cfc`.
+- **Flip `AUTH_DUMMY_OTP` to false** and confirm the master code is gone.
+- Delete `__cfc` / `__cfcSession` / `__cfcActor` after confirming they cannot
+reach a production bundle (B2).
+- **Real admin 2FA.** The current toggle claims to be on and does nothing — no
+QR, no secret, no verification. §2.2: *"A toggle is not setup."*
+- Rate limiting on payment and search; validation at trust boundaries; OWASP
+pass; HTTPS; CORS allowlist.
+- Keyboard walkthrough of all 49 admin screens, and the `ring-focus` bug
+drawing Tailwind blue instead of the brand ring in all three apps.
+- **Accessibility (§7.5):** white on `#00b8c4` measures **2.43:1**; WCAG needs
+4.5:1. `--color-on-action: #0e1f3d` gives 6.75:1 with the Figma colour
+untouched. One line. This is what store and procurement reviews flag.
+- Error tracking, uptime, payment-failure and dispatch-failure alerts.
+
+### 8d.6 Still blocked on client answers
+
+Not scheduled, because inventing them puts words in the client's mouth:
+
+| Needed | Why it cannot be guessed |
+|---|---|
+| Penalty schedule — offence → rupees | `PENALTY_AMOUNTS_NOT_SET = true`. A fine on a document a pro signs. |
+| The 3 Golden Rules — exact wording | Current text is derived from enforced mechanisms. Honest, but ours. |
+| Auto-block minimum review count | "Below 2.5" given, sample size not — one angry customer currently blocks a new pro. |
+| Cancellation policy and fee | No policy exists anywhere. |
+| Payout minimum, referral figures, per-pro commission | Money. |
+| **AI assistant — real model or drop it?** | `AI_ASSISTANT_IS_SHELL = true`; scripted keyword matcher, labelled on screen. |
+| **Add-ons — Admin 27 editor, or drop the clause?** | Customer side is priced against data no admin can create. |
+
+### 8d.7 Definition of done
+
+Not "tests pass" — each is something a person does:
+
+1. A stranger receives a **real SMS** and books.
+2. They pay **by card**, and it reaches the client's Razorpay account.
+3. A pro's phone is **asleep in their pocket** and wakes with an offer.
+4. Completion takes the customer's OTP; their rating moves that pro's dispatch
+   priority.
+5. Reports reconcile with the bank.
+6. A backup is restored **automatically and proven** that morning.
+7. No placeholder, no fabricated review, no promise nobody made.
 
 ---
 

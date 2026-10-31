@@ -2,10 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { getPro } from "@cfc/mocks";
+import { getApprovalState } from "@cfc/mocks";
 import { usePrefersReducedMotion } from "@cfc/ui";
 import { Logo } from "@/components/logo";
-import { currentProId } from "@/lib/pro-session";
 
 /**
  * Pro 1 — Splash.
@@ -39,9 +38,19 @@ export default function ProSplashPage() {
     const decide = async () => {
       let destination = "/dashboard";
       try {
-        const pro = await getPro(currentProId());
-        if (pro.approvalStatus !== "approved") destination = "/approval";
-        else if (pro.blocked) destination = "/warnings";
+        // `getApprovalState` rather than a profile fetch: it is the endpoint
+        // built for this one decision, it is what the rest of the (auth) group
+        // reads, and it returns null for "signed in but never registered" —
+        // which is the case a profile fetch cannot express.
+        //
+        // This used to call `getPro(currentProId())`, an **admin** route. With
+        // a pro's token it answered 403, the catch below treated that as "no
+        // session", and so every pro — approved or not — was sent to
+        // onboarding on every launch.
+        const state = await getApprovalState("");
+        if (state === null) destination = "/onboarding";
+        else if (state.blocked) destination = "/warnings";
+        else if (state.status !== "approved") destination = "/approval";
       } catch {
         // No session, or the fetch failed. Onboarding is the safe landing —
         // it cannot show data that does not exist.

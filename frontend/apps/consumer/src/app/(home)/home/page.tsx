@@ -10,6 +10,12 @@ import { SiteFooter } from '../site-footer';
 import { AppHeader } from '../app-header';
 import { CfcSprite } from '../cfc-sprite';
 import { useCart } from '@/lib/cart';
+import {
+  addressLabel,
+  addressSummary,
+  useSelectedAddress,
+} from '@/lib/selected-address';
+import { cn } from '@cfc/ui';
 
 export default function SignedInHomePage() {
   // The header, its sprite and the footer are shared components now - see
@@ -34,6 +40,7 @@ export default function SignedInHomePage() {
   // exist in the data - /profile reads `getConsumerProfile()` and showed a
   // different person. Both now read the one source of truth.
   const [profile, setProfile] = useState<ConsumerProfile | null>(null);
+  const { selected } = useSelectedAddress();
   useEffect(() => {
     let live = true;
     getConsumerProfile()
@@ -93,10 +100,28 @@ export default function SignedInHomePage() {
                   <div><b>Account created</b><small>{profile ? `Signed in with ${maskPhone(profile.phone)}` : "Signed in"}</small></div>
                 </div>
 
-                <div className="setup-row" id="setupAddr">
+                {/* Reflects whether an address actually exists, and links to
+                    the real form. This used to open an inline panel whose
+                    "Save address" only rewrote the text beside it — the
+                    checklist ticked itself and nothing was stored. */}
+                <div
+                  className={cn("setup-row", selected !== null && "done")}
+                  id="setupAddr"
+                >
                   <span className="setup-mark"><svg className="ic" aria-hidden="true"><use href="#i-check"></use></svg></span>
-                  <div><b>Add your address</b><small id="setupAddrSub">We need it to show you slots and travel time</small></div>
-                  <button className="btn btn-primary btn-sm" type="button" id="addAddrBtn">Add address</button>
+                  <div>
+                    <b>{selected !== null ? "Address saved" : "Add your address"}</b>
+                    <small id="setupAddrSub">
+                      {selected !== null
+                        ? `${addressLabel(selected)} — ${addressSummary(selected)}`
+                        : "We need it to show you slots and travel time"}
+                    </small>
+                  </div>
+                  {selected === null && (
+                    <Link className="btn btn-primary btn-sm" href="/addresses">
+                      Add address
+                    </Link>
+                  )}
                 </div>
 
                 <div className="setup-row" id="setupBook">
@@ -105,25 +130,6 @@ export default function SignedInHomePage() {
                 </div>
               </div>
 
-              <div className="addr-panel" id="addrPanel">
-                <h4>Where should we come?</h4>
-                <div className="addr-input">
-                  <svg className="ic" aria-hidden="true" style={{ width: '18px', height: '18px', color: 'var(--muted)' }}><use href="#i-pin"></use></svg>
-                  <input id="addrInput" type="text" placeholder="Flat and building, street, landmark" />
-                </div>
-                <div className="addr-tags">
-                  <span>Save as</span>
-                  <button className="tag-btn" type="button" aria-pressed="true" data-tag="Home">Home</button>
-                  <button className="tag-btn" type="button" aria-pressed="false" data-tag="Work">Work</button>
-                  <button className="tag-btn" type="button" aria-pressed="false" data-tag="Other">Other</button>
-                </div>
-                <div className="addr-actions">
-                  <button className="btn btn-primary" type="button" id="addrSave">Save address</button>
-                  <button className="btn btn-ghost" type="button" id="addrLocate">
-                    <svg className="ic" aria-hidden="true" style={{ width: '16px', height: '16px' }}><use href="#i-pin"></use></svg>Use current location
-                  </button>
-                </div>
-              </div>
             </div>
 
             <aside className="offer-card">

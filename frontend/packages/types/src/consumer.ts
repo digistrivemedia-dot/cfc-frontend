@@ -1,4 +1,5 @@
 import type { Id, Paise, Timestamp, Address, GeoPoint } from "./primitives";
+import type { PriceBreakdown } from "./pricing";
 import type { BookingStatus } from "./booking";
 
 /**
@@ -95,6 +96,18 @@ export interface ConsumerBooking {
   /** Where the job is. The customer's own address at the time of booking. */
   address: Address;
   totalPaise: Paise;
+  /**
+   * The breakdown **frozen at booking** — what was actually charged.
+   *
+   * The server has always sent this; the type did not declare it, so the
+   * invoice recomputed its own figures from a hardcoded fixture service id
+   * instead and printed numbers that belonged to a different service.
+   *
+   * An invoice must show what the customer paid, not what the same booking
+   * would cost today — prices change, and a tax document that moves with them
+   * is not a tax document.
+   */
+  breakdown: PriceBreakdown;
   /** How they paid, for the invoice. */
   paymentMethod: "upi" | "card" | "wallet" | "cash";
 
@@ -114,6 +127,15 @@ export interface ConsumerBooking {
    * Present only once a pro is on the way — there is nothing to show before
    * that, and a code visible for days is a code that leaks.
    */
+  /**
+   * The code the customer reads out when the professional arrives.
+   *
+   * Available from **assignment**, unlike `completionOtp` which is held back
+   * until the pro is on the way: the start code is the first thing that
+   * happens at the door, and a customer hunting for it while somebody waits is
+   * worse than it sitting on their booking screen for a day.
+   */
+  startOtp: string | null;
   completionOtp: string | null;
 
   /** Minutes until arrival, once a pro is travelling. Customer 27. */

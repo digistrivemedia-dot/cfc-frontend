@@ -27,6 +27,8 @@ import {
   Button,
   ErrorState,
   InlineAlert,
+  OtpDisplay,
+  PhotoGrid,
   Skeleton,
   Timeline,
   TimelineItem,
@@ -155,14 +157,33 @@ function BookingDetailPageInner() {
         </div>
       )}
 
+      {/* The start code, from the moment a professional is assigned.
+
+          Shown before the completion code and with a different instruction,
+          because they do opposite things: this one begins the work and the
+          other one closes it. A single panel showing "your code" would have a
+          customer read out the wrong one at the wrong moment. */}
+      {booking.status === "assigned" && booking.startOtp !== null && (
+        <OtpDisplay
+          className="mt-4"
+          title="Start code"
+          code={booking.startOtp}
+          hint="Read this out when the professional arrives, so they can begin. Not before they are at your door."
+        />
+      )}
+
       {booking.status === "in_progress" && booking.completionOtp !== null && (
-        <div className="mt-4">
-          <InlineAlert tone="clock" title="Work is under way">
-            Share the code{" "}
-            <span className="tabular font-semibold">{booking.completionOtp}</span>{" "}
-            with the professional only once you are happy with the work.
-          </InlineAlert>
-        </div>
+        <OtpDisplay
+          className="mt-4"
+          tone="clock"
+          title="Finishing code"
+          code={booking.completionOtp}
+          // Covered: this is the code that closes the job and releases
+          // payment, so uncovering it should be a deliberate act once the
+          // customer is actually happy with the work.
+          concealed
+          hint="Share this only once you are happy with the work. It closes the job."
+        />
       )}
 
       {needsRating && (
@@ -406,26 +427,23 @@ function Row({
 }
 
 /**
- * Before and after.
+ * The real photos and videos from the job.
  *
- * Tinted panels rather than `<img>`: these paths point at fixtures that do not
- * exist, and a grid of broken-image icons looks like a fault. The real photo
- * grid with a lightbox arrives with Customer 28.
+ * These were **tinted panels with nothing in them** — a `<span>` per URL,
+ * sized like a photo and coloured like a placeholder. The comment explained
+ * why: the paths pointed at fixtures that did not exist, and a grid of
+ * broken-image icons looks like a fault.
+ *
+ * They point at real uploads now, so the customer sees what the professional
+ * actually photographed or filmed. `PhotoGrid` handles both, and keeps the
+ * broken-tile fallback for a file that genuinely cannot be loaded.
  */
 function PhotoRow({ label, urls }: { label: string; urls: string[] }) {
+  if (urls.length === 0) return null;
   return (
     <div className="mt-3">
       <p className="text-caption text-ink-muted">{label}</p>
-      <div className="mt-1 flex gap-2 overflow-x-auto scrollbar-none">
-        {urls.map((url) => (
-          <span
-            key={url}
-            className="aspect-card w-line-md shrink-0 rounded-control bg-action-subtle"
-            role="img"
-            aria-label={`${label} photo`}
-          />
-        ))}
-      </div>
+      <PhotoGrid className="mt-1" urls={urls} label={label} />
     </div>
   );
 }

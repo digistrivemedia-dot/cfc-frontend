@@ -172,6 +172,45 @@ export function isAdminToken(): boolean {
   return role === "super_admin" || role === "sub_admin" || role === "area_admin";
 }
 
+/**
+ * What to do when a session turns out to be dead.
+ *
+ * A token expires silently: nothing tells the app until the next request comes
+ * back 401. Before this existed, every screen simply rendered its own failure
+ * — the pro's profile showed "Could not load your day. Check your connection
+ * and try again", which is wrong twice over. The connection was fine, and
+ * because that screen also carries the **Sign out** button, the pro was
+ * trapped: no way to log out, no way to log back in, and a Try again that
+ * could only fail.
+ *
+ * Handled here rather than in forty screens, because every one of them has the
+ * same right answer and only this layer can see the 401.
+ */
+let onExpired: (() => void) | null = null;
+
+/** Overrides the default redirect. Apps with their own routing call this. */
+export function setSessionExpiredHandler(fn: (() => void) | null): void {
+  onExpired = fn;
+}
+
+function sessionExpired(): void {
+  clearToken();
+
+  if (onExpired) {
+    onExpired();
+    return;
+  }
+  if (typeof window === "undefined") return;
+
+  // Already on the way there. Without this guard a 401 from the login screen's
+  // own first request would redirect it to itself, repeatedly.
+  if (window.location.pathname.startsWith("/login")) return;
+
+  // `replace`, not `assign`: the dead page must not be one Back press away,
+  // because landing on it again would fire the same failing request.
+  window.location.replace("/login?expired=1");
+}
+
 /** What the server sends on failure — the `ApiError` fields, as JSON. */
 interface ErrorEnvelope {
   status?: number;
@@ -246,6 +285,14 @@ export async function fetchJson<T>(
     );
   }
 
+  /**
+   * A 401 **when we sent a token** means the session died, not that the caller
+   * is anonymous. Only then is a redirect right: a signed-out visitor hitting
+   * an authenticated endpoint should see that screen's own sign-in prompt, not
+   * be thrown to /login mid-browse.
+   */
+  if (response.status === 401 && token) sessionExpired();
+
   if (response.status === 204) return undefined as T;
 
   const text = await response.text();
@@ -311,6 +358,7 @@ export async function fetchObjectUrl(path: string): Promise<ObjectUrl> {
   });
 
   if (!response.ok) {
+    if (response.status === 401 && token) sessionExpired();
     throw new ApiError(
       response.status,
       response.status === 404

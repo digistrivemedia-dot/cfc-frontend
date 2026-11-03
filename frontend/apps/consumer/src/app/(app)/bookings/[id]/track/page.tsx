@@ -159,7 +159,10 @@ function TrackPageInner() {
       {onSite && booking.completionOtp !== null && (
         <div className="mt-4">
           <OtpDisplay
+            tone="clock"
+            title="Finishing code"
             code={booking.completionOtp}
+            concealed
             hint="Share this with the professional only once you are happy with the work. The job cannot be closed without it."
           />
         </div>

@@ -2,7 +2,12 @@
 
 import * as React from "react";
 import { Home, MapPin, MoreVertical, Pencil, Plus, Star, Trash2 } from "lucide-react";
-import { deleteAddress, getAddresses, saveAddress } from "@cfc/mocks";
+import {
+  deleteAddress,
+  getAddresses,
+  getConsumerProfile,
+  saveAddress,
+} from "@cfc/mocks";
 import type { Address } from "@cfc/types";
 import {
   AlertDialog,
@@ -20,19 +25,12 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   ErrorState,
-  FormField,
-  Input,
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
   Skeleton,
   cn,
   toast,
 } from "@cfc/ui";
 import { RequireAccount } from "@/components/require-account";
+import { AddressSheet } from "@/components/address-sheet";
 
 /**
  * Consumer Screen 35 - My Addresses, with Screen 17 (Add / Edit Address) as
@@ -51,24 +49,41 @@ import { RequireAccount } from "@/components/require-account";
  * The manual form is complete and does not pretend to have it.
  */
 
+/**
+ * `work` is shown as **"Office"**.
+ *
+ * The stored value stays `work`: every existing record, every frozen booking
+ * copy and every admin view already contains it, so renaming it would be a
+ * migration across all of them to change one word on screen.
+ */
 const LABELS = [
   { value: "home", label: "Home" },
-  { value: "work", label: "Work" },
+  { value: "work", label: "Office" },
   { value: "other", label: "Other" },
 ] as const;
 
 type Draft = Omit<Address, "id"> & { id?: string | undefined };
 
-/** A blank form, for "Add address". */
+/**
+ * A blank form, for "Add address".
+ *
+ * **Nothing is pre-filled from a guess.** This used to open with
+ * `Bengaluru / Karnataka / 12.9716, 77.5946` — a hardcoded city and a hardcoded
+ * coordinate, on a platform that operates in Trichy. Every address ever saved
+ * carried the same point, which is why `locationVerified` existed and was
+ * false for all of them. The map fills these in from where the customer
+ * actually puts the pin.
+ */
 function emptyDraft(): Draft {
   return {
     label: "home",
     line1: "",
     area: "",
-    city: "Bengaluru",
-    state: "Karnataka",
+    city: "",
+    state: "",
     pincode: "",
-    point: { lat: 12.9716, lng: 77.5946 },
+    point: { lat: 0, lng: 0 },
+    locationVerified: false,
     isDefault: false,
   };
 }
@@ -91,8 +106,37 @@ function AddressesInner() {
   // The sheet holds the draft. Null means closed; a draft without an id is a
   // new address, one with an id is an edit.
   const [draft, setDraft] = React.useState<Draft | null>(null);
-  const [saving, setSaving] = React.useState(false);
   const [pendingDelete, setPendingDelete] = React.useState<Address | null>(null);
+
+  /**
+   * The account holder, to pre-fill the contact fields.
+   *
+   * Usually the person at the door is the customer themselves, so typing their
+   * own name and number again is friction for the common case. Still editable:
+   * a booking for a parent's flat is exactly why the fields are per-address.
+   */
+  const [me, setMe] = React.useState<{ name: string; phone: string } | null>(
+    null,
+  );
+  React.useEffect(() => {
+    void getConsumerProfile()
+      .then((p) => setMe({ name: p.name, phone: p.phone }))
+      .catch(() => setMe(null));
+  }, []);
+
+  const newDraft = React.useCallback(
+    (): Draft => ({
+      ...emptyDraft(),
+      ...(me
+        ? {
+            contactName: me.name,
+            // Stored E.164; the field shows the 10 local digits.
+            contactPhone: me.phone.replace(/\D/g, "").slice(-10),
+          }
+        : {}),
+    }),
+    [me],
+  );
 
   const load = React.useCallback(() => {
     setError(false);
@@ -101,36 +145,16 @@ function AddressesInner() {
       .catch(() => setError(true));
   }, []);
 
-  React.useEffect(() => {
-    load();
-  }, [load]);
-
-  const isValid =
-    draft !== null &&
-    draft.line1.trim().length >= 3 &&
-    draft.area.trim().length >= 2 &&
-    /^\d{6}$/.test(draft.pincode.trim());
-
-  async function handleSave() {
-    if (draft === null || !isValid || saving) return;
-    setSaving(true);
-    try {
-      await saveAddress({
-        ...draft,
-        line1: draft.line1.trim(),
-        area: draft.area.trim(),
-        pincode: draft.pincode.trim(),
-      });
-      toast.success(draft.id ? "Address updated" : "Address saved");
-      setDraft(null);
-      load();
-    } catch {
-      toast.error("Could not save that address. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
+  /**
+   * The map settled on a point: store it, then ask what is there.
+   *
+   * The coordinate is kept even if the lookup fails — it is what a professional
+   * actually navigates to, and it came from the customer's own finger. Only the
+   * text fields depend on the geocoder.
+   *
+   * Guarded against re-entry while a lookup is in flight: panning fires `idle`
+   * freely and each call is a paid request.
+   */
   async function handleDelete(address: Address) {
     setPendingDelete(null);
     try {
@@ -178,7 +202,7 @@ function AddressesInner() {
             checkout.
           </p>
         </div>
-        <Button variant="primary" onClick={() => setDraft(emptyDraft())}>
+        <Button variant="primary" onClick={() => setDraft(newDraft())}>
           <Plus className="size-4" />
           Add address
         </Button>
@@ -197,7 +221,7 @@ function AddressesInner() {
             description="Add the address we should come to. It takes about a minute, and you will not have to type it again."
             action={{
               label: "Add your first address",
-              onClick: () => setDraft(emptyDraft()),
+              onClick: () => setDraft(newDraft()),
             }}
           />
         </div>
@@ -216,155 +240,22 @@ function AddressesInner() {
         </ul>
       )}
 
-      {/* Screen 17 - the form. */}
-      <Sheet open={draft !== null} onOpenChange={(o) => !o && setDraft(null)}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{draft?.id ? "Edit address" : "Add address"}</SheetTitle>
-          </SheetHeader>
+      {/* Screen 17 — the form, shared with the booking flow's step 2.
 
-          {draft && (
-            <>
-              <SheetBody className="space-y-5">
-                {/* Type, as chips rather than a select: three options that fit
-                    on one row read faster than a dropdown that hides two. */}
-                <FormField label="Address type" required>
-                  <div className="flex gap-2">
-                    {LABELS.map(({ value, label }) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setDraft({ ...draft, label: value })}
-                        className={cn(
-                          "flex-1 rounded-control border-2 px-3 py-2 text-small font-bold",
-                          "transition-all duration-fast",
-                          draft.label === value
-                            ? "border-action bg-action-subtle text-action shadow-sm"
-                            : "border-border bg-surface text-ink hover:border-action",
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </FormField>
-
-                <FormField label="Flat, house number, building" required>
-                  <Input
-                    value={draft.line1}
-                    onChange={(e) => setDraft({ ...draft, line1: e.target.value })}
-                    placeholder="e.g. 12B, Sunrise Apartments"
-                    autoComplete="address-line1"
-                  />
-                </FormField>
-
-                <FormField label="Street, sector" help="Optional">
-                  <Input
-                    value={draft.line2 ?? ""}
-                    onChange={(e) => setDraft({ ...draft, line2: e.target.value })}
-                    placeholder="e.g. 4th Cross Road"
-                    autoComplete="address-line2"
-                  />
-                </FormField>
-
-                <FormField
-                  label="Landmark"
-                  help="Helps the professional find you faster"
-                >
-                  <Input
-                    value={draft.landmark ?? ""}
-                    onChange={(e) =>
-                      setDraft({ ...draft, landmark: e.target.value })
-                    }
-                    placeholder="e.g. Opposite the temple"
-                  />
-                </FormField>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField label="Area" required>
-                    <Input
-                      value={draft.area}
-                      onChange={(e) => setDraft({ ...draft, area: e.target.value })}
-                      placeholder="e.g. Indiranagar"
-                      autoComplete="address-level3"
-                    />
-                  </FormField>
-                  <FormField label="Pincode" required>
-                    <Input
-                      value={draft.pincode}
-                      onChange={(e) =>
-                        setDraft({
-                          ...draft,
-                          pincode: e.target.value.replace(/\D/g, "").slice(0, 6),
-                        })
-                      }
-                      inputMode="numeric"
-                      maxLength={6}
-                      placeholder="560038"
-                      className="tabular"
-                      autoComplete="postal-code"
-                    />
-                  </FormField>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField label="City" required>
-                    <Input
-                      value={draft.city}
-                      onChange={(e) => setDraft({ ...draft, city: e.target.value })}
-                      autoComplete="address-level2"
-                    />
-                  </FormField>
-                  <FormField label="State" required>
-                    <Input
-                      value={draft.state}
-                      onChange={(e) => setDraft({ ...draft, state: e.target.value })}
-                      autoComplete="address-level1"
-                    />
-                  </FormField>
-                </div>
-
-                <label className="flex cursor-pointer items-center gap-3 rounded-control border border-border bg-surface p-3">
-                  <input
-                    type="checkbox"
-                    checked={draft.isDefault}
-                    onChange={(e) =>
-                      setDraft({ ...draft, isDefault: e.target.checked })
-                    }
-                    className="sr-only"
-                  />
-                  <span className="cfc-check" aria-hidden="true" />
-                  <span className="min-w-0">
-                    <span className="block text-small font-bold text-ink">
-                      Make this my default
-                    </span>
-                    <span className="block text-caption text-ink-muted">
-                      Picked automatically when you book
-                    </span>
-                  </span>
-                </label>
-              </SheetBody>
-
-              <SheetFooter>
-                <Button variant="secondary" onClick={() => setDraft(null)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleSave}
-                  disabled={!isValid || saving}
-                >
-                  {saving
-                    ? "Saving…"
-                    : draft.id
-                      ? "Save changes"
-                      : "Save address"}
-                </Button>
-              </SheetFooter>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
+          Both used to have their own. The checkout's copy had no map, and its
+          "Use current location" only set a pin and asked the customer to type
+          the address anyway. One component now, so a fix lands in both. */}
+      <AddressSheet
+        open={draft !== null}
+        address={draft?.id ? ((draft as Address) ?? null) : null}
+        onOpenChange={(o) => {
+          if (!o) setDraft(null);
+        }}
+        onSaved={() => {
+          setDraft(null);
+          load();
+        }}
+      />
 
       <AlertDialog
         open={pendingDelete !== null}

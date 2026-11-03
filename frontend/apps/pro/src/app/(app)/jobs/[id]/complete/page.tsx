@@ -11,7 +11,13 @@ import {
   Satellite,
   TriangleAlert,
 } from "lucide-react";
-import { completeJob, getMyProProfile, getProJob } from "@cfc/mocks";
+import { ApiError } from "@cfc/types";
+import {
+  completeJob,
+  getMyProProfile,
+  getProJob,
+  uploadJobMedia,
+} from "@cfc/mocks";
 import type { ProEarning, ProJob } from "@cfc/types";
 import {
   AlertDialog,
@@ -165,6 +171,23 @@ function CompleteForm({
     setBusy(true);
     setWrongOtp(false);
     try {
+      /**
+       * Upload the proof **before** completing.
+       *
+       * This screen captured files into local state and sent only a *count* —
+       * `afterPhotoCount` — so nothing ever reached the server. The server
+       * refuses a completion with no after-proof, which meant a pro with four
+       * photos on screen was told to "add at least one photo of the finished
+       * work". The files existed; they had simply never been sent.
+       *
+       * Sequentially rather than in parallel: on mobile data at a customer's
+       * door, four concurrent uploads are slower than four in a row and much
+       * more likely to have one fail.
+       */
+      for (const item of afterPhotos) {
+        await uploadJobMedia(job.id, "after", item.file);
+      }
+
       const result = await completeJob({
         jobId: job.id,
         otp,
@@ -195,8 +218,14 @@ function CompleteForm({
       }
 
       onDone(result.earning);
-    } catch {
-      toast.error("Could not complete the job. Check your connection.");
+    } catch (e: unknown) {
+      // The server's own words. A file over the size budget names which file
+      // and what the budget is, and "check your connection" would bury that.
+      toast.error(
+        e instanceof ApiError
+          ? e.message
+          : "Could not complete the job. Check your connection.",
+      );
     } finally {
       setBusy(false);
       setConfirming(false);
@@ -320,9 +349,13 @@ function CompleteForm({
           <PhotoCapture
             photos={afterPhotos}
             onChange={setAfterPhotos}
-            label="After photos"
+            label="Proof of work"
             minimum={1}
-            hint="Photograph the finished work. The customer sees these on their invoice, and they are your evidence that the job was done properly."
+            allowVideo
+            // 20 MB for all the photos together, matching the server. Videos
+            // have their own 60 MB each and sit outside that sum.
+            maxTotalImageBytes={20 * 1024 * 1024}
+            hint="Photos or a video of the finished work. The customer sees these on their invoice, and they are your evidence the job was done properly. Photos: 20 MB in total. Video: up to 60 MB each."
           />
         </section>
 

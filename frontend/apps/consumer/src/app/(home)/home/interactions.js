@@ -57,66 +57,17 @@ export function initCFCApp() {
   // - killing the account menu's own close with it.
   on(document, 'keydown', function (e) { if (e.key === 'Escape') { toggleMenu(false); } });
 
-  /* ---- address capture ---- */
-  var addrPanel = $('addrPanel');
-  var addrInput = $('addrInput');
-  var addrTag = 'Home';
-  var hasAddress = false;
+  /* The address capture that lived here is gone.
 
-  var showAddr = function (open) {
-    if (!addrPanel) return;
-    addrPanel.classList.toggle('open', open);
-    if (open && addrInput) setTimeout(function () { addrInput.focus(); }, 60);
-  };
-  on($('addAddrBtn'), 'click', function () { showAddr(!addrPanel.classList.contains('open')); });
-  on($('addrBtn'), 'click', function () {
-    var el = $('setupAddr');
-    if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    showAddr(true);
-  });
+     It was a panel with one text input, three tag buttons and a "Save address"
+     that set `hasAddress = true` and rewrote the header's own text. Nothing was
+     sent anywhere, so the address did not survive a reload and no other screen
+     could read it. Its "Use current location" pasted a hardcoded Koramangala
+     street - on a platform that operates in Trichy.
 
-  Array.prototype.forEach.call(document.querySelectorAll('.tag-btn'), function (b) {
-    on(b, 'click', function () {
-      Array.prototype.forEach.call(document.querySelectorAll('.tag-btn'), function (o) {
-        o.setAttribute('aria-pressed', String(o === b));
-      });
-      addrTag = b.dataset.tag;
-    });
-  });
-
-  var saveAddress = function (text) {
-    var value = (text || '').trim();
-    if (!value) {
-      say('Type your flat and street first');
-      if (addrInput) addrInput.focus();
-      return;
-    }
-    hasAddress = true;
-    var btn = $('addrBtn');
-    if (btn) {
-      btn.classList.remove('unset');
-      var t = $('addrTitle'), sub = $('addrSub');
-      if (t) t.textContent = addrTag;
-      if (sub) sub.textContent = value;
-    }
-    var row = $('setupAddr');
-    if (row) {
-      row.classList.add('done');
-      var s = $('setupAddrSub');
-      if (s) s.textContent = 'Saved as ' + addrTag;
-      var cta = $('addAddrBtn');
-      if (cta) cta.remove();
-    }
-    showAddr(false);
-    say('Address saved. Slots are live now.');
-  };
-  on($('addrSave'), 'click', function () { saveAddress(addrInput ? addrInput.value : ''); });
-  on(addrInput, 'keydown', function (e) { if (e.key === 'Enter') saveAddress(addrInput.value); });
-  on($('addrLocate'), 'click', function () {
-    if (addrInput) addrInput.value = '12th Main, 5th Block, Koramangala';
-    say('Location found. Check it before saving.');
-    if (addrInput) addrInput.focus();
-  });
+     The real thing is `AddressMenu` in the header and the form on /addresses:
+     a Google map with a draggable pin, reverse geocoding through our own
+     server, and a record on the customer. */
 
   /* The cart, its drawer, its bar and the tab-bar sizing that positioned it
      all lived here. Removed with the markup they drove.

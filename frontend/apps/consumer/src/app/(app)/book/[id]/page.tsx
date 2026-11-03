@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   Briefcase,
   Check,
-  Crosshair,
   House,
   MapPin,
   Plus,
@@ -19,9 +18,15 @@ import {
   getService,
   getSlots,
   priceBooking,
-  saveAddress,
+  priceBookingLive,
 } from "@cfc/mocks";
-import type { Address, Coupon, ServiceDetail, Slot } from "@cfc/types";
+import type {
+  Address,
+  Coupon,
+  PriceBreakdown,
+  ServiceDetail,
+  Slot,
+} from "@cfc/types";
 import {
   CouponSheet,
   OptionsStep,
@@ -36,17 +41,9 @@ import {
   Calendar,
   EmptyState,
   ErrorState,
-  FormField,
-  Input,
-  MapView,
-  Sheet,
-  SheetBody,
-  SheetContent,
-  SheetFooter,
-  SheetHeader,
-  SheetTitle,
+  InlineAlert,
+  PinMap,
   Skeleton,
-  Textarea,
   cn,
   formatCurrency,
   formatDayShort,
@@ -54,6 +51,7 @@ import {
   toast,
 } from "@cfc/ui";
 import { RequireAccount } from "@/components/require-account";
+import { AddressSheet } from "@/components/address-sheet";
 import { useCart } from "@/lib/cart";
 
 /**
@@ -260,19 +258,90 @@ function BookInner() {
     }
   }, [step, hasOptions, search, router, serviceId]);
 
-  // One breakdown, shared by the summary, the payment screen and the
-  // confirmation, so the number a customer agreed to is the number charged.
-  const breakdown = React.useMemo(
-    () =>
-      priceBooking({
-        serviceId,
-        variantDeltaPaise: variant?.priceDeltaPaise ?? 0,
-        addOnsPaise,
-        discountPaise,
-        quantity,
-      }),
-    [serviceId, variant, addOnsPaise, discountPaise, quantity],
+  /**
+   * One breakdown, shared by the summary, the payment screen and the
+   * confirmation, so the number a customer agreed to is the number charged.
+   *
+   * **Priced by the server, not in the browser.** `priceBooking` reads a
+   * fixture table keyed `svc_01`, `svc_02`… — so against a real catalogue id
+   * like `svc_f3e65c52` it matched nothing, fell back to a base of zero, and
+   * showed "₹0.00 payable" under a header that correctly read ₹400. The
+   * server is the only thing that knows what a service costs, and it
+   * recomputes the total at booking anyway; asking it here means the figure
+   * on screen is the figure charged.
+   *
+   * The local calculator stays as the fallback for the fixture mode, where
+   * there is no server to ask.
+   */
+  const [breakdown, setBreakdown] = React.useState<PriceBreakdown>(() =>
+    priceBooking({
+      serviceId,
+      variantDeltaPaise: variant?.priceDeltaPaise ?? 0,
+      addOnsPaise,
+      discountPaise,
+      quantity,
+    }),
   );
+  const [pricing, setPricing] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setPricing(true);
+
+    void priceBookingLive({
+      serviceId,
+      variantId: variant?.id ?? null,
+      addOnIds,
+      quantity,
+      ...(coupon?.code ? { couponCode: coupon.code } : {}),
+    })
+      .then((live) => {
+        if (!cancelled) setBreakdown(live);
+      })
+      .catch(() => {
+        // Keep the last good figure rather than flashing a zero. A wrong total
+        // shown confidently is worse than a slightly stale one, and the server
+        // recomputes at booking regardless.
+      })
+      .finally(() => {
+        if (!cancelled) setPricing(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [serviceId, variant, addOnIds, quantity, coupon]);
+
+  /**
+   * A step cannot be reached without what it depends on.
+   *
+   * **The step lives in the URL; the slot and the address live in component
+   * state.** So reloading on `?step=payment` — or landing on that URL from
+   * history, or a shared link — restored the step and lost both answers. The
+   * Pay button then hit `if (slotAt === null || addressId === null) return;`
+   * and did nothing at all, with no message, which is indistinguishable from
+   * the app being broken.
+   *
+   * Rather than let the screen render a control that cannot work, this sends
+   * the customer back to the first step still missing an answer. `replace`,
+   * so the dead URL does not stay in history for Back to land on again.
+   */
+  React.useEffect(() => {
+    // Only once the service has loaded, or this fires during the first paint
+    // and bounces a customer who had simply not got there yet.
+    if (service === null) return;
+    if (step !== "payment" && step !== "summary") return;
+    if (slotAt !== null && addressId !== null) return;
+
+    const q = new URLSearchParams(search.toString());
+    q.set("step", slotAt === null ? "slot" : "address");
+    router.replace(`/book/${serviceId}?${q.toString()}`, { scroll: false });
+    toast.info(
+      slotAt === null
+        ? "Pick a time to carry on with this booking."
+        : "Choose an address to carry on with this booking.",
+    );
+  }, [step, service, slotAt, addressId, search, router, serviceId]);
 
   /**
    * Identifies this booking attempt, for the whole life of this screen.
@@ -294,7 +363,16 @@ function BookInner() {
   };
 
   const pay = () => {
-    if (slotAt === null || addressId === null) return;
+    // Belt and braces with the guard above. A button that does nothing is the
+    // worst failure available, so if this is ever reached it says why.
+    if (slotAt === null || addressId === null) {
+      toast.error(
+        slotAt === null
+          ? "Pick an arrival time first."
+          : "Choose an address first.",
+      );
+      return;
+    }
     setPaying(true);
     createBooking({
       serviceId,
@@ -398,7 +476,9 @@ function BookInner() {
               method={method}
               onMethodChange={setMethod}
               walletPaise={walletPaise}
-              paying={paying}
+              // Also while repricing, so a customer cannot pay against a
+              // total that is about to change under them.
+              paying={paying || pricing}
               onPay={pay}
             />
           ) : step === "summary" ? (
@@ -805,27 +885,23 @@ function AddressStep({
         )}
       </section>
 
-      {/* The map confirms the pin rather than setting it. Placing a pin by
-          dragging needs the Maps SDK, which is out of frontend scope — so the
-          honest thing is to show where we think the address is and let the
-          customer correct the text. */}
+      {/* The real pin the customer placed when they saved this address.
+          Read-only: dragging it here would imply it changes the booking.
+
+          This was `MapView`, a hand-drawn canvas that took percentages rather
+          than coordinates — so every address was pinned at dead centre no
+          matter where it actually was. */}
       {selected !== null && (
         <section className="cfc-card overflow-hidden">
           <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
             On the map
           </h2>
-          <MapView
+          <PinMap
             className="h-block-md"
             markers={[
               {
                 id: selected.id,
-                // MapView is a styled canvas standing in for the Maps SDK, so
-                // it takes percentages rather than coordinates. The pin is
-                // centred: with one marker there is nothing to place it
-                // relative to, and an off-centre pin would imply a precision
-                // this placeholder does not have.
-                x: 50,
-                y: 50,
+                point: selected.point,
                 kind: "customer",
                 label: LABEL_TEXT[selected.label],
               },
@@ -834,13 +910,31 @@ function AddressStep({
         </section>
       )}
 
+      {/* An address outside every service area saves, but cannot be booked
+          from: dispatch matches pros on the area name, so the booking would
+          sit unassigned with nothing on screen explaining why. Named here,
+          with somewhere we DO cover, rather than left as a dead button. */}
+      {selected?.serviceable === false && (
+        <InlineAlert
+          tone="clock"
+          title={`We are not working in ${selected.area} yet`}
+          className="mb-3"
+        >
+          Choose another address, or add one in an area we cover.
+        </InlineAlert>
+      )}
+
       <Button
         variant="primary"
         className="w-full"
-        disabled={selectedId === null}
+        disabled={selectedId === null || selected?.serviceable === false}
         onClick={onContinue}
       >
-        {selectedId === null ? "Choose an address" : "Continue to summary"}
+        {selectedId === null
+          ? "Choose an address"
+          : selected?.serviceable === false
+            ? "We do not cover this address"
+            : "Continue to summary"}
       </Button>
     </div>
   );
@@ -923,227 +1017,6 @@ function AddressRow({
         Edit
       </Button>
     </div>
-  );
-}
-
-/**
- * Customer 17 — the address form.
- *
- * A Sheet rather than a route: adding an address is a detour from choosing
- * one, and a customer who finishes expects to land back on the picker with the
- * new address selected.
- */
-function AddressSheet({
-  open,
-  address,
-  onOpenChange,
-  onSaved,
-}: {
-  open: boolean;
-  address: Address | null;
-  onOpenChange: (open: boolean) => void;
-  onSaved: (saved: Address) => void;
-}) {
-  const [label, setLabel] = React.useState<Address["label"]>("home");
-  const [line1, setLine1] = React.useState("");
-  const [line2, setLine2] = React.useState("");
-  const [landmark, setLandmark] = React.useState("");
-  const [area, setArea] = React.useState("");
-  const [pincode, setPincode] = React.useState("");
-  const [makeDefault, setMakeDefault] = React.useState(false);
-  const [busy, setBusy] = React.useState(false);
-  const [locating, setLocating] = React.useState(false);
-  const [point, setPoint] = React.useState<{ lat: number; lng: number } | null>(null);
-
-  React.useEffect(() => {
-    if (!open) return;
-    setLabel(address?.label ?? "home");
-    setLine1(address?.line1 ?? "");
-    setLine2(address?.line2 ?? "");
-    setLandmark(address?.landmark ?? "");
-    setArea(address?.area ?? "");
-    setPincode(address?.pincode ?? "");
-    setMakeDefault(address?.isDefault ?? false);
-    setPoint(address?.point ?? null);
-  }, [open, address]);
-
-  const valid =
-    line1.trim() !== "" && area.trim() !== "" && /^\d{6}$/.test(pincode);
-
-  /**
-   * "Detect location", honestly.
-   *
-   * The browser's Geolocation API gives coordinates, not an address — turning
-   * one into the other needs a geocoding service we do not have. So this fills
-   * the map pin and says as much, rather than pretending to fill the form.
-   */
-  const detect = () => {
-    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
-      toast.error("Your browser cannot share a location.");
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setPoint({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setLocating(false);
-        toast.success("Pin set. Please still type the address for the professional.");
-      },
-      () => {
-        setLocating(false);
-        toast.error("We could not get your location.");
-      },
-      { timeout: 10_000 },
-    );
-  };
-
-  const submit = () => {
-    if (!valid) return;
-    setBusy(true);
-    saveAddress({
-      ...(address ? { id: address.id } : {}),
-      label,
-      line1: line1.trim(),
-      ...(line2.trim() ? { line2: line2.trim() } : {}),
-      ...(landmark.trim() ? { landmark: landmark.trim() } : {}),
-      area: area.trim(),
-      city: "Tiruchirappalli",
-      state: "Tamil Nadu",
-      pincode,
-      point: point ?? { lat: 10.7905, lng: 78.7047 },
-      isDefault: makeDefault,
-    })
-      .then((saved) => {
-        toast.success(address ? "Address updated" : "Address saved");
-        onSaved(saved);
-      })
-      .catch(() => toast.error("We could not save that. Try again."))
-      .finally(() => setBusy(false));
-  };
-
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent>
-        <SheetHeader>
-          <SheetTitle>{address ? "Edit address" : "Add an address"}</SheetTitle>
-        </SheetHeader>
-
-        <SheetBody className="space-y-4">
-          <FormField label="Save as">
-            <div className="flex gap-2">
-              {(["home", "work", "other"] as const).map((key) => {
-                const Icon = LABEL_ICON[key];
-                const on = label === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setLabel(key)}
-                    aria-pressed={on}
-                    className={cn(
-                      "flex h-touch flex-1 items-center justify-center gap-2 rounded-control border text-small",
-                      "transition-colors duration-fast",
-                      on
-                        ? "border-action bg-action-subtle font-medium text-action-press"
-                        : "border-border bg-surface text-ink hover:border-action-line",
-                    )}
-                  >
-                    <Icon className="size-4" aria-hidden="true" />
-                    {LABEL_TEXT[key]}
-                  </button>
-                );
-              })}
-            </div>
-          </FormField>
-
-          <Button
-            variant="secondary"
-            className="w-full"
-            loading={locating}
-            onClick={detect}
-          >
-            <Crosshair />
-            Use my current location
-          </Button>
-
-          <FormField label="Flat, house or building" required>
-            <Input
-              value={line1}
-              onChange={(e) => setLine1(e.target.value)}
-              placeholder="e.g. 42, Kaveri Nagar"
-              autoComplete="address-line1"
-            />
-          </FormField>
-
-          <FormField label="Street or locality">
-            <Input
-              value={line2}
-              onChange={(e) => setLine2(e.target.value)}
-              placeholder="e.g. Near Temple Street"
-              autoComplete="address-line2"
-            />
-          </FormField>
-
-          <FormField
-            label="Landmark"
-            help="What the professional should look for."
-          >
-            <Textarea
-              value={landmark}
-              onChange={(e) => setLandmark(e.target.value)}
-              placeholder="e.g. Opposite the pharmacy, blue gate"
-              rows={2}
-            />
-          </FormField>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Area" required>
-              <Input
-                value={area}
-                onChange={(e) => setArea(e.target.value)}
-                placeholder="e.g. Srirangam"
-                autoComplete="address-level2"
-              />
-            </FormField>
-            <FormField label="Pincode" required>
-              <Input
-                value={pincode}
-                onChange={(e) =>
-                  setPincode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                }
-                inputMode="numeric"
-                placeholder="620006"
-                autoComplete="postal-code"
-                className="tabular"
-              />
-            </FormField>
-          </div>
-
-          <label className="flex items-center gap-2 text-small text-ink">
-            <input
-              type="checkbox"
-              checked={makeDefault}
-              onChange={(e) => setMakeDefault(e.target.checked)}
-              className="sr-only"
-            />
-            <span className="cfc-check" aria-hidden="true" />
-            Use this as my default address
-          </label>
-        </SheetBody>
-
-        <SheetFooter>
-          <Button
-            variant="primary"
-            className="w-full"
-            loading={busy}
-            disabled={!valid}
-            onClick={submit}
-          >
-            {address ? "Save changes" : "Save address"}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
   );
 }
 

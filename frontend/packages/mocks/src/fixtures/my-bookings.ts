@@ -1,4 +1,4 @@
-import type { ConsumerBooking } from "@cfc/types";
+import type { ConsumerBooking, PriceBreakdown } from "@cfc/types";
 import { SERVICE_CATALOG } from "./seed";
 import { pros } from "./pros";
 
@@ -34,8 +34,10 @@ const ADDRESS = {
 };
 
 /** A six-digit code, stable per booking so it does not change on re-render. */
+/** Four digits, matching the server. It generated six, and the pro app's field
+ *  has always been four boxes — so no fixture code could ever be entered. */
 function otpFor(seed: number): string {
-  return String(100_000 + ((seed * 7919) % 900_000));
+  return String(1_000 + ((seed * 7919) % 9_000));
 }
 
 function serviceAt(index: number): { name: string; variant: string | null } {
@@ -81,6 +83,29 @@ function pro(index: number) {
 const hoursFromNow = (h: number) =>
   new Date(Date.now() + h * 3_600_000).toISOString();
 
+/**
+ * A plausible breakdown that sums to a given total.
+ *
+ * 18% GST split evenly into CGST and SGST, the rest as the service line. The
+ * numbers only have to be internally consistent — a fixture invoice that does
+ * not add up is a fixture that teaches the screen a lie.
+ */
+function breakdownFor(totalPaise: number): PriceBreakdown {
+  const taxable = Math.round(totalPaise / 1.18);
+  const tax = totalPaise - taxable;
+  const cgstPaise = Math.floor(tax / 2);
+  return {
+    servicePaise: taxable,
+    addOnsPaise: 0,
+    visitChargePaise: 0,
+    platformFeePaise: 0,
+    discountPaise: 0,
+    cgstPaise,
+    sgstPaise: tax - cgstPaise,
+    totalPaise,
+  };
+}
+
 export const myBookings: ConsumerBooking[] = [
   // Placed an hour ago for tomorrow. No pro yet.
   {
@@ -92,8 +117,11 @@ export const myBookings: ConsumerBooking[] = [
     scheduledAt: hoursFromNow(26),
     address: ADDRESS,
     totalPaise: 159_000,
+    // Derived from this booking's own total so the invoice adds up.
+    breakdown: breakdownFor(159_000),
     paymentMethod: "upi",
     pro: null,
+    startOtp: null,
     completionOtp: null,
     etaMinutes: null,
     proPosition: null,
@@ -114,8 +142,11 @@ export const myBookings: ConsumerBooking[] = [
     scheduledAt: hoursFromNow(1),
     address: ADDRESS,
     totalPaise: 249_000,
+    // Derived from this booking's own total so the invoice adds up.
+    breakdown: breakdownFor(249_000),
     paymentMethod: "card",
     pro: pro(2),
+    startOtp: otpFor(12),
     completionOtp: otpFor(2),
     etaMinutes: 18,
     proPosition: { x: 38, y: 62 },
@@ -140,8 +171,11 @@ export const myBookings: ConsumerBooking[] = [
     scheduledAt: hoursFromNow(-1),
     address: ADDRESS,
     totalPaise: 89_000,
+    // Derived from this booking's own total so the invoice adds up.
+    breakdown: breakdownFor(89_000),
     paymentMethod: "cash",
     pro: pro(5),
+    startOtp: otpFor(15),
     completionOtp: otpFor(5),
     etaMinutes: null,
     proPosition: { x: 50, y: 50 },
@@ -168,8 +202,11 @@ export const myBookings: ConsumerBooking[] = [
     scheduledAt: hoursFromNow(-72),
     address: ADDRESS,
     totalPaise: 349_000,
+    // Derived from this booking's own total so the invoice adds up.
+    breakdown: breakdownFor(349_000),
     paymentMethod: "upi",
     pro: pro(8),
+    startOtp: null,
     completionOtp: null,
     etaMinutes: null,
     proPosition: null,
@@ -195,8 +232,11 @@ export const myBookings: ConsumerBooking[] = [
     scheduledAt: hoursFromNow(-240),
     address: ADDRESS,
     totalPaise: 129_000,
+    // Derived from this booking's own total so the invoice adds up.
+    breakdown: breakdownFor(129_000),
     paymentMethod: "wallet",
     pro: pro(11),
+    startOtp: null,
     completionOtp: null,
     etaMinutes: null,
     proPosition: null,
@@ -222,8 +262,11 @@ export const myBookings: ConsumerBooking[] = [
     scheduledAt: hoursFromNow(-120),
     address: ADDRESS,
     totalPaise: 199_000,
+    // Derived from this booking's own total so the invoice adds up.
+    breakdown: breakdownFor(199_000),
     paymentMethod: "upi",
     pro: null,
+    startOtp: null,
     completionOtp: null,
     etaMinutes: null,
     proPosition: null,

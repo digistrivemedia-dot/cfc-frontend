@@ -21,6 +21,7 @@ export {
   getToken,
   setToken,
   clearToken,
+  setSessionExpiredHandler,
   tokenRole,
   tokenActor,
   isAdminToken,
@@ -142,6 +143,11 @@ export {
   type AdminSession,
 } from "./api/admin-auth";
 export { getDashboardKpis, getJobFeed } from "./api/dashboard";
+export {
+  getPlatformSettings,
+  savePlatformCoverage,
+  type PlatformSettings,
+} from "./api/admin-settings";
 
 export { AREA_OPTIONS } from "./fixtures/bookings";
 export { SERVICE_NAMES } from "./fixtures/seed";
@@ -198,7 +204,13 @@ export {
   askQuotationQuestion,
   getPendingQuotationCount,
 } from "./api/my-quotations";
-export { getAddresses, saveAddress, deleteAddress } from "./api/addresses";
+export {
+  getAddresses,
+  saveAddress,
+  deleteAddress,
+  reverseGeocode,
+  type ReverseGeocode,
+} from "./api/addresses";
 export {
   getWalletBalance,
   getWalletTransactions,
@@ -241,6 +253,9 @@ export {
   getProActiveJobs,
   getProJobs,
   getProJobCounts,
+  getUnclaimedJobs,
+  claimJob,
+  type ClaimResult,
   getProJob,
   checklistFor,
 } from "./api/pro-jobs";
@@ -274,7 +289,11 @@ export {
   getProAvailability,
   saveProAvailability,
   updateProProfile,
+  getProPincodes,
+  saveProPincodes,
   getServiceAreas,
+  getServicePincodes,
+  type ProPincodes,
   type ProOwnProfile,
   type ProOwnDocument,
   type ProOwnWarning,
@@ -318,7 +337,12 @@ export {
   type ProWallet,
 } from "./api/admin-payouts";
 export { setProOnline, pingProLocation } from "./api/pro-dispatch";
-export { startJob, uploadJobPhoto } from "./api/pro-lifecycle";
+export {
+  startJob,
+  uploadJobPhoto,
+  uploadJobMedia,
+  type JobMediaResult,
+} from "./api/pro-lifecycle";
 export {
   getLiveMap,
   getDispatchAlerts,

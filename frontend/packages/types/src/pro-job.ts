@@ -123,10 +123,19 @@ export interface ProJob {
   afterPhotoUrls: string[];
 }
 
-/** The four tabs on Pro 20. */
+/**
+ * The tabs on Pro 20.
+ *
+ * `unclaimed` is **not** a status filter over the pro's own jobs like the
+ * others — it is work belonging to nobody that this pro could take. It exists
+ * because a 30-second offer that lapses leaves a booking `pending` with no
+ * professional, and `selectPros` excludes anyone already offered it: with a
+ * small roster the booking then has nobody left to ask and sits for ever.
+ */
 export const PRO_JOB_TABS = [
   "active",
   "upcoming",
+  "unclaimed",
   "completed",
   "cancelled",
 ] as const;
@@ -135,6 +144,9 @@ export type ProJobTab = (typeof PRO_JOB_TABS)[number];
 export const PRO_JOB_TAB_LABEL: Record<ProJobTab, string> = {
   active: "Active",
   upcoming: "Upcoming",
+  // Not "Unclaimed": the pro reading this wants to know there is work going
+  // spare, not to learn a piece of dispatch vocabulary.
+  unclaimed: "Open jobs",
   completed: "Completed",
   cancelled: "Cancelled",
 };
@@ -143,6 +155,10 @@ export const PRO_JOB_TAB_LABEL: Record<ProJobTab, string> = {
 export const PRO_JOB_TAB_STATUSES: Record<ProJobTab, ProJobStatus[]> = {
   active: ["on_the_way", "in_progress", "awaiting_quote"],
   upcoming: ["upcoming"],
+  // Empty: this tab is not a filter over the pro's own jobs, it has its own
+  // endpoint. Present so the record stays exhaustive and a new tab cannot be
+  // added without deciding what it collects.
+  unclaimed: [],
   completed: ["completed"],
   cancelled: ["cancelled"],
 };

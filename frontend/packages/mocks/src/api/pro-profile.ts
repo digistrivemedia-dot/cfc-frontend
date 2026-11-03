@@ -307,6 +307,30 @@ export async function updateProProfile(
   proId: string,
   edit: ProProfileEdit,
 ): Promise<ProProfileEdit> {
+  if (isLive("updateProProfile")) {
+    /**
+     * Only what the server lets a pro change about themselves.
+     *
+     * **`phone` is deliberately absent.** It is the login identity, so changing
+     * it is an OTP flow of its own — the same reason the customer's profile
+     * patch excludes it. Sending it here would have the screen report success
+     * over a field the server ignores.
+     *
+     * This whole function had no live path at all before: it mutated a fixture
+     * object and resolved, so a pro edited their bio, saw "Profile updated",
+     * and nothing reached the database.
+     */
+    await fetchJson("/pro/profile", {
+      method: "PATCH",
+      body: {
+        bio: edit.bio,
+        experienceYears: edit.experienceYears,
+        areas: edit.areas,
+        ...(edit.upiId !== null ? { upiId: edit.upiId } : {}),
+      },
+    });
+    return edit;
+  }
   await latency();
 
   const pro = pros.find((p) => p.id === proId);
@@ -324,6 +348,43 @@ export async function updateProProfile(
   return edit;
 }
 
+/** The pincodes a pro covers, and the ones the platform offers. */
+export interface ProPincodes {
+  /** This pro's own selection. */
+  mine: string[];
+  /** Every pincode CFC serves — the only valid choices. */
+  available: string[];
+}
+
+/**
+ * Pro 28 — the pincodes this pro will travel to.
+ *
+ * What dispatch matches a booking against. Area names were the test before
+ * this and proved fragile: a geocoder returning "Trichy Zone IV" for the area
+ * CFC calls "Thillai Nagar" meant a booking there reached nobody.
+ */
+export async function getProPincodes(): Promise<ProPincodes> {
+  if (isLive("getProPincodes")) {
+    return fetchJson<ProPincodes>("/pro/profile/pincodes");
+  }
+  await latency();
+  return applyScenario<ProPincodes>({ mine: [], available: [] });
+}
+
+/** Refused by the server for any pincode the platform does not serve. */
+export async function saveProPincodes(
+  pincodes: string[],
+): Promise<ProPincodes> {
+  if (isLive("saveProPincodes")) {
+    return fetchJson<ProPincodes>("/pro/profile/pincodes", {
+      method: "PUT",
+      body: { pincodes },
+    });
+  }
+  await latency();
+  return { mine: pincodes, available: pincodes };
+}
+
 /**
  * The areas a pro can choose to serve. Pro 5 and 27.
  *
@@ -332,6 +393,20 @@ export async function updateProProfile(
  * radius and assigns Area Admins to them. A screen reading a fixture array
  * directly would also break the rule that screens import api functions only.
  */
+/**
+ * Every pincode CFC accepts a booking from. Public.
+ *
+ * The authority on coverage: the address form checks an address against this,
+ * not against an area name a geocoder may render differently.
+ */
+export async function getServicePincodes(): Promise<string[]> {
+  if (isLive("getServicePincodes")) {
+    return fetchJson<string[]>("/public/service-pincodes");
+  }
+  await latency();
+  return applyScenario<string[]>([]);
+}
+
 export async function getServiceAreas(): Promise<string[]> {
   if (isLive("getServiceAreas")) {
     return fetchJson<string[]>("/public/service-areas");

@@ -38,7 +38,12 @@ export interface GeoPoint {
 
 export interface Address {
   id: Id;
+  /** `work` renders as "Office". Stored as `work` — see the note on the model. */
   label: "home" | "work" | "other";
+  /** The customer's own name for an `other` address: "Mum's place", "Shop". */
+  labelName?: string;
+  /** House or flat number, kept apart from the geocoded street in `line1`. */
+  flatNumber?: string;
   line1: string;
   line2?: string;
   landmark?: string;
@@ -46,7 +51,21 @@ export interface Address {
   city: string;
   state: string;
   pincode: string;
+  /** Who the pro asks for at the door. Falls back to the account holder. */
+  contactName?: string;
+  contactPhone?: string;
   point: GeoPoint;
+  /** True once the coordinates came from a real map pin or geocode. */
+  locationVerified?: boolean;
+  /**
+   * Whether CFC currently operates in this address's area.
+   *
+   * Server-computed against the admin's service-area list, because the list
+   * changes without the address changing. An address outside it still saves —
+   * losing something a customer carefully typed is worse — but booking from it
+   * is refused, with the reason named rather than an empty pro list.
+   */
+  serviceable?: boolean;
   isDefault: boolean;
 }
 

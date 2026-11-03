@@ -238,6 +238,10 @@ function buildDetail(b: BookingListItem, rand: () => number): BookingDetail {
 
   return {
     ...b,
+    // Empty on the fixture path: there are no uploaded files behind a mock
+    // booking, and inventing URLs would render broken tiles in the admin.
+    beforePhotoUrls: [],
+    afterPhotoUrls: [],
     customerPhone: phone(rand),
     proPhone: b.proName ? phone(rand) : null,
     address: `${1 + Math.floor(rand() * 120)}, ${pickFrom(rand, STREETS)}, ${b.area}`,

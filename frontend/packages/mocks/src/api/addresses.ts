@@ -3,6 +3,44 @@ import { AREAS } from "../fixtures/seed";
 import { applyScenario, latency } from "../control";
 import { fetchJson, isLive } from "../http";
 
+/** What a point on the map resolves to. */
+export interface ReverseGeocode {
+  /** Google's own one-line rendering. Shown under the pin as confirmation. */
+  formatted: string;
+  /** Just the street — the form keeps city, state and pincode separately. */
+  line1: string;
+  area: string;
+  city: string;
+  state: string;
+  pincode: string;
+  /** Whether CFC operates in `area`, answered while they are still on the map. */
+  serviceable: boolean;
+  /** Where we DO operate, so a refusal can name somewhere instead of nowhere. */
+  serviceAreas: string[];
+}
+
+/**
+ * Turns a map pin into an address.
+ *
+ * Goes through **our** server, not Google directly. The Maps JavaScript key
+ * ships in the page and cannot be hidden, so adding Geocoding to it would let
+ * anyone reading devtools spend that quota. The server holds a second,
+ * IP-restricted key for this.
+ *
+ * Live-only: there is no sensible fixture for "what is at this coordinate", and
+ * inventing one would have the form confidently fill in a street that does not
+ * exist. Without the key configured the server answers 503 and the form asks
+ * the customer to type the address instead.
+ */
+export async function reverseGeocode(
+  lat: number,
+  lng: number,
+): Promise<ReverseGeocode> {
+  return fetchJson<ReverseGeocode>("/consumer/geocode/reverse", {
+    query: { lat, lng },
+  });
+}
+
 /**
  * Customer 16 and 17 — saved addresses, and adding or editing one.
  *

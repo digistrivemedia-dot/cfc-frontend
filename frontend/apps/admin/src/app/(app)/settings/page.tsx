@@ -4,7 +4,12 @@ import * as React from "react";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KeyRound, Plus, Save, ShieldCheck, Trash2, TriangleAlert, UserCog } from "lucide-react";
-import { AREA_OPTIONS, getSubAdmins } from "@cfc/mocks";
+import {
+  getPlatformSettings,
+  getServiceAreas,
+  getSubAdmins,
+  savePlatformCoverage,
+} from "@cfc/mocks";
 import { ADMIN_SECTIONS, can, type AdminSection, type SubAdmin } from "@cfc/types";
 import {
   AlertDialog,
@@ -18,6 +23,7 @@ import {
   Avatar,
   AvatarFallback,
   Badge,
+  ChipEditor,
   Button,
   Checkbox,
   Combobox,
@@ -53,7 +59,9 @@ import {
   cn,
   initials,
   toast,
+  validatePincode,
 } from "@cfc/ui";
+import { ApiError } from "@cfc/types";
 import { useActor } from "@/lib/actor";
 
 /**
@@ -194,6 +202,33 @@ function PlatformTab() {
   const [minVersion, setMinVersion] = React.useState("2.4.0");
   const [forceUpdate, setForceUpdate] = React.useState(false);
   const [gpsRadius, setGpsRadius] = React.useState("100");
+
+  /**
+   * Coverage, read from and written to the server.
+   *
+   * Kept apart from the rest of this screen's state, which is still local with
+   * hardcoded defaults and does not persist. These two lists decide whether
+   * customers can book at all, so they are wired for real; the others are
+   * wired the same way when someone needs them.
+   */
+  const [serviceAreas, setServiceAreas] = React.useState<string[]>([]);
+  const [servicePincodes, setServicePincodes] = React.useState<string[]>([]);
+  const [coverageDirty, setCoverageDirty] = React.useState(false);
+  const [coverageBusy, setCoverageBusy] = React.useState(false);
+
+  const loadCoverage = React.useCallback(() => {
+    void getPlatformSettings()
+      .then((settings) => {
+        setServiceAreas(settings.serviceAreas ?? []);
+        setServicePincodes(settings.servicePincodes ?? []);
+        setCoverageDirty(false);
+      })
+      .catch(() => toast.error("Could not load coverage settings."));
+  }, []);
+
+  React.useEffect(() => loadCoverage(), [loadCoverage]);
+
+
   const [maintenance, setMaintenance] = React.useState(false);
   const [maintenanceNote, setMaintenanceNote] = React.useState(
     "We are carrying out scheduled maintenance and will be back shortly.",
@@ -206,10 +241,44 @@ function PlatformTab() {
 
   const markDirty = () => setDirty(true);
 
+  /**
+   * Saves what is actually wired, and says so.
+   *
+   * **Coverage is the only part of this page that persists.** Everything else
+   * here is local state with hardcoded defaults, and this handler used to
+   * toast "Platform settings saved" over all of it regardless — a success
+   * message for work that never happened.
+   *
+   * So it saves coverage, reports that specifically, and the note beside the
+   * button says the rest is not stored yet. Those sections are wired the same
+   * way when someone needs them.
+   */
   const handleSave = () => {
-    if (!dirty) return;
-    toast.success("Platform settings saved");
-    setDirty(false);
+    if (!dirty && !coverageDirty) return;
+
+    if (!coverageDirty) {
+      // Nothing persistable changed. Saying "saved" here would be the same
+      // lie in a narrower case.
+      toast.info("Those fields are not saved to the server yet.");
+      setDirty(false);
+      return;
+    }
+
+    setCoverageBusy(true);
+    savePlatformCoverage({ serviceAreas, servicePincodes })
+      .then((saved) => {
+        setServiceAreas(saved.serviceAreas ?? []);
+        setServicePincodes(saved.servicePincodes ?? []);
+        setCoverageDirty(false);
+        setDirty(false);
+        toast.success("Coverage saved.");
+      })
+      .catch((e: unknown) =>
+        toast.error(
+          e instanceof ApiError ? e.message : "Could not save coverage.",
+        ),
+      )
+      .finally(() => setCoverageBusy(false));
   };
 
   return (
@@ -513,20 +582,70 @@ function PlatformTab() {
               />
             </FormField>
 
-            {/* "Geofencing" is not only a radius: it is also which areas the
-                platform will accept a booking from at all. */}
-            <div>
-              <p className="text-caption font-medium text-ink">Service areas</p>
-              <p className="text-caption text-ink-muted">
-                Bookings outside these areas are refused at checkout.
-              </p>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {AREA_OPTIONS.map((area) => (
-                  <Badge key={area} tone="neutral" dot>
-                    {area}
-                  </Badge>
-                ))}
+            {/* Coverage. Editable, and read from the server.
+
+                This used to render `AREA_OPTIONS` — a hardcoded fixture — as
+                read-only badges. So the screen showed eight areas while the
+                platform actually served three, and there was no way to add one
+                without calling the API by hand. */}
+            <div className="space-y-4 border-t border-border pt-4">
+              <div>
+                <p className="text-caption font-medium text-ink">
+                  Serviced pincodes
+                </p>
+                <p className="text-caption text-ink-muted">
+                  The authority on coverage. A booking is refused unless its
+                  address pincode is on this list, and a professional can only
+                  claim pincodes from it.
+                </p>
+                <div className="mt-2">
+                  <ChipEditor
+                    values={servicePincodes}
+                    onChange={(next) => {
+                      setServicePincodes(next);
+                      setCoverageDirty(true);
+                      // Enables the page's Save button — without this the only
+                      // genuinely persistable change on the page left it
+                      // disabled.
+                      markDirty();
+                    }}
+                    validate={validatePincode}
+                    placeholder="620006"
+                    label="Add a serviced pincode"
+                    emptyText="No pincodes yet — every booking will be refused."
+                    disabled={coverageBusy}
+                  />
+                </div>
               </div>
+
+              <div>
+                <p className="text-caption font-medium text-ink">Service areas</p>
+                <p className="text-caption text-ink-muted">
+                  Names only — used for labels, filters, and the list a
+                  professional picks from at registration. Coverage is decided
+                  by pincode above.
+                </p>
+                <div className="mt-2">
+                  <ChipEditor
+                    values={serviceAreas}
+                    onChange={(next) => {
+                      setServiceAreas(next);
+                      setCoverageDirty(true);
+                      markDirty();
+                    }}
+                    placeholder="Srirangam"
+                    label="Add a service area"
+                    emptyText="No areas yet."
+                    disabled={coverageBusy}
+                  />
+                </div>
+              </div>
+
+              {coverageDirty && (
+                <p className="text-caption text-ink-muted">
+                  Unsaved — use <b>Save settings</b> at the bottom of the page.
+                </p>
+              )}
             </div>
           </section>
 
@@ -563,12 +682,24 @@ function PlatformTab() {
       {/* Sticky, because the settings above it are taller than one screen and a
           save button below the fold is a save button nobody presses. */}
       <div className="sticky bottom-0 flex items-center justify-end gap-3 border-t border-border bg-surface py-3">
-        {dirty && (
-          <p className="text-caption text-ink-muted">Unsaved changes</p>
+        {/* Names what will actually be written. Coverage is the only wired
+            part of this page, and a bare "Unsaved changes" over a Save that
+            persists nothing else is how an operator comes to trust a button
+            that does not work. */}
+        {(dirty || coverageDirty) && (
+          <p className="text-caption text-ink-muted">
+            {coverageDirty
+              ? "Unsaved coverage changes"
+              : "Unsaved — these fields are not stored on the server yet"}
+          </p>
         )}
-        <Button variant="primary" onClick={handleSave} disabled={!dirty}>
+        <Button
+          variant="primary"
+          onClick={handleSave}
+          disabled={(!dirty && !coverageDirty) || coverageBusy}
+        >
           <Save />
-          Save settings
+          {coverageBusy ? "Saving…" : "Save settings"}
         </Button>
       </div>
 
@@ -1178,6 +1309,23 @@ const DEFAULT_SECTIONS: Record<SubAdmin["role"], AdminSection[]> = {
   area_admin: [...GRANTABLE.area_admin],
 };
 
+/**
+ * The real service areas, for assigning an area admin.
+ *
+ * Both dialogs read `AREA_OPTIONS` before this — a fixture listing eight areas
+ * while the platform served three. An admin scoped to an area the platform
+ * does not serve sees nothing at all, with nothing on screen explaining why.
+ */
+function useServiceAreas(): string[] {
+  const [areas, setAreas] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    void getServiceAreas()
+      .then(setAreas)
+      .catch(() => setAreas([]));
+  }, []);
+  return areas;
+}
+
 function AddSubAdminDialog({
   open,
   onOpenChange,
@@ -1194,6 +1342,7 @@ function AddSubAdminDialog({
 }) {
   const [name, setName] = React.useState("");
   const [role, setRole] = React.useState<SubAdmin["role"]>("sub_admin");
+  const areaOptions = useServiceAreas();
   const [area, setArea] = React.useState<string | null>(null);
   const [sections, setSections] = React.useState<AdminSection[]>(
     DEFAULT_SECTIONS.sub_admin,
@@ -1276,7 +1425,7 @@ function AddSubAdminDialog({
           {role === "area_admin" && (
             <FormField label="Area" required>
               <Combobox
-                options={AREA_OPTIONS.map((a) => ({ value: a, label: a }))}
+                options={areaOptions.map((a) => ({ value: a, label: a }))}
                 value={area}
                 onChange={setArea}
                 placeholder="Choose an area"
@@ -1315,6 +1464,7 @@ function PermissionsDialog({
   onSave: (id: string, sections: AdminSection[], area: string) => void;
 }) {
   const [sections, setSections] = React.useState<AdminSection[]>([]);
+  const areaOptions = useServiceAreas();
   const [area, setArea] = React.useState<string | null>(null);
 
   React.useEffect(() => {
@@ -1342,7 +1492,7 @@ function PermissionsDialog({
             {admin.role === "area_admin" && (
               <FormField label="Area" required>
                 <Combobox
-                  options={AREA_OPTIONS.map((a) => ({ value: a, label: a }))}
+                  options={areaOptions.map((a) => ({ value: a, label: a }))}
                   value={area}
                   onChange={setArea}
                   placeholder="Choose an area"

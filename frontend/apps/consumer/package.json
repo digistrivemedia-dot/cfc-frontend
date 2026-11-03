@@ -14,6 +14,7 @@
     "@cfc/tokens": "workspace:*",
     "@cfc/types": "workspace:*",
     "@cfc/ui": "workspace:*",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.469.0",
     "next": "15.1.12",
     "react": "19.0.0",
@@ -21,6 +22,8 @@
   },
   "devDependencies": {
     "@cfc/config": "workspace:*",
+    "@types/google.maps": "^3.66.9",
+    "@types/leaflet": "^1.9.22",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",

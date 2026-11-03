@@ -3,13 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 import {
-  BadgeCheck,
   Bell,
   CalendarDays,
   ChevronRight,
   Copy,
   LifeBuoy,
   LogOut,
+  MapPin,
   PencilLine,
   ScrollText,
   Settings,
@@ -17,6 +17,7 @@ import {
   Star,
   TriangleAlert,
   Wrench,
+  BadgeCheck,
 } from "lucide-react";
 import { getMyProProfile, getProDayStats } from "@cfc/mocks";
 import type { ProOwnProfile } from "@cfc/mocks";
@@ -134,8 +135,14 @@ export default function ProProfilePage() {
           {
             href: "/profile/edit",
             label: "Edit profile",
-            body: "Bio, experience, service areas and contact details.",
+            body: "Bio, experience and contact details.",
             icon: <PencilLine className="size-5" aria-hidden="true" />,
+          },
+          {
+            href: "/profile/pincodes",
+            label: "Where you work",
+            body: "The pincodes you are offered jobs in.",
+            icon: <MapPin className="size-5" aria-hidden="true" />,
           },
           {
             href: "/profile/services",

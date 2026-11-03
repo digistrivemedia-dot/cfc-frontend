@@ -181,6 +181,12 @@ export {
   type PhotoCaptureProps,
   type CapturedPhoto,
 } from "./components/photo-capture";
+export { PinMap, type PinMapMarker, type PinMapProps } from "./components/pin-map";
+export {
+  ChipEditor,
+  validatePincode,
+  type ChipEditorProps,
+} from "./components/chip-editor";
 export {
   MoneyBreakdown,
   type MoneyBreakdownProps,

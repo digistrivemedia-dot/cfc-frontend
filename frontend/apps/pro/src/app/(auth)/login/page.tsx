@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Info } from "lucide-react";
 import { sendProOtp } from "@cfc/mocks";
-import { Button, FormField, Input, toast } from "@cfc/ui";
+import { Button, FormField, InlineAlert, Input, toast } from "@cfc/ui";
 import {
   OnboardingCard,
   OnboardingShell,
@@ -32,6 +32,18 @@ import {
  */
 
 export default function ProLoginPage() {
+  return (
+    // `useSearchParams` needs a Suspense boundary, or Next refuses to
+    // statically render the route.
+    <React.Suspense fallback={null}>
+      <ProLoginInner />
+    </React.Suspense>
+  );
+}
+
+function ProLoginInner() {
+  // Set by the HTTP layer when a request came back 401 with a token attached.
+  const expired = useSearchParams().get("expired") === "1";
   const router = useRouter();
   const [phone, setPhone] = React.useState("");
   const [busy, setBusy] = React.useState(false);
@@ -57,6 +69,16 @@ export default function ProLoginPage() {
       heading="Sign in to CFC Pro"
       subheading="Enter your mobile number and we will send you a code."
     >
+      {/* Says why they are here. An expired session drops a pro on this screen
+          with no explanation otherwise, which reads as the app having logged
+          them out at random. */}
+      {expired && (
+        <InlineAlert tone="info" title="Your session has ended" className="mb-4">
+          You were signed out because your session expired. Sign in again to
+          carry on.
+        </InlineAlert>
+      )}
+
       <OnboardingCard>
         <form
           onSubmit={(e) => {

@@ -45,6 +45,14 @@ export type LocationError =
 export interface DistanceState {
   /** Metres from the target, or null before the first fix. */
   metres: number | null;
+  /**
+   * Where the device actually is, or null before the first fix.
+   *
+   * Exposed so the job screen can draw the pro's own pin at a real
+   * coordinate. It drew one at a hardcoded position on a fake canvas before —
+   * a dot that moved for nobody and meant nothing.
+   */
+  point: { lat: number; lng: number } | null;
   /** The fix's own claimed accuracy, in metres. */
   accuracyM: number | null;
   loading: boolean;
@@ -86,6 +94,9 @@ export function useDistanceTo(
   target: { lat: number; lng: number } | null,
 ): DistanceState {
   const [metres, setMetres] = React.useState<number | null>(null);
+  const [point, setPoint] = React.useState<{ lat: number; lng: number } | null>(
+    null,
+  );
   const [accuracyM, setAccuracyM] = React.useState<number | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<LocationError | null>(null);
@@ -111,12 +122,9 @@ export function useDistanceTo(
         setLoading(false);
         setError(null);
         setAccuracyM(pos.coords.accuracy);
-        setMetres(
-          metresBetween(
-            { lat: pos.coords.latitude, lng: pos.coords.longitude },
-            target,
-          ),
-        );
+        const here = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setPoint(here);
+        setMetres(metresBetween(here, target));
       },
       (err) => {
         if (cancelled) return;
@@ -151,7 +159,7 @@ export function useDistanceTo(
     // `attempt` is in the deps so `retry()` re-runs the watch.
   }, [target, attempt]);
 
-  return { metres, accuracyM, loading, error, retry };
+  return { metres, point, accuracyM, loading, error, retry };
 }
 
 /** Words for a failure, in the pro's terms rather than the API's. */

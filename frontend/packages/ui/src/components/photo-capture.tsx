@@ -40,8 +40,21 @@ import { cn } from "../lib/cn";
 /** What a browser will actually decode, rather than everything named image/*. */
 const ACCEPTED = ["image/jpeg", "image/png", "image/webp", "image/heic"];
 
+/** Containers a phone produces and a browser plays without transcoding. */
+const ACCEPTED_VIDEO = ["video/mp4", "video/quicktime", "video/webm"];
+
 /** 10 MB. Generous for a photo, small enough to upload on mobile data. */
 const MAX_BYTES = 10 * 1024 * 1024;
+
+/** 60 MB per video — roughly a minute from a phone. Matches the server. */
+const MAX_VIDEO_BYTES = 60 * 1024 * 1024;
+
+/** Human bytes, so an error names a size a pro can act on. */
+function mb(bytes: number): string {
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
 
 export interface CapturedPhoto {
   id: string;
@@ -61,6 +74,24 @@ export interface PhotoCaptureProps {
   maximum?: number | undefined;
   /** Why these photos are needed. A pro asked for evidence deserves a reason. */
   hint?: string | undefined;
+  /**
+   * Accept video as well as stills.
+   *
+   * Off by default: the KYC and before-photo screens want photographs, and a
+   * pro who filmed their Aadhaar has misunderstood the ask. On for job
+   * completion, where a clip of a running repair is better evidence than a
+   * still of it.
+   */
+  allowVideo?: boolean | undefined;
+  /**
+   * Budget for all the **images** together, in bytes.
+   *
+   * Per-file was the obvious rule and the wrong one: eight files that each
+   * pass individually still leave 32 MB on disk for one job. When this is set
+   * the rejection names every file and its size, because "too large" tells a
+   * pro nothing about which one to drop when they are nine in.
+   */
+  maxTotalImageBytes?: number | undefined;
   disabled?: boolean | undefined;
   className?: string | undefined;
 }
@@ -72,6 +103,8 @@ export function PhotoCapture({
   minimum,
   maximum = 8,
   hint,
+  allowVideo = false,
+  maxTotalImageBytes,
   disabled = false,
   className,
 }: PhotoCaptureProps) {
@@ -106,15 +139,50 @@ export function PhotoCapture({
       }
       // Some Android browsers report an empty type for a camera capture, so an
       // empty type is allowed through rather than rejected on a technicality.
-      if (file.type !== "" && !ACCEPTED.includes(file.type)) {
-        problems.push(`${file.name} is not a photo.`);
-        continue;
-      }
-      if (file.size > MAX_BYTES) {
+      const isVideo = file.type.startsWith("video/");
+      const allowed = allowVideo ? [...ACCEPTED, ...ACCEPTED_VIDEO] : ACCEPTED;
+
+      // Some Android browsers report an empty type for a camera capture, so an
+      // empty type is allowed through rather than rejected on a technicality.
+      if (file.type !== "" && !allowed.includes(file.type)) {
         problems.push(
-          `${file.name} is too large (${Math.round(file.size / 1024 / 1024)} MB). The limit is 10 MB.`,
+          allowVideo
+            ? `${file.name} is not a photo or a video.`
+            : `${file.name} is not a photo.`,
         );
         continue;
+      }
+
+      const limit = isVideo ? MAX_VIDEO_BYTES : MAX_BYTES;
+      if (file.size > limit) {
+        problems.push(
+          `${file.name} is ${mb(file.size)} — over the ${mb(limit)} limit for ` +
+            `${isVideo ? "a video. Record a shorter clip, or drop your phone's video quality." : "a photo."}`,
+        );
+        continue;
+      }
+
+      // The images-together budget. Videos have their own per-file limit and
+      // are deliberately outside this sum.
+      if (!isVideo && maxTotalImageBytes !== undefined) {
+        const already = [...photos, ...accepted]
+          .filter((p) => !p.file.type.startsWith("video/"))
+          .reduce((sum, p) => sum + p.file.size, 0);
+
+        if (already + file.size > maxTotalImageBytes) {
+          const listed = [...photos, ...accepted]
+            .filter((p) => !p.file.type.startsWith("video/"))
+            .map((p) => `${p.file.name} ${mb(p.file.size)}`)
+            .join(", ");
+          problems.push(
+            `Your photos would come to ${mb(already + file.size)}, over the ` +
+              `${mb(maxTotalImageBytes)} limit. ${file.name} is ` +
+              `${mb(file.size)}` +
+              (listed ? `, and you already have — ${listed}.` : ".") +
+              ` Remove one, or add a video instead.`,
+          );
+          continue;
+        }
       }
       accepted.push({
         // `randomUUID` is not available on every mobile browser over http, so
@@ -171,11 +239,26 @@ export function PhotoCapture({
                 would refuse to load. The disable comment that used to sit here
                 named a Next rule, and this package has no Next plugin — so the
                 comment itself was the lint error. */}
-            <img
-              src={photo.previewUrl}
-              alt={`${label} ${i + 1}`}
-              className="size-tile-lg rounded-control border border-border object-cover"
-            />
+            {photo.file.type.startsWith("video/") ? (
+              /* A <video> rather than an <img>: an object URL for a clip in an
+                 image tag renders a broken-image icon, which looks like the
+                 upload failed when it did not. `muted` so a thumbnail cannot
+                 start making noise at a customer's door. */
+              <video
+                src={photo.previewUrl}
+                className="size-tile-lg rounded-control border border-border object-cover"
+                muted
+                playsInline
+                controls
+                aria-label={`${label} ${i + 1}, video`}
+              />
+            ) : (
+              <img
+                src={photo.previewUrl}
+                alt={`${label} ${i + 1}`}
+                className="size-tile-lg rounded-control border border-border object-cover"
+              />
+            )}
             {!disabled && (
               <button
                 type="button"
@@ -220,7 +303,7 @@ export function PhotoCapture({
         // It is a hint: a desktop browser ignores it and opens a file picker,
         // which is the correct behaviour there.
         capture="environment"
-        accept={ACCEPTED.join(",")}
+        accept={(allowVideo ? [...ACCEPTED, ...ACCEPTED_VIDEO] : ACCEPTED).join(",")}
         multiple
         className="sr-only"
         aria-label={`Add ${label}`}

@@ -80,6 +80,14 @@ export interface BookingEvent {
  * hand needs no reconciling against the detail.
  */
 export interface BookingDetail extends BookingListItem {
+  /**
+   * The job's own evidence — photos and videos, before and after.
+   *
+   * The office could not see any of it, which is the one thing a complaint
+   * turns on: "they said it was done" against a picture of it done.
+   */
+  beforePhotoUrls: string[];
+  afterPhotoUrls: string[];
   customerPhone: string;
   /** Null until a pro is assigned. */
   proPhone: string | null;

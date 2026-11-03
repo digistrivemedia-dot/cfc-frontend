@@ -3,7 +3,12 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BriefcaseBusiness, CalendarClock, MapPin } from "lucide-react";
-import { getProJobCounts, getProJobs } from "@cfc/mocks";
+import {
+  claimJob,
+  getProJobCounts,
+  getProJobs,
+  getUnclaimedJobs,
+} from "@cfc/mocks";
 import {
   PRO_JOB_STATUS_LABEL,
   PRO_JOB_TABS,
@@ -14,6 +19,7 @@ import {
 } from "@cfc/types";
 import {
   Badge,
+  Button,
   DataTable,
   EmptyState,
   Tabs,
@@ -21,6 +27,7 @@ import {
   TabsTrigger,
   cn,
   formatCurrency,
+  toast,
   type Column,
 } from "@cfc/ui";
 import { useOnlineState } from "@/lib/pro-session";
@@ -83,7 +90,12 @@ function JobsInner() {
     setFailed(false);
     setJobs(null);
     let cancelled = false;
-    void Promise.all([getProJobs(proId, tab), getProJobCounts(proId)])
+    // `unclaimed` is not a filter over this pro's bookings — these belong to
+    // nobody — so it has its own endpoint that decides eligibility server-side.
+    void Promise.all([
+      tab === "unclaimed" ? getUnclaimedJobs() : getProJobs(proId, tab),
+      getProJobCounts(proId),
+    ])
       .then(([rows, c]) => {
         if (cancelled) return;
         setJobs(rows);
@@ -98,6 +110,35 @@ function JobsInner() {
   }, [proId, tab]);
 
   React.useEffect(() => load(), [load]);
+
+  const [claiming, setClaiming] = React.useState<string | null>(null);
+
+  /**
+   * Takes an open job.
+   *
+   * A refusal comes back as a **200 with `kind`**, because "another
+   * professional got there first" is the rule working rather than a fault —
+   * so it is reported as information and the list refreshes to drop it.
+   */
+  const claim = (job: ProJob) => {
+    setClaiming(job.id);
+    void claimJob(job.id)
+      .then((result) => {
+        if (result.kind === "claimed") {
+          toast.success("Job added to your list.");
+          router.push(`/jobs/${job.id}`);
+          return;
+        }
+        toast.info(
+          result.kind === "taken"
+            ? "Another professional took that one."
+            : "You cannot take that job — check the pincodes you cover.",
+        );
+        load();
+      })
+      .catch(() => toast.error("Could not take that job. Try again."))
+      .finally(() => setClaiming(null));
+  };
 
   const columns = React.useMemo<Column<ProJob>[]>(
     () => [
@@ -148,8 +189,36 @@ function JobsInner() {
         // detail screen showing net is how a pro stops trusting both.
         cell: (job) => formatCurrency(job.netEarningPaise),
       },
+      // Only on the open-jobs tab, because it is the only tab where the row is
+      // not already this pro's to open.
+      ...(tab === "unclaimed"
+        ? [
+            {
+              id: "take",
+              header: "",
+              align: "right" as const,
+              cell: (job: ProJob) => (
+                <Button
+                  size="sm"
+                  onClick={(e) => {
+                    // The row has no click handler on this tab, but stopping
+                    // here keeps that true if one is ever added.
+                    e.stopPropagation();
+                    claim(job);
+                  }}
+                  disabled={claiming !== null}
+                  loading={claiming === job.id}
+                >
+                  Take this job
+                </Button>
+              ),
+            },
+          ]
+        : []),
     ],
-    [],
+    // `claim` is stable enough for this list; `claiming` drives the row state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tab, claiming],
   );
 
   return (
@@ -195,7 +264,12 @@ function JobsInner() {
         loading={jobs === null && !failed}
         error={failed ? "Could not load your jobs." : null}
         onRetry={load}
-        onRowClick={(job) => router.push(jobHref(job))}
+        // An open job has no detail screen to visit: it is not this pro's job
+        // until they take it, and tapping through to a page that withholds the
+        // address would read as broken.
+        {...(tab === "unclaimed"
+          ? {}
+          : { onRowClick: (job: ProJob) => router.push(jobHref(job)) })}
         empty={<EmptyJobs tab={tab} />}
         card={{
           title: (job) => (
@@ -268,6 +342,7 @@ function JobStatusBadge({ status }: { status: ProJobStatus }) {
  */
 function EmptyJobs({ tab }: { tab: ProJobTab }) {
   const { online, setOnline } = useOnlineState();
+  const router = useRouter();
 
   if (tab === "active") {
     return (
@@ -282,6 +357,20 @@ function EmptyJobs({ tab }: { tab: ProJobTab }) {
         {...(online
           ? {}
           : { action: { label: "Go online", onClick: () => setOnline(true) } })}
+      />
+    );
+  }
+
+  if (tab === "unclaimed") {
+    return (
+      <EmptyState
+        icon={<MapPin />}
+        title="No open jobs right now"
+        description="Jobs nobody accepted in time show up here, and you can take any of them. Covering more pincodes means seeing more."
+        action={{
+          label: "Choose your pincodes",
+          onClick: () => router.push("/profile/pincodes"),
+        }}
       />
     );
   }

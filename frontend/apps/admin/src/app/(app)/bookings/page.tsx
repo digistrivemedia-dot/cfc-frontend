@@ -38,6 +38,7 @@ import {
   Avatar,
   AvatarFallback,
   Badge,
+  PhotoGrid,
   BookingStatusBadge,
   Button,
   DataTable,
@@ -876,6 +877,31 @@ function BookingDetailPanel({ id }: { id: string }) {
             />
           </DetailList>
         </DetailCard>
+
+        {/* The job's own evidence.
+
+            The office had no way to see any of this, which is the one thing a
+            complaint actually turns on: "they said it was done" against a
+            picture of it done. Videos play inline — the pro can upload either. */}
+        {(booking.beforePhotoUrls.length > 0 ||
+          booking.afterPhotoUrls.length > 0) && (
+          <DetailCard title="Photos and video from the job">
+            {booking.beforePhotoUrls.length > 0 && (
+              <PhotoGrid
+                urls={booking.beforePhotoUrls}
+                label="Before"
+                className="mt-1"
+              />
+            )}
+            {booking.afterPhotoUrls.length > 0 && (
+              <PhotoGrid
+                urls={booking.afterPhotoUrls}
+                label="After"
+                className="mt-3"
+              />
+            )}
+          </DetailCard>
+        )}
 
         <DetailCard title="History">
           <Timeline>

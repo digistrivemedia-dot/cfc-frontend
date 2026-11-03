@@ -410,6 +410,47 @@ export async function getProActiveJobs(
 }
 
 /** Pro 20 — one tab's worth. */
+/**
+ * Work nobody took, that this pro could.
+ *
+ * Its own endpoint rather than a tab filter: these are not the pro's bookings,
+ * so the server has to decide eligibility — approved, registered for that
+ * service, covering that pincode, and the slot still in the future.
+ *
+ * The customer's phone and exact address are **withheld** until it is claimed,
+ * exactly as they are on a dispatched offer. A list every eligible pro can
+ * read is not a place to publish them.
+ */
+export async function getUnclaimedJobs(): Promise<ProJob[]> {
+  if (isLive("getUnclaimedJobs")) {
+    return fetchJson<ProJob[]>("/pro/jobs/unclaimed");
+  }
+  await latency();
+  return applyScenario<ProJob[]>([], []);
+}
+
+/** What happened. `taken` is the documented rule working, not a failure. */
+export type ClaimResult =
+  | { kind: "claimed"; job: ProJob }
+  | { kind: "taken" }
+  | { kind: "ineligible" };
+
+/**
+ * Takes one.
+ *
+ * Answers a **200 with `kind`** even when refused: "another professional got
+ * there first" is a real outcome the screen renders, not an error.
+ */
+export async function claimJob(bookingId: string): Promise<ClaimResult> {
+  if (isLive("claimJob")) {
+    return fetchJson<ClaimResult>(`/pro/jobs/${bookingId}/claim`, {
+      method: "POST",
+    });
+  }
+  await latency();
+  return { kind: "taken" };
+}
+
 export async function getProJobs(
   proId: string,
   tab: ProJobTab,
@@ -445,10 +486,14 @@ export async function getProJobCounts(
     upcoming: jobs.filter((j) => j.status === "upcoming").length,
     completed: jobs.filter((j) => j.status === "completed").length,
     cancelled: jobs.filter((j) => j.status === "cancelled").length,
+    // Always zero on the fixture path: unclaimed work belongs to nobody, so
+    // there is no per-pro fixture that could hold it.
+    unclaimed: 0,
   };
   return applyScenario(counts, {
     active: 0,
     upcoming: 0,
+    unclaimed: 0,
     completed: 0,
     cancelled: 0,
   });

@@ -7,8 +7,8 @@ import { getConsumerProfile } from "@cfc/mocks";
 import type { ConsumerProfile } from "@cfc/types";
 import { initials } from "@cfc/ui";
 import { useSession } from "@/lib/session";
-import { useArea } from "@/lib/area";
 import { useCart } from "@/lib/cart";
+import { AddressMenu } from "@/components/address-menu";
 
 /**
  * The signed-in app bar — one component, rendered by every screen behind a
@@ -30,7 +30,6 @@ import { useCart } from "@/lib/cart";
 export function AppHeader() {
   const router = useRouter();
   const { signedIn, signOut } = useSession();
-  const { area, ready } = useArea();
   const { count } = useCart();
 
   /* The account control shows the REAL customer.
@@ -78,33 +77,14 @@ export function AppHeader() {
           </span>
         </Link>
 
-        {/* The address follows the STORED area, not a hardcoded string.
+        {/* The address control.
 
-            This read "Add your address / Bengaluru" for everyone, always -
-            a prompt to add an address sitting directly above a city that
-            looked like one had already been added. Whichever a customer
-            believed, the other line contradicted it.
-
-            `ready` guards the first paint: `area` is null until localStorage
-            has been read, so rendering the prompt during that window would
-            flash "Add your address" at someone who has one. */}
-        <button className="addr-btn unset" type="button" id="addrBtn">
-          <svg className="ic" aria-hidden="true"><use href="#i-pin"></use></svg>
-          <span className="addr-text">
-            {ready && area ? (
-              <>
-                <b id="addrTitle">{area}</b>
-                <span id="addrSub">Deliver here</span>
-              </>
-            ) : (
-              <>
-                <b id="addrTitle">Add your address</b>
-                <span id="addrSub">Set your location</span>
-              </>
-            )}
-          </span>
-          <svg className="ic ic-dn" aria-hidden="true"><use href="#i-chev"></use></svg>
-        </button>
+            Was a hand-written button whose text came from the stored service
+            AREA, with a vanilla-JS panel in interactions.js whose "save" only
+            rewrote this button's own text. `AddressMenu` reads the customer's
+            real saved addresses and owns the selection every other screen
+            reads. */}
+        <AddressMenu />
 
         <div className="app-search" id="appSearch">
           <svg className="ic" aria-hidden="true"><use href="#i-search"></use></svg>

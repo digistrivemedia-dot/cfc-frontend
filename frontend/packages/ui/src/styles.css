@@ -1,3 +1,8 @@
+/* Leaflet, for <PinMap>. Without it the tile <img>s are unpositioned
+   and a map renders as a vertical stack of squares. Imported from the
+   package so an app cannot forget it. */
+@import "leaflet/dist/leaflet.css";
+
 @import "@cfc/tokens/tokens.css";
 
 @tailwind base;

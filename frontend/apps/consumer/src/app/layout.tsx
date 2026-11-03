@@ -5,6 +5,7 @@ import { Toaster } from "@cfc/ui";
 import { SessionProvider } from "@/lib/session";
 import { CartProvider } from "@/lib/cart";
 import { AreaProvider } from "@/lib/area";
+import { SelectedAddressProvider } from "@/lib/selected-address";
 import "@cfc/ui/styles.css";
 // AFTER the shared stylesheet, so the consumer's Figma teal wins the cascade.
 // Scoped to this app; Pro and Admin keep the shared palette. See brand.css.
@@ -52,7 +53,13 @@ export default function RootLayout({
             shown another customer's bookings. */}
         <SessionProvider>
           <CartProvider>
-            <AreaProvider>{children}</AreaProvider>
+            <AreaProvider>
+              {/* Above every route group, not inside one. The (home) screens
+                  assemble their own chrome and do not go through AppShell, so
+                  a provider mounted there left the home header's AddressMenu
+                  with no context. */}
+              <SelectedAddressProvider>{children}</SelectedAddressProvider>
+            </AreaProvider>
           </CartProvider>
         </SessionProvider>
         <Toaster />

@@ -8,6 +8,7 @@ import {
   CalendarClock,
   Check,
   CheckCircle2,
+  KeyRound,
   ListChecks,
   Loader2,
   MapPin,
@@ -23,12 +24,14 @@ import {
   PRO_JOB_STATUS_LABEL,
   type ProJob,
 } from "@cfc/types";
+import { startJob } from "@cfc/mocks";
 import {
   Badge,
   Button,
   ErrorState,
-  MapView,
+  PinMap,
   MoneyBreakdown,
+  OtpInput,
   PhotoGrid,
   Skeleton,
   cn,
@@ -36,6 +39,7 @@ import {
   formatSchedule,
   toast,
 } from "@cfc/ui";
+import { ApiError } from "@cfc/types";
 import { ProAction, ProActionLayout } from "@/components/pro-action-bar";
 import { currentProId } from "@/lib/pro-session";
 import {
@@ -165,12 +169,39 @@ function JobView({
   const travelling = job.status === "on_the_way";
   const working = job.status === "in_progress";
 
-  const arrive = () => {
-    // The status change is local: the mock layer has no mutation for it and the
-    // real one is a backend call. What matters for the screen is that the pro
-    // moves from travelling to working, which is what the UI needs to reflect.
-    onChange({ ...job, status: "in_progress" });
-    toast.success("Marked as arrived. You can start the work.");
+  const [starting, setStarting] = React.useState(false);
+  const [wrongCode, setWrongCode] = React.useState(false);
+
+  /**
+   * Start the job, with the code the customer reads out.
+   *
+   * **This used to change nothing.** It set `status: "in_progress"` in local
+   * state and toasted "Marked as arrived" — the server never heard about it,
+   * so the job stayed `assigned`, the customer saw no progress, and a reload
+   * put the screen back where it started.
+   *
+   * Now the server transitions it, gated on a four-digit code only the
+   * customer holds. A wrong code marks the field rather than claiming the job
+   * cannot be started, because those are different problems.
+   */
+  const start = (otp: string) => {
+    setStarting(true);
+    setWrongCode(false);
+    void startJob(job.id, otp)
+      .then((updated) => {
+        onChange(updated);
+        toast.success("Job started. The customer can see you have begun.");
+      })
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.code === "WRONG_OTP") {
+          setWrongCode(true);
+          return;
+        }
+        toast.error(
+          e instanceof ApiError ? e.message : "Could not start the job.",
+        );
+      })
+      .finally(() => setStarting(false));
   };
 
   return (
@@ -178,7 +209,14 @@ function JobView({
       action={
         <ProAction>
           {travelling ? (
-            <ArrivalAction job={job} distance={distance} onArrive={arrive} />
+            <ArrivalAction
+              job={job}
+              distance={distance}
+              onStart={start}
+              starting={starting}
+              wrongCode={wrongCode}
+              onCodeChange={() => setWrongCode(false)}
+            />
           ) : working ? (
             <WorkAction job={job} onOpen={() => router.push(`/jobs/${job.id}/work`)} />
           ) : (
@@ -213,15 +251,36 @@ function JobView({
           </div>
         </div>
 
-        {/* Where. The map is a preview; Navigate hands off to the device. */}
+        {/* Where. A preview at real coordinates; Navigate hands the route off
+            to the device, which has the traffic and the turn-by-turn.
+
+            This was `MapView` with the customer pinned at `(62, 40)` and the
+            pro at `(22, 68)` — percentages on a drawn canvas, with a route line
+            between two numbers that corresponded to nothing on earth. The
+            customer pin is now `job.location`; the pro's own comes from the
+            same geolocation watch that gates job completion, so it appears
+            once there is a real fix and not before. */}
         {job.location !== null && (
-          <MapView
-            className="mt-4 h-block-md"
+          <PinMap
+            className="mt-4 h-block-md rounded-card border border-border"
             markers={[
-              { id: "customer", x: 62, y: 40, kind: "customer", label: job.customerName },
-              { id: "self", x: 22, y: 68, kind: "self", label: "You" },
+              {
+                id: "customer",
+                point: job.location,
+                kind: "customer",
+                label: job.customerName,
+              },
+              ...(distance.point
+                ? [
+                    {
+                      id: "self",
+                      point: distance.point,
+                      kind: "self" as const,
+                      label: "You",
+                    },
+                  ]
+                : []),
             ]}
-            route={["self", "customer"]}
           />
         )}
 
@@ -405,13 +464,20 @@ function JobView({
 function ArrivalAction({
   job,
   distance,
-  onArrive,
+  onStart,
+  starting,
+  wrongCode,
+  onCodeChange,
 }: {
   job: ProJob;
   distance: ReturnType<typeof useDistanceTo>;
-  onArrive: () => void;
+  onStart: (otp: string) => void;
+  starting: boolean;
+  wrongCode: boolean;
+  onCodeChange: () => void;
 }) {
   const { metres, accuracyM, loading, error, retry } = distance;
+  const [code, setCode] = React.useState("");
   const within = metres !== null && metres <= GPS_PROOF_RADIUS_M;
 
   return (
@@ -499,20 +565,61 @@ function ArrivalAction({
         )}
       </div>
 
+      {/* The start code.
+
+          The job used to begin on this button alone, which meant nothing
+          connected the clock starting to the customer being there and agreeing
+          to it. Four digits, held only by the customer. */}
+      {/* The code panel carries the brand tint and a lock, so at a glance it
+          reads as the gate rather than as one more field on a form. */}
+      <div className="mt-3 rounded-card border border-action-line bg-action-subtle p-4">
+        <p className="flex items-center justify-center gap-2 text-caption font-semibold uppercase tracking-wide text-action">
+          <KeyRound className="size-4 shrink-0" aria-hidden="true" />
+          Start code
+        </p>
+        <p className="mt-2 text-center text-small font-medium text-ink">
+          Ask {job.customerName} for their 4-digit code
+        </p>
+        <p className="mt-px text-center text-caption text-ink-muted">
+          It is on their booking screen.
+        </p>
+
+        <div className="mt-3 flex justify-center">
+          <OtpInput
+            length={4}
+            value={code}
+            onChange={(next) => {
+              setCode(next);
+              if (wrongCode) onCodeChange();
+            }}
+            invalid={wrongCode}
+            label="Start code"
+          />
+        </div>
+
+        {wrongCode && (
+          <p className="mt-2 text-center text-caption font-medium text-critical-ink">
+            That code is not right. Ask them to read it again.
+          </p>
+        )}
+      </div>
+
       <Button
-        variant={within || error !== null ? "go" : "secondary"}
+        variant="go"
         size="pro"
         className="mt-3 w-full"
-        onClick={onArrive}
+        disabled={code.length !== 4 || starting}
+        loading={starting}
+        onClick={() => onStart(code)}
       >
-        I’m here
+        {starting ? "Starting…" : "Start the job"}
       </Button>
 
-      {/* Said plainly when the pro is far away — the button still works, and
-          they should know what confirming means. */}
+      {/* Said plainly when the pro is far away. The code is the gate, not the
+          distance — but a pro standing somewhere else should see that we know. */}
       {!within && error === null && metres !== null && (
         <p className="mt-2 text-caption text-ink-muted">
-          You are still {formatMetres(metres)} away. Confirming now will be
+          You are still {formatMetres(metres)} away. Starting now will be
           recorded.
         </p>
       )}

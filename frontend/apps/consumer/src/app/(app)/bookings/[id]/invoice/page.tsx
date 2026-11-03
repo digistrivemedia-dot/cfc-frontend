@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { ArrowLeft, Printer } from "lucide-react";
-import { getMyBooking, priceBooking } from "@cfc/mocks";
+import { getMyBooking } from "@cfc/mocks";
 import type { ConsumerBooking } from "@cfc/types";
 import {
   Badge,
@@ -245,13 +245,22 @@ function CustomerInvoice({ booking }: { booking: ConsumerBooking }) {
  * Customer 32 — the tax invoice.
  *
  * "Platform fee, CGST 9%, SGST 9%, total payable." The breakdown is
- * recomputed from the same `priceBooking` the checkout used, so a customer
- * comparing this against what they agreed to finds the same numbers.
+ * read from the breakdown frozen onto the booking, so a customer comparing
+ * this against what they agreed to finds exactly the same numbers.
  */
 function TaxInvoice({ booking }: { booking: ConsumerBooking }) {
-  // Reconstructed from the service. The real endpoint will return the stored
-  // breakdown; until then this is derived the same way checkout derived it.
-  const breakdown = priceBooking({ serviceId: "svc_01" });
+  /**
+   * The breakdown **frozen onto this booking**, not a recomputation.
+   *
+   * This line used to read `priceBooking({ serviceId: "svc_01" })` — a
+   * hardcoded fixture id — so every invoice printed the tax figures of a
+   * service the customer never bought, and against a real catalogue id the
+   * fixture lookup missed entirely and returned zeros.
+   *
+   * An invoice has to show what was actually charged. Prices change; a tax
+   * document that moves with them is not a tax document.
+   */
+  const breakdown = booking.breakdown;
   const proFeePaise = booking.totalPaise - breakdown.platformFeePaise -
     breakdown.cgstPaise - breakdown.sgstPaise;
 

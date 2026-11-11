@@ -17,9 +17,11 @@ import {
   QUOTATION_WINDOW_MINUTES,
   getProJob,
   quoteTotal,
+  reviseQuotation,
   submitQuotation,
+  uploadJobMedia,
 } from "@cfc/mocks";
-import type { ProJob, QuotationMaterialLine } from "@cfc/types";
+import { ApiError, type ProJob, type QuotationMaterialLine } from "@cfc/types";
 import {
   Button,
   Input,
@@ -36,24 +38,27 @@ import { ProAction, ProActionLayout } from "@/components/pro-action-bar";
 import { currentProId } from "@/lib/pro-session";
 
 /**
- * Pro 16 — raise a quotation.
+ * Pro 16 — raise a quotation, or revise one already raised.
  *
- * The platform's priority path, and the screen where the agreement's rules are
- * least optional. Three of them shape this form:
+ * **One form for both.** It prefills from the job's own quotation when there is
+ * a revisable one, so a pro correcting a missed part does not retype the whole
+ * thing. There was no edit path at all before: the work screen offered "Raise a
+ * quotation" even with one live, and the server then refused it as a duplicate.
  *
- * **Minimum 2 before-photos, or the quote is auto-rejected.** So the count is
- * live and the submit button says what is missing. A pro should learn this rule
- * from the form, not from having an hour's work thrown away — which is exactly
- * what "auto-reject" means for them.
+ * The rules that shape the form:
+ *
+ * **Minimum 2 before-photos to raise one.** The count is live and the submit
+ * button says what is missing. A pro should learn this from the form, not from
+ * a refusal. It does **not** apply to a revision — the server already holds the
+ * photos, and making someone re-photograph a site to correct a price is absurd.
  *
  * **Quotes above ₹5,000 trigger a phone call to the customer.** Not a block,
- * but a pro who is not told will be surprised when an admin rings them. Shown
- * as soon as the total crosses the line.
+ * but a pro who is not told will be surprised when the office rings them.
  *
- * **The admin decides within 15 minutes.** Stated before submitting, because
- * that window is how long the pro will be standing in the customer's house
- * waiting for an answer, and it is the difference between "wait here" and
- * "come back tomorrow".
+ * **It goes straight to the customer.** There is no approval step: the office
+ * has 15 minutes in which they may adjust it, and the customer can approve at
+ * any time. Whoever approves first settles it — and once the customer has,
+ * neither the pro nor the office can change the figure.
  *
  * ## The material list
  *
@@ -118,21 +123,96 @@ interface MaterialRow extends QuotationMaterialLine {
 function QuoteForm({ job }: { job: ProJob }) {
   const router = useRouter();
 
-  const [description, setDescription] = React.useState("");
+  /**
+   * Revising an existing quotation rather than raising a new one.
+   *
+   * The same form either way, prefilled from the quotation the job already
+   * carries — so no id travels in the URL and there is no second screen to
+   * keep in step with this one. `mayRevise` is the **server's** judgement: it
+   * closes once the customer approves, and once the office has adjusted the
+   * figures.
+   */
+  const revising = job.quotation?.mayRevise === true ? job.quotation : null;
+
+  const [description, setDescription] = React.useState(revising?.proNotes ?? "");
   const [photos, setPhotos] = React.useState<CapturedPhoto[]>([]);
-  const [materials, setMaterials] = React.useState<MaterialRow[]>([]);
-  const [labourRupees, setLabourRupees] = React.useState("");
+  const [materials, setMaterials] = React.useState<MaterialRow[]>(
+    () =>
+      revising?.materials.map((m, i) => ({
+        key: `existing-${i}`,
+        description: m.description,
+        costPaise: m.costPaise,
+      })) ?? [],
+  );
+  const [labourRupees, setLabourRupees] = React.useState(
+    revising ? String(revising.labourPaise / 100) : "",
+  );
   const [busy, setBusy] = React.useState(false);
 
   const labourPaise = Math.round((Number(labourRupees) || 0) * 100);
   const total = quoteTotal({ materials, labourPaise });
 
-  const shortPhotos = Math.max(0, QUOTATION_MIN_BEFORE_PHOTOS - photos.length);
+  /**
+   * The two-photo rule applies to **raising** a quotation, not to revising one.
+   *
+   * A revision changes figures on a quotation whose photos the server already
+   * holds — demanding two more would make a pro re-photograph a site to correct
+   * a price, and the server does not ask for them either.
+   */
+  const shortPhotos = revising
+    ? 0
+    : Math.max(0, QUOTATION_MIN_BEFORE_PHOTOS - photos.length);
   const needsCall = total > PHONE_CONFIRM_THRESHOLD_PAISE;
+
+  /**
+   * Which photos have already reached the server.
+   *
+   * So a retry after a failure part-way through does not upload the same file
+   * twice — duplicate before-photos are evidence the admin and the customer
+   * both see, and on mobile data at a customer's door a re-send of four
+   * photos is the slowest possible way to recover.
+   */
+  const uploaded = React.useRef(new Set<string>());
 
   const submit = async () => {
     setBusy(true);
     try {
+      // Revising: no new photos to send, and nothing to create.
+      if (revising) {
+        await reviseQuotation(revising.id, {
+          description,
+          materials: materials.map(({ description: d, costPaise }) => ({
+            description: d,
+            costPaise,
+          })),
+          labourPaise,
+        });
+        toast.success("Quotation updated. The customer has been told.");
+        router.push(`/jobs/${job.id}/quote/status`);
+        return;
+      }
+
+      /**
+       * Upload the before-photos **before** submitting.
+       *
+       * This screen captured files into local state and sent only a *count*,
+       * which the live path drops — the server counts the job's own uploaded
+       * photos, because a client-sent number would make the two-photo minimum
+       * advisory. So a pro with two photos on screen was told to "add 2 more
+       * before photos". The files existed; they had simply never been sent.
+       *
+       * The same mistake as `complete/page.tsx`, one screen over.
+       *
+       * Sequentially rather than in parallel: four concurrent uploads on
+       * mobile data are slower than four in a row, and much more likely to
+       * have one fail.
+       */
+      for (const item of photos) {
+        if (uploaded.current.has(item.id)) continue;
+        await uploadJobMedia(job.id, "before", item.file);
+        uploaded.current.add(item.id);
+      }
+
       const result = await submitQuotation({
         jobId: job.id,
         description,
@@ -159,8 +239,15 @@ function QuoteForm({ job }: { job: ProJob }) {
 
       toast.success("Quotation sent for approval.");
       router.push(`/jobs/${job.id}/quote/status`);
-    } catch {
-      toast.error("Could not submit. Check your connection and try again.");
+    } catch (e: unknown) {
+      // The server's own words. A file over the job's image budget names which
+      // file and what the budget is, and "check your connection" would bury
+      // that behind advice about a connection that is working.
+      toast.error(
+        e instanceof ApiError
+          ? e.message
+          : "Could not submit. Check your connection and try again.",
+      );
     } finally {
       setBusy(false);
     }
@@ -180,21 +267,22 @@ function QuoteForm({ job }: { job: ProJob }) {
               </span>
             </div>
             <p className="mt-px text-caption text-ink-muted">
-              The customer pays 50% in advance, the balance on completion.
+              The customer pays this when the job is finished. No advance.
             </p>
           </div>
 
-          {/* The 15-minute window, before they commit. */}
+          {/* What actually happens next, before they commit. */}
           <p className="mt-3 text-caption text-ink-muted">
-            An admin reviews this within {QUOTATION_WINDOW_MINUTES} minutes. You
-            will see the decision on the next screen.
+            {revising
+              ? "The customer is sent the new figure straight away."
+              : `This goes straight to the customer. Our office can adjust it for ${QUOTATION_WINDOW_MINUTES} minutes.`}
           </p>
 
           {needsCall && (
             <p className="mt-3 flex items-start gap-2 rounded-control bg-clock-subtle p-2 text-caption text-clock-ink">
               <Phone className="mt-px size-4 shrink-0" aria-hidden="true" />
-              Over {formatCurrency(PHONE_CONFIRM_THRESHOLD_PAISE)} — an admin
-              will call the customer to confirm before approving.
+              Over {formatCurrency(PHONE_CONFIRM_THRESHOLD_PAISE)} — our office
+              will call the customer to confirm the amount.
             </p>
           )}
 
@@ -204,7 +292,13 @@ function QuoteForm({ job }: { job: ProJob }) {
             disabled={busy || shortPhotos > 0 || total <= 0 || description.trim() === ""}
             onClick={() => void submit()}
           >
-            {busy ? "Submitting…" : "Submit for approval"}
+            {busy
+              ? revising
+                ? "Saving…"
+                : "Sending…"
+              : revising
+                ? "Save the changes"
+                : "Send to the customer"}
           </Button>
 
           {/* Why the button is unavailable. A disabled button with no
@@ -231,19 +325,26 @@ function QuoteForm({ job }: { job: ProJob }) {
         </Link>
 
         <h1 className="mt-3 text-title font-semibold text-ink">
-          Raise a quotation
+          {revising ? "Edit your quotation" : "Raise a quotation"}
         </h1>
         <p className="mt-1 text-small text-ink-muted">
           {job.serviceName} · {job.customerName}
         </p>
 
         {/* The rule, stated once at the top rather than only as an error. */}
-        <InlineAlert tone="info" title="What the admin needs" className="mt-4">
-          A clear description of the work, the materials and their costs, your
-          labour charge, and at least {QUOTATION_MIN_BEFORE_PHOTOS} photos of
-          the site before you start. A quotation with fewer photos is rejected
-          automatically.
-        </InlineAlert>
+        {revising ? (
+          <InlineAlert tone="clock" title="The customer can see this" className="mt-4">
+            They are looking at the current figure now. Saving sends them the new
+            one and tells them it changed. You cannot edit it once they approve.
+          </InlineAlert>
+        ) : (
+          <InlineAlert tone="info" title="What the customer needs" className="mt-4">
+            A clear description of the work, the materials and their costs, your
+            labour charge, and at least {QUOTATION_MIN_BEFORE_PHOTOS} photos of
+            the site before you start. It goes straight to them — our office can
+            adjust it for {QUOTATION_WINDOW_MINUTES} minutes.
+          </InlineAlert>
+        )}
 
         {/* 1. The work. */}
         <section className="mt-4 rounded-card border border-border bg-surface p-4">
@@ -306,7 +407,10 @@ function QuoteForm({ job }: { job: ProJob }) {
           </div>
         </section>
 
-        {/* 4. Photos — the rule with teeth. */}
+        {/* 4. Photos — the rule with teeth, and only when raising one.
+            A revision changes figures on a quotation whose photos the server
+            already holds. */}
+        {!revising && (
         <section
           className={cn(
             "mt-4 rounded-card border bg-surface p-4",
@@ -318,9 +422,10 @@ function QuoteForm({ job }: { job: ProJob }) {
             onChange={setPhotos}
             label="Before photos"
             minimum={QUOTATION_MIN_BEFORE_PHOTOS}
-            hint="Photograph the site before you start. Fewer than two and the quotation is rejected automatically — these are what let an admin approve work they cannot see."
+            hint="Photograph the site before you start. Fewer than two and the quotation cannot be raised — these are what let the customer agree to work they cannot assess."
           />
         </section>
+        )}
       </div>
     </ProActionLayout>
   );

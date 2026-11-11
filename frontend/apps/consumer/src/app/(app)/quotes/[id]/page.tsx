@@ -9,9 +9,8 @@ import {
   askQuotationQuestion,
   declineQuotation,
   getMyQuotation,
-  splitQuotation,
 } from "@cfc/mocks";
-import type { QuotationDetail } from "@cfc/types";
+import { ApiError, type QuotationDetail } from "@cfc/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,6 +61,7 @@ function QuotationPageInner() {
   const [error, setError] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   const [confirmDecline, setConfirmDecline] = React.useState(false);
+  const [confirmAccept, setConfirmAccept] = React.useState(false);
   const [askOpen, setAskOpen] = React.useState(false);
 
   const load = React.useCallback(() => {
@@ -73,14 +73,32 @@ function QuotationPageInner() {
 
   React.useEffect(() => load(), [load]);
 
+  /**
+   * Customer 23 — confirm the quotation and pay the 50% advance.
+   *
+   * **No money moves here.** The 50% advance is gone — the customer pays the
+   * whole quotation when the job is finished, with the booking — so approving
+   * is an agreement rather than a transaction, and the only thing it produces
+   * is the code that lets the professional begin.
+   *
+   * It still goes through a confirmation step. The amount runs to thousands,
+   * and the previous version committed to it on a single tap.
+   */
   const accept = () => {
     setBusy(true);
     acceptQuotation(id)
       .then(() => {
-        toast.success("Advance paid. Your professional has been told.");
+        toast.success("Approved. Read your code to the professional to begin.");
+        setConfirmAccept(false);
+        // Reloaded rather than merged: the response carries the start code, and
+        // one source for it is better than two.
         load();
       })
-      .catch(() => toast.error("We could not accept that. Try again."))
+      .catch((e: unknown) =>
+        toast.error(
+          e instanceof ApiError ? e.message : "We could not accept that. Try again.",
+        ),
+      )
       .finally(() => setBusy(false));
   };
 
@@ -117,10 +135,18 @@ function QuotationPageInner() {
     );
   }
 
-  const { advancePaise, balancePaise } = splitQuotation(quote.totalPaise);
   const materialTotal = quote.materials.reduce((s, m) => s + m.costPaise, 0);
 
-  const awaitingCustomer = quote.status === "approved";
+  /**
+   * Waiting on this customer.
+   *
+   * **Both statuses.** `pending` is the live one — a quotation now reaches the
+   * customer the moment the pro raises it — and `approved` survives only on
+   * rows created under the old admin-approval flow, which must stay decidable
+   * rather than becoming unreachable.
+   */
+  const awaitingCustomer =
+    quote.status === "pending" || quote.status === "approved";
   const accepted = quote.status === "customer_accepted";
   const declined = quote.status === "customer_declined";
   const rejectedByCfc = quote.status === "rejected";
@@ -148,20 +174,67 @@ function QuotationPageInner() {
         </div>
       </div>
 
-      {/* Customer 24 — the state after accepting. */}
-      {accepted && (
+      {/**
+       * Customer 24 — the state after confirming.
+       *
+       * The old copy claimed "Advance paid — you paid ₹1,850" unconditionally,
+       * which for a cash advance was simply untrue, and then told the customer
+       * the pro "will start as soon as the parts are to hand" — a promise about
+       * someone else's van.
+       *
+       * What actually has to happen next is that the customer reads a code to
+       * the professional standing in front of them, so that is the whole
+       * content of this state.
+       */}
+      {accepted && !quote.workStarted && quote.startOtp && (
+        <section className="mt-4 overflow-hidden rounded-card border border-action-line bg-surface">
+          <div className="bg-action-subtle px-4 py-3">
+            <h2 className="text-small font-bold text-action">
+              Read this code to {quote.proName}
+            </h2>
+            <p className="mt-px text-caption text-action">
+              The extra work starts once they enter it. Do not share it before
+              you are happy for them to begin.
+            </p>
+          </div>
+          <div className="p-4 text-center">
+            <p
+              className="tabular text-display font-extrabold tracking-widest text-ink"
+              aria-label={`Your code is ${quote.startOtp.split("").join(" ")}`}
+            >
+              {quote.startOtp}
+            </p>
+            <p className="mt-2 text-caption text-ink-muted">
+              Nothing to pay now. {formatCurrency(quote.totalPaise)} is added to
+              this job and payable once the work is finished.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {accepted && quote.workStarted && (
         <div className="mt-4">
-          <InlineAlert tone="live" title="Advance paid">
-            You paid{" "}
+          <InlineAlert tone="live" title="The extra work has started">
+            {quote.proName} entered your code and is working on it now.{" "}
             <span className="tabular font-semibold">
-              {formatCurrency(advancePaise)}
-            </span>
-            . The remaining{" "}
-            <span className="tabular font-semibold">
-              {formatCurrency(balancePaise)}
+              {formatCurrency(quote.totalPaise)}
             </span>{" "}
-            is due when the work is finished. {quote.proName} will start as soon
-            as the parts are to hand.
+            is payable when the job is finished.
+          </InlineAlert>
+        </div>
+      )}
+
+      {/* Confirmed, but the code has been spent and the work has not been
+          flagged as started — only reachable mid-update. Says nothing rather
+          than inventing a state. */}
+      {accepted && !quote.workStarted && !quote.startOtp && (
+        <div className="mt-4">
+          <InlineAlert tone="live" title="Quotation approved">
+            {quote.proName} has been told.{" "}
+            <span className="tabular font-semibold">
+              {formatCurrency(quote.totalPaise)}
+            </span>{" "}
+            is payable once the work is finished.
           </InlineAlert>
         </div>
       )}
@@ -260,45 +333,36 @@ function QuotationPageInner() {
         </dl>
       </section>
 
-      {/* The 50/50 split, spelled out. A customer agreeing to pay half now
-          should see both halves and what triggers the second. */}
+      {/**
+       * When it is paid, which is the whole of the payment story now.
+       *
+       * This was a 50/50 split with "Pay now — 50% advance" at display weight.
+       * The advance is gone: the customer pays the full amount when the job is
+       * finished, so there is one figure and one moment, and saying that
+       * plainly is worth more than a two-row table of one number.
+       */}
       {(awaitingCustomer || accepted) && (
-        /* THE SPLIT, UNAMBIGUOUS.
-
-           Both figures sat at the same size and weight in a two-row list, so
-           "pay now" and "pay later" looked like one bill read twice - and a
-           customer could agree to 4,000 believing they owed 2,000. The amount
-           due NOW is set at display weight; the balance is a quiet line
-           underneath with the condition that triggers it spelled out. */
         <section className="cfc-card mt-4 overflow-hidden">
           <h2 className="bg-clock px-4 py-3 text-body font-bold text-on-action">
-            {accepted ? "Payment" : "How payment works"}
+            When you pay
           </h2>
 
           <div className="p-4">
             <div className="rounded-card bg-action-subtle p-4 text-center">
               <p className="text-caption font-semibold uppercase tracking-wide text-action">
-                {accepted ? "Advance paid" : "Pay now — 50% advance"}
+                Payable when the work is done
               </p>
               <p className="tabular mt-1 text-display font-extrabold tracking-tight text-action">
-                {formatCurrency(advancePaise)}
+                {formatCurrency(quote.totalPaise)}
               </p>
-            </div>
-
-            <div className="mt-3 flex items-baseline justify-between gap-3 border-t border-border pt-3">
-              <dt className="text-small text-ink-muted">
-                Balance, after the job is done
-              </dt>
-              <dd className="tabular text-body font-bold text-ink">
-                {formatCurrency(balancePaise)}
-              </dd>
             </div>
 
             <p className="cfc-info mt-3">
               <Info className="cfc-info-ic size-4" aria-hidden="true" />
               <span>
-                Nothing else is charged. The balance is collected only once the
-                professional has finished.
+                Nothing is taken now, and nothing is taken when you approve.
+                This is added to your booking and paid once the professional has
+                finished — cash, UPI or card.
               </span>
             </p>
           </div>
@@ -312,10 +376,10 @@ function QuotationPageInner() {
             variant="primary"
             className="w-full"
             loading={busy}
-            onClick={accept}
+            onClick={() => setConfirmAccept(true)}
           >
             <Check />
-            Accept and pay {formatCurrency(advancePaise)}
+            Review and confirm
           </Button>
 
           <div className="flex gap-2">
@@ -366,6 +430,14 @@ function QuotationPageInner() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <ConfirmAcceptSheet
+        open={confirmAccept}
+        onOpenChange={setConfirmAccept}
+        quote={quote}
+        busy={busy}
+        onConfirm={accept}
+      />
+
       <AskSheet
         open={askOpen}
         onOpenChange={setAskOpen}
@@ -374,6 +446,98 @@ function QuotationPageInner() {
       />
       </div>
     </div>
+  );
+}
+
+/**
+ * Customer 23 — the confirmation step.
+ *
+ * It exists because the previous screen committed to thousands of rupees on
+ * **one tap of one button**.
+ *
+ * The payment choice that briefly lived here is gone with the advance: there is
+ * nothing to pay at this moment, so asking how they would like to pay would be
+ * a question about a transaction that is not happening. What they are agreeing
+ * to, and when it becomes payable, is the whole content.
+ */
+function ConfirmAcceptSheet({
+  open,
+  onOpenChange,
+  quote,
+  busy,
+  onConfirm,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  quote: QuotationDetail;
+  busy: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Approve the extra work</SheetTitle>
+        </SheetHeader>
+
+        <SheetBody>
+          <p className="text-small text-ink-muted">
+            You are agreeing to {quote.proName} carrying out the quoted work on{" "}
+            <span className="tabular">{quote.jobRef}</span>.
+          </p>
+
+          <div className="mt-4 rounded-card border border-border p-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-small text-ink-muted">Quotation total</span>
+              <span className="tabular text-body font-extrabold text-ink">
+                {formatCurrency(quote.totalPaise)}
+              </span>
+            </div>
+            <p className="mt-1 text-caption text-ink-muted">
+              Added to this booking and payable once the work is finished.
+              Nothing is taken now.
+            </p>
+          </div>
+
+          {/* The one thing that becomes irreversible. Said before they tap,
+              not discovered afterwards. */}
+          {quote.officeMayStillEdit && (
+            <p className="mt-3 rounded-control bg-clock-subtle p-3 text-caption text-clock-ink">
+              Our team can still adjust this amount for a few more minutes.
+              Approving it now fixes it at {formatCurrency(quote.totalPaise)} —
+              after that it cannot be changed.
+            </p>
+          )}
+
+          <p className="cfc-info mt-4">
+            <Info className="cfc-info-ic size-4" aria-hidden="true" />
+            <span>
+              After you approve you will get a 4-digit code. The professional
+              cannot start the extra work until you read it to them.
+            </span>
+          </p>
+        </SheetBody>
+
+        <SheetFooter>
+          <Button
+            variant="primary"
+            className="w-full"
+            loading={busy}
+            onClick={onConfirm}
+          >
+            <Check />
+            Approve {formatCurrency(quote.totalPaise)}
+          </Button>
+          <Button
+            variant="ghost"
+            className="w-full"
+            onClick={() => onOpenChange(false)}
+          >
+            Go back
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
 

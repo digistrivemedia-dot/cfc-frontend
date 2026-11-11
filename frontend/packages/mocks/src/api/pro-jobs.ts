@@ -279,6 +279,11 @@ function build(proId: string): Built {
         status === "completed"
           ? [`/mock/jobs/${proId}-${seq}-after-1.jpg`]
           : [],
+
+      // None in the fixtures. A quotation is raised by the pro and decided by
+      // an admin, so a generated one would be a decision nobody made — and the
+      // screen that renders it is live-only.
+      quotation: null,
     };
   };
 

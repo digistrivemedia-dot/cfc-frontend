@@ -181,3 +181,23 @@ export async function getRebookable() {
 
   return applyScenario(out, []);
 }
+
+/**
+ * Customer 29 → 30 — settle a finished job.
+ *
+ * **Live-only.** There is nothing for "money moved" to fall back to, and a
+ * fixture that marked a booking paid would be the one lie this layer must not
+ * tell.
+ *
+ * `upi` and `card` throw a 503 `NOT_CONFIGURED` until Razorpay has keys. The
+ * screen renders them disabled with that reason rather than hiding them — a
+ * customer who expects to pay by card should learn why they cannot.
+ */
+export async function payBooking(
+  bookingId: string,
+  paymentMethod: "cash" | "wallet" | "upi" | "card",
+): Promise<{ paid: boolean; duePaise: number }> {
+  return fetchJson(`/consumer/bookings/${bookingId}/pay`, {
+    body: { paymentMethod },
+  });
+}

@@ -8,6 +8,8 @@ import {
   CalendarClock,
   Check,
   CheckCircle2,
+  Clock,
+  FileText,
   KeyRound,
   ListChecks,
   Loader2,
@@ -15,6 +17,7 @@ import {
   MessageCircle,
   Navigation,
   Phone,
+  RefreshCw,
   Satellite,
   TriangleAlert,
 } from "lucide-react";
@@ -24,7 +27,7 @@ import {
   PRO_JOB_STATUS_LABEL,
   type ProJob,
 } from "@cfc/types";
-import { startJob } from "@cfc/mocks";
+import { startJob, startQuotedWork } from "@cfc/mocks";
 import {
   Badge,
   Button,
@@ -33,6 +36,7 @@ import {
   MoneyBreakdown,
   OtpInput,
   PhotoGrid,
+  QuotationStatusBadge,
   Skeleton,
   cn,
   formatCurrency,
@@ -166,7 +170,24 @@ function JobView({
   // and the hook simply stays idle in that case.
   const distance = useDistanceTo(job.location);
 
-  const travelling = job.status === "on_the_way";
+  /**
+   * A job the pro can turn up to and start.
+   *
+   * `upcoming` belongs here. Both of these are the same booking state —
+   * `assigned` — and the server derives which one from a single question,
+   * "is it scheduled today?" (`proStatus` in `routes/pro/jobs.ts`). That split
+   * exists to sort the jobs *list*, so today's work is not buried under next
+   * Friday's. On this screen it meant a perfectly healthy job booked for
+   * tomorrow fell past both branches into `ClosedAction` and told the pro
+   * "Job cancelled", with no code box and nothing to do.
+   *
+   * Starting early is the customer's call, not the calendar's: `startJob`
+   * checks the code and the transition and never looks at the date, so a pro
+   * who arrives at 07:55 for an 08:00 job can begin. The code is the gate —
+   * the customer has to read it out — and that gate does not get stronger by
+   * also refusing to draw the box.
+   */
+  const travelling = job.status === "on_the_way" || job.status === "upcoming";
   const working = job.status === "in_progress";
 
   const [starting, setStarting] = React.useState(false);
@@ -377,6 +398,35 @@ function JobView({
               quotation or an agreed extra charge.
             </p>
           </section>
+        )}
+
+        {/**
+         * Pro 17 — the quotation, if there is one.
+         *
+         * A pro who raised one and then navigated away had **no way back to
+         * it**: this screen said nothing, the job read "In progress", and the
+         * status screen was only reachable by submitting a new quotation. So
+         * the obvious move was to raise a second one for work already quoted.
+         *
+         * Placed above the photos because while a quote is pending it is the
+         * only thing on this screen that matters — the pro is standing in
+         * someone's house waiting on the office.
+         */}
+        {/* Truthy, not `!== null`: a server that does not send the field at
+            all leaves it **undefined**, which `!== null` waves through — and
+            the card then reads `.status` off nothing and takes the whole job
+            screen down with it. A pro mid-job loses the start code, the
+            customer's number and the navigation button over a card that had
+            nothing to show in the first place. */}
+        {job.quotation && (
+          <QuotationCard
+            jobId={job.id}
+            quote={job.quotation}
+            // Merged rather than re-fetched: the start call returns the
+            // updated quotation, so a second round trip would only risk
+            // showing a staler one.
+            onQuoteChange={(next) => onChange({ ...job, quotation: next })}
+          />
         )}
 
         {/* Pro 21 — the evidence. Before and after kept separate: in a dispute
@@ -653,29 +703,46 @@ function WorkAction({ job, onOpen }: { job: ProJob; onOpen: () => void }) {
   );
 }
 
-/** Nothing left to do — completed or cancelled. */
+/**
+ * No action available on this screen, and an honest reason why.
+ *
+ * ## It used to call everything a cancellation
+ *
+ * This was `done = status === "completed"`, and **every other status rendered
+ * "Job cancelled"** in critical red. That is the worst available answer for a
+ * job that is merely waiting: it tells a pro their work has been taken away,
+ * it is not true, and there is nothing on the screen to contradict it. A pro
+ * reading it would stop turning up.
+ *
+ * So each state says its own name. Red is reserved for the one case that has
+ * actually gone wrong, because a colour that means "bad news" everywhere means
+ * nothing anywhere.
+ */
 function ClosedAction({ job }: { job: ProJob }) {
-  const done = job.status === "completed";
+  const { tone, title, note } = closedCopy(job);
+
   return (
     <>
       <div
         className={cn(
           "rounded-control border p-3",
-          done ? "border-border bg-canvas" : "border-critical-line bg-critical-subtle",
+          tone === "critical" && "border-critical-line bg-critical-subtle",
+          tone === "waiting" && "border-clock-line bg-clock-subtle",
+          tone === "neutral" && "border-border bg-canvas",
         )}
       >
         <p
           className={cn(
             "text-small font-medium",
-            done ? "text-ink" : "text-critical-ink",
+            tone === "critical" && "text-critical-ink",
+            tone === "waiting" && "text-clock-ink",
+            tone === "neutral" && "text-ink",
           )}
         >
-          {done ? "Job completed" : "Job cancelled"}
+          {title}
         </p>
-        {done && (
-          <p className="mt-px text-caption text-ink-muted">
-            You earned {formatCurrency(job.netEarningPaise)}.
-          </p>
+        {note !== undefined && (
+          <p className="mt-px text-caption text-ink-muted">{note}</p>
         )}
       </div>
       <Button variant="secondary" className="mt-3 w-full" asChild>
@@ -685,7 +752,310 @@ function ClosedAction({ job }: { job: ProJob }) {
   );
 }
 
+/**
+ * What to say for a job with no action on it.
+ *
+ * Separate from the markup so the wording for each state is readable as a
+ * list — this is the part that was wrong, not the layout.
+ */
+function closedCopy(job: ProJob): {
+  tone: "critical" | "waiting" | "neutral";
+  title: string;
+  note?: string;
+} {
+  switch (job.status) {
+    case "completed":
+      return {
+        tone: "neutral",
+        title: "Job completed",
+        note: `You earned ${formatCurrency(job.netEarningPaise)}.`,
+      };
+
+    case "cancelled":
+      return {
+        tone: "critical",
+        title: "Job cancelled",
+        note: "Nothing more to do here.",
+      };
+
+    case "awaiting_quote":
+      return {
+        tone: "waiting",
+        title: "Quote with the office",
+        note: "You can start once it is approved. We will tell you.",
+      };
+
+    case "offered":
+      // Reachable by opening a job straight from a notification: accepting
+      // happens on the jobs list, where the countdown is.
+      return {
+        tone: "waiting",
+        title: "Not accepted yet",
+        note: "Accept it on your jobs list to take this one.",
+      };
+
+    default:
+      // A status this screen has no stage for. Says so plainly rather than
+      // inventing one — guessing is how "cancelled" got here.
+      return {
+        tone: "waiting",
+        title: PRO_JOB_STATUS_LABEL[job.status],
+        note: "There is nothing to do on this screen yet.",
+      };
+  }
+}
+
 // -- Pieces ------------------------------------------------------------------
+
+/**
+ * Pro 17 — the quotation on this job, summarised.
+ *
+ * Four states, and each one answers a different question:
+ *
+ *   pending   → how long is left, and should I wait on site
+ *   approved  → what the customer owes now, so I can ask for the right amount
+ *   rejected  → why, and how to revise it
+ *   accepted  → the customer has agreed; get on with the work
+ *
+ * **Both figures when the office edited.** A pro who submitted ₹6,000 and was
+ * approved at ₹5,000 must learn that here rather than from the customer at the
+ * door — which is an argument they would lose with nothing to check.
+ */
+function QuotationCard({
+  jobId,
+  quote,
+  onQuoteChange,
+}: {
+  jobId: string;
+  quote: NonNullable<ProJob["quotation"]>;
+  onQuoteChange: (next: NonNullable<ProJob["quotation"]>) => void;
+}) {
+  const pending = quote.status === "pending";
+  const rejected = quote.status === "rejected";
+  const declined = quote.status === "customer_declined";
+
+  /**
+   * The customer has confirmed and the work has not started.
+   *
+   * This is the one state on this screen with something for the pro to *do*:
+   * ask for the code. Until it is entered the job cannot be completed, because
+   * the quoted money is already in the settlement.
+   */
+  const needsCode = quote.status === "customer_accepted" && !quote.workStarted;
+  const underway = quote.status === "customer_accepted" && quote.workStarted;
+
+  const tone = pending
+    ? "clock"
+    : rejected || declined
+      ? "critical"
+      : "live";
+
+  return (
+    <section
+      className={cn(
+        "mt-4 overflow-hidden rounded-card border bg-surface",
+        tone === "clock" && "border-clock-line",
+        tone === "critical" && "border-critical-line",
+        tone === "live" && "border-live-line",
+      )}
+    >
+      <div
+        className={cn(
+          "flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3",
+          tone === "clock" && "border-clock-line bg-clock-subtle",
+          tone === "critical" && "border-critical-line bg-critical-subtle",
+          tone === "live" && "border-live-line bg-live-subtle",
+        )}
+      >
+        <h2 className="flex items-center gap-2 text-small font-semibold text-ink">
+          <FileText className="size-4 shrink-0" aria-hidden="true" />
+          Your quotation
+        </h2>
+        {/* The canonical mapping, not a tone picked here: `badge.tsx` is firm
+            that a status must not be coloured two ways on two screens, and the
+            admin queue already renders this one. */}
+        <QuotationStatusBadge status={quote.status} />
+      </div>
+
+      <div className="p-4">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-small text-ink-muted">
+            {quote.edited ? "Approved amount" : "You quoted"}
+          </span>
+          <span className="tabular text-body font-semibold text-ink">
+            {formatCurrency(quote.totalPaise)}
+          </span>
+        </div>
+
+        {/* The office changed the figure. Said plainly, with what they asked
+            for, because the pro will be quoting a number out loud. */}
+        {quote.edited && (
+          <p className="mt-1 text-caption text-clock-ink">
+            The office edited this. You submitted{" "}
+            <span className="tabular font-medium">
+              {formatCurrency(quote.submittedTotalPaise)}
+            </span>
+            .
+          </p>
+        )}
+
+        {/* With the customer, and possibly still editable by the office. */}
+        {pending && (
+          <p className="mt-3 flex items-start gap-2 text-caption text-ink-muted">
+            <Clock className="mt-px size-4 shrink-0" aria-hidden="true" />
+            {quote.minutesRemaining !== null && quote.minutesRemaining > 0
+              ? `With the customer now. The office can still adjust it for ${quote.minutesRemaining} min.`
+              : "With the customer now. The amount is final — the office's window has closed."}
+          </p>
+        )}
+
+        {/* Legacy rows only: nothing produces `approved` any more. */}
+        {quote.status === "approved" && (
+          <p className="mt-3 text-caption text-ink-muted">
+            With the customer for approval.
+          </p>
+        )}
+
+        {underway && (
+          <p className="mt-3 text-caption text-live-ink">
+            The customer approved and the quoted work is under way. They pay{" "}
+            {formatCurrency(quote.totalPaise)} when the job is finished.
+          </p>
+        )}
+
+        {/* The code box. Inline rather than on another screen: the pro is
+            standing next to the person reading it out. */}
+        {needsCode && (
+          <QuoteStartCode
+            quotationId={quote.id}
+            onStarted={onQuoteChange}
+          />
+        )}
+
+        {/* The reason, prominently. A rejection with no reason is the most
+            demoralising thing this platform can show a pro. */}
+        {rejected && quote.rejectionReason !== null && (
+          <div className="mt-3">
+            <p className="text-caption font-medium text-ink">Office’s reason</p>
+            <p className="mt-1 rounded-control bg-canvas p-3 text-small text-ink-muted">
+              “{quote.rejectionReason}”
+            </p>
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+          <Button variant="secondary" className="min-w-0 flex-1" asChild>
+            <Link href={`/jobs/${jobId}/quote/status`}>
+              {pending ? "Watch the clock" : "Open the quotation"}
+            </Link>
+          </Button>
+          {/* Only once there is nothing live to wait on. Offering "revise"
+              beside a pending quote invites a second one for the same work. */}
+          {(rejected || declined) && (
+            <Button className="min-w-0 flex-1" asChild>
+              <Link href={`/jobs/${jobId}/quote`}>
+                <RefreshCw />
+                Revise it
+              </Link>
+            </Button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Pro 17 — the customer's code for the quoted work.
+ *
+ * A second code box on a screen that already has one, and the distinction is
+ * the point: the job's own start code proved the customer let the pro in to do
+ * **what they booked**. This one proves they agreed, in person, to a different
+ * and usually much larger piece of work — on real data here, a ₹350 booking
+ * becoming ₹3,700.
+ *
+ * It says what it unlocks and what it blocks, because a pro who ignores it
+ * discovers at the end of the job that they cannot close it.
+ */
+function QuoteStartCode({
+  quotationId,
+  onStarted,
+}: {
+  quotationId: string;
+  onStarted: (next: NonNullable<ProJob["quotation"]>) => void;
+}) {
+  const [code, setCode] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const [wrong, setWrong] = React.useState(false);
+
+  const submit = (otp: string) => {
+    setBusy(true);
+    setWrong(false);
+    void startQuotedWork(quotationId, otp)
+      .then((next) => {
+        onStarted(next);
+        toast.success("Quoted work started. The customer has been told.");
+      })
+      .catch((e: unknown) => {
+        // A wrong code marks the field; anything else is the server's own
+        // words, which say more than "could not start" ever would.
+        if (e instanceof ApiError && e.code === "WRONG_OTP") {
+          setWrong(true);
+          return;
+        }
+        toast.error(
+          e instanceof ApiError ? e.message : "Could not start the quoted work.",
+        );
+      })
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="mt-3 rounded-control border border-action-line bg-action-subtle p-3">
+      <p className="flex items-center gap-2 text-small font-semibold text-action">
+        <KeyRound className="size-4 shrink-0" aria-hidden="true" />
+        Ask the customer for their code
+      </p>
+      <p className="mt-px text-caption text-action">
+        They have a 4-digit code on their screen. The quoted work — and
+        completing this job — needs it. Nothing is collected now; the customer
+        pays for everything when the job is finished.
+      </p>
+
+      <div className="mt-3">
+        <OtpInput
+          value={code}
+          onChange={(next) => {
+            setCode(next);
+            // Clears the error as soon as they start correcting it, rather
+            // than leaving red boxes under digits they have already fixed.
+            if (wrong) setWrong(false);
+          }}
+          length={4}
+          // The code is read aloud by the customer, not texted to this phone,
+          // so the keyboard must not offer to autofill an SMS code.
+          autoComplete="off"
+          onComplete={submit}
+          disabled={busy}
+          invalid={wrong}
+          label="Customer's code for the quoted work"
+        />
+      </div>
+
+      {wrong && (
+        <p className="mt-2 text-caption font-medium text-critical-ink">
+          That code is not right. Ask them to read it again.
+        </p>
+      )}
+      {busy && (
+        <p className="mt-2 flex items-center gap-2 text-caption text-ink-muted">
+          <Loader2 className="size-3 animate-spin" aria-hidden="true" />
+          Checking…
+        </p>
+      )}
+    </div>
+  );
+}
 
 function ContactButton({
   href,

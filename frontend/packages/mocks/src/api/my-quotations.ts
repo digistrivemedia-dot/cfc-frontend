@@ -70,19 +70,28 @@ export function splitQuotation(totalPaise: number): {
 }
 
 /** Customer 23 — accept, paying the advance. */
+/**
+ * Customer 23 — approve the extra work.
+ *
+ * **Takes no payment.** The 50% advance is gone: the customer pays the whole
+ * quotation when the job is finished, with the booking. The old signature took
+ * a `paymentMethod` that defaulted to `"cash"` and debited a wallet, which no
+ * longer describes anything that happens.
+ *
+ * Returns the approved quotation, because it carries `startOtp` — the code the
+ * customer now reads out to the professional standing in front of them.
+ */
 export async function acceptQuotation(
   id: string,
-  paymentMethod: "cash" | "wallet" | "upi" | "card" = "cash",
-): Promise<void> {
+): Promise<QuotationDetail | void> {
   if (isLive("acceptQuotation")) {
     // §4.3 — this returned `Promise<void>` with no payment step, but the
     // agreement requires a **50% advance on accept**. The method is now
     // required, and online methods answer 503 until Razorpay has keys rather
     // than marking a quote accepted with no advance behind it.
-    await fetchJson<unknown>(`/consumer/quotations/${id}/accept`, {
-      body: { paymentMethod },
+    return fetchJson<QuotationDetail>(`/consumer/quotations/${id}/accept`, {
+      method: "POST",
     });
-    return;
   }
   await latency();
   const found = quotations.find((q) => q.id === id);

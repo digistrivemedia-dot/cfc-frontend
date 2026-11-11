@@ -119,6 +119,8 @@ export async function nextOffer(proId: string): Promise<ProJob | null> {
     checklist: [],
     beforePhotoUrls: [],
     afterPhotoUrls: [],
+    // An offer has not been accepted, so there is no job to quote on yet.
+    quotation: null,
   };
 }
 

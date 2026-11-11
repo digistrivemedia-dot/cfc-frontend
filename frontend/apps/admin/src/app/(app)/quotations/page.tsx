@@ -55,6 +55,7 @@ import {
   NoResultsState,
   Pagination,
   PageHeader,
+  PhotoGrid,
   QuotationStatusBadge,
   Sheet,
   SheetBody,
@@ -75,28 +76,35 @@ import {
  * Admin 4 + 5 — Quotation management.
  *
  * Inventory 4: "Live queue of all pending quotes. Job ID, Pro, Customer,
- * Service, Amount. [Approve] [Edit & Approve] [Reject] per row."
- * Inventory 5: "Full quote view: Pro notes, before-photos, material list,
- * customer history. Approve/Edit/Reject with reason."
+ * Service, Amount." Inventory 5: "Full quote view: Pro notes, before-photos,
+ * material list, customer history."
  *
- * This is a triage queue under a clock, not a table, and it is built as one.
- * The agreement gives the pro a fifteen-minute wait and no longer, so the
- * screen sorts by time remaining rather than by submission order, shows each
- * window draining, and puts Approve and Send back on the row — an operator with
- * four minutes left should not spend forty seconds opening a record to use
- * them.
+ * ## The office no longer approves
  *
- * Three rules from the agreement are enforced visibly rather than merely
- * documented:
+ * A quotation goes **straight to the customer** when the pro raises it. This
+ * screen is a 15-minute **oversight window**: the office may adjust the figures
+ * or withdraw the quotation entirely while it runs, and a window that lapses
+ * changes nothing except that they no longer can.
  *
- *   15 minutes   the approval window. Under 5 it turns amber, past it red.
- *   ₹5,000       above this a quote needs a phone confirmation first, so the
- *                row says so and the approve action asks for it.
- *   2 photos     a quote with fewer is auto-rejected, so a short one is
- *                flagged before anyone spends time reading it.
+ * So the queue is still ordered by time remaining — the operator's own window
+ * is what is draining — but nothing here gates the customer. Three behaviours
+ * follow from that and are worth stating:
  *
- * Frontend only — deciding a quote removes it from the local list and toasts.
- * The mock layer is read-only and the backend team owns the write path.
+ *   **Keep as quoted** is not an approval. It is the operator saying they have
+ *   looked and are leaving it alone, which is why it does not change a status.
+ *
+ *   **A quotation the customer has accepted cannot be touched**, even inside
+ *   the window. What the customer read is what they pay; the server refuses it
+ *   and this screen stops offering it.
+ *
+ *   **Withdraw** requires a reason. The pro reads it, standing in the
+ *   customer's house.
+ *
+ * Two rules from the agreement are still surfaced rather than enforced:
+ *
+ *   ₹5,000       above this the office phones the customer. A flag, not a gate.
+ *   2 photos     a quote with fewer cannot be raised at all, so a short one
+ *                here is a legacy row and flagged as one.
  */
 
 const PAGE_SIZE = 20;
@@ -205,8 +213,8 @@ function QuotationManagementInner() {
         );
         toast.success(
           outcome === "approved"
-            ? `${q.jobRef} approved — the customer has been notified`
-            : `${q.jobRef} sent back to ${q.proName}`,
+            ? `${q.jobRef} updated — the customer has been notified`
+            : `${q.jobRef} withdrawn — ${q.proName} has been told`,
         );
         if (openId === q.id) closeDetail();
       })
@@ -480,9 +488,19 @@ function QueueRow({
         {/* Decisions */}
         {pending && (
           <div className="flex w-full gap-2 sm:w-auto">
-            <RejectDialog quote={quote} onDecide={onDecide} />
-            <EditApproveDialog quote={quote} onDecide={onDecide} />
-            <ApproveButton quote={quote} onDecide={onDecide} />
+            {/* Only while the office may still act. Once the customer has
+                accepted, the figures are theirs and the server refuses any
+                change — so offering the buttons would be offering a 409. */}
+            {quote.status === "customer_accepted" ? (
+              <span className="text-caption text-ink-muted">
+                Customer approved — locked
+              </span>
+            ) : (
+              <>
+                <RejectDialog quote={quote} onDecide={onDecide} />
+                <EditApproveDialog quote={quote} onDecide={onDecide} />
+              </>
+            )}
           </div>
         )}
       </div>
@@ -538,68 +556,6 @@ function Clock({ minutesRemaining }: { minutesRemaining: number | null }) {
         />
       </div>
     </div>
-  );
-}
-
-/**
- * Approve. Above ₹5,000 the agreement requires a phone confirmation first, so
- * the button asks for it rather than letting an operator skip a rule they may
- * not remember.
- */
-function ApproveButton({
-  quote,
-  onDecide,
-}: {
-  quote: QuotationDetail;
-  onDecide: (
-    q: QuotationDetail,
-    outcome: "approved" | "rejected",
-    edited?: boolean,
-  ) => void;
-}) {
-  const needsCall = quote.totalPaise > CALL_THRESHOLD_PAISE;
-
-  if (!needsCall) {
-    return (
-      <Button
-        variant="primary"
-        size="sm"
-        className="flex-1 sm:flex-none"
-        onClick={() => onDecide(quote, "approved")}
-      >
-        <Check />
-        Approve
-      </Button>
-    );
-  }
-
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="primary" size="sm" className="flex-1 sm:flex-none">
-          <Check />
-          Approve
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
-            Confirm {formatCurrency(quote.totalPaise)} with the customer first
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            Quotes above {formatCurrency(CALL_THRESHOLD_PAISE)} need a phone
-            confirmation before approval. Call {quote.customerName} and confirm
-            the amount and the work described.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Not yet</AlertDialogCancel>
-          <AlertDialogAction onClick={() => onDecide(quote, "approved")}>
-            Customer confirmed — approve
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 }
 
@@ -804,7 +760,7 @@ function EditApproveDialog({
             disabled={changed && note.trim() === ""}
           >
             <Check />
-            {changed ? "Approve revised quote" : "Approve"}
+            {changed ? "Save the new amount" : "Keep as quoted"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -836,7 +792,7 @@ function RejectDialog({
       <AlertDialogTrigger asChild>
         <Button variant="secondary" size="sm" className="flex-1 sm:flex-none">
           <X />
-          Send back
+          Withdraw
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
@@ -884,7 +840,7 @@ function RejectDialog({
               onDecide({ ...quote, rejectionReason: reason }, "rejected")
             }
           >
-            Send back
+            Withdraw it
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -1002,26 +958,58 @@ function QuotationDetailPanel({
           </InlineAlert>
         )}
 
+        {/**
+         * Confirmed by the customer, but has the work actually begun?
+         *
+         * "Approved" and "the customer accepted" are both true of quoted work
+         * that never started, and its money is already in the pro's
+         * settlement either way — so an operator fielding a dispute, or asked
+         * why a job will not close, needs this distinction stated rather than
+         * inferred.
+         */}
+        {quote.status === "customer_accepted" && (
+          <InlineAlert
+            tone={quote.workStarted ? "live" : "clock"}
+            title={
+              quote.workStarted
+                ? "Quoted work is under way"
+                : "Waiting on the customer's code"
+            }
+          >
+            {quote.workStarted
+              ? `${quote.proName} entered the customer's code, so the quoted work has started.`
+              : `${quote.customerName} has confirmed and holds a 4-digit code. ${quote.proName} cannot start the quoted work — or close the job — until they read it out.`}
+          </InlineAlert>
+        )}
+
         <DetailCard title="What the pro found">
           <p className="text-body leading-relaxed text-ink">{quote.proNotes}</p>
         </DetailCard>
 
-        <DetailCard
-          title={`Before photos (${quote.beforePhotoUrls.length})`}
-          padded={false}
-        >
-          <div className="grid grid-cols-2 gap-px bg-border">
-            {quote.beforePhotoUrls.map((url) => (
-              <div
-                key={url}
-                className="flex aspect-square items-center justify-center bg-canvas text-ink-faint"
-                role="img"
-                aria-label="Before-work photo submitted by the pro"
-              >
-                <ImageOff className="size-6" aria-hidden="true" />
-              </div>
-            ))}
-          </div>
+        {/**
+         * The photos themselves, not a stand-in for them.
+         *
+         * Every tile here was a hardcoded `ImageOff` box — the grid mapped over
+         * the URLs and drew a placeholder per entry, so the count was right and
+         * the evidence was never shown. Harmless while these were fixture paths
+         * that resolved to nothing; now they are real uploads, and this is the
+         * one screen whose entire job is looking at them before committing CFC
+         * to a price.
+         *
+         * `PhotoGrid` is what the pro and customer screens already use: real
+         * images, a lightbox to read a meter or a crack full size, video tiles
+         * that play, and a labelled fallback for a file that genuinely will not
+         * load — which is a different statement from the placeholder that used
+         * to be shown unconditionally.
+         */}
+        <DetailCard title={`Before photos (${quote.beforePhotoUrls.length})`}>
+          {quote.beforePhotoUrls.length === 0 ? (
+            <p className="text-small text-ink-muted">
+              The pro submitted none. There is nothing to review.
+            </p>
+          ) : (
+            <PhotoGrid urls={quote.beforePhotoUrls} label="Before" />
+          )}
         </DetailCard>
 
         <DetailCard title="Costing" padded={false}>
@@ -1080,7 +1068,7 @@ function QuotationDetailPanel({
         </DetailCard>
 
         {quote.rejectionReason && (
-          <DetailCard title="Why this was sent back">
+          <DetailCard title="Why this was withdrawn">
             <p className="text-body text-critical-ink">
               {quote.rejectionReason}
             </p>
@@ -1088,11 +1076,12 @@ function QuotationDetailPanel({
         )}
       </SheetBody>
 
+      {/* Two actions, not three. "Approve" is gone because nothing here
+          approves — the customer already has the quotation. */}
       {pending && (
         <div className="flex shrink-0 gap-2 border-t border-border p-4">
           <RejectDialog quote={quote} onDecide={onDecide} />
           <EditApproveDialog quote={quote} onDecide={onDecide} />
-          <ApproveButton quote={quote} onDecide={onDecide} />
         </div>
       )}
     </>

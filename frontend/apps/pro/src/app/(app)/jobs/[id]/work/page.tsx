@@ -9,19 +9,21 @@ import {
   FileText,
   IndianRupee,
   Loader2,
+  Pencil,
   Plus,
   Satellite,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { addExtraCharge, getProJob } from "@cfc/mocks";
-import type { ExtraCharge, ProJob } from "@cfc/types";
+import { addExtraCharge, getProJob, withdrawQuotation } from "@cfc/mocks";
+import { ApiError, type ExtraCharge, type ProJob } from "@cfc/types";
 import {
   Badge,
   Button,
   ErrorState,
   Input,
   PhotoCapture,
+  QuotationStatusBadge,
   Skeleton,
   cn,
   formatCurrency,
@@ -59,11 +61,15 @@ import {
  *
  * ## Extra charges vs. a quotation
  *
- * Two different things, and conflating them is how a pro ends up bypassing the
- * approval flow. An extra charge is small and explainable — a part, a second
- * visit. Anything substantial goes through the quotation flow, where an admin
- * reviews it and the customer accepts with a 50% advance. Both routes are on
- * this screen, labelled for what they are.
+ * Two different things, and conflating them is how a pro ends up routing
+ * thousands of rupees around the quotation flow. An extra charge is small and
+ * explainable — a part, a second visit. Anything substantial goes through a
+ * quotation, which the **customer** approves and pays for when the job is
+ * finished. Both routes are on this screen, labelled for what they are.
+ *
+ * The quotation block is live: once one exists it shows the figure, the
+ * material list and what the pro may still do about it, rather than offering
+ * to raise a second one the server would refuse.
  */
 
 export default function ProWorkPage() {
@@ -131,10 +137,16 @@ export default function ProWorkPage() {
     );
   }
 
-  return <WorkView job={job} />;
+  return <WorkView job={job} onChange={setJob} />;
 }
 
-function WorkView({ job }: { job: ProJob }) {
+function WorkView({
+  job,
+  onChange,
+}: {
+  job: ProJob;
+  onChange: (next: ProJob) => void;
+}) {
   const router = useRouter();
 
   const [beforePhotos, setBeforePhotos] = React.useState<CapturedPhoto[]>([]);
@@ -208,31 +220,196 @@ function WorkView({ job }: { job: ProJob }) {
             />
           </div>
 
-          {/* The quotation route. Deliberately here, next to extra charges, so
-              a pro tempted to add ₹4,000 as an "extra" sees the correct path
-              in the same glance. */}
+          {/**
+           * The quotation, deliberately here beside extra charges so a pro
+           * tempted to add ₹4,000 as an "extra" sees the correct path in the
+           * same glance.
+           *
+           * **It showed "Raise a quotation" even when one already existed** —
+           * which the server then refuses as a duplicate, with no sign on this
+           * screen that there was a quotation at all, let alone what was in it
+           * or how to change it. A pro who mis-priced a job had no route back.
+           */}
           <div className="border-t border-border bg-canvas p-4">
-            <div className="flex items-start gap-3">
-              <span className="flex size-tile shrink-0 items-center justify-center rounded-control bg-action-subtle text-action">
-                <FileText className="size-5" aria-hidden="true" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-small font-medium text-ink">
-                  Bigger job than expected?
-                </p>
-                <p className="text-caption text-ink-muted">
-                  Raise a quotation with a material list. An admin reviews it
-                  within 15 minutes and the customer pays 50% in advance.
-                </p>
-              </div>
-            </div>
-            <Button variant="secondary" className="mt-3 w-full" asChild>
-              <Link href={`/jobs/${job.id}/quote`}>Raise a quotation</Link>
-            </Button>
+            {job.quotation && job.quotation.status !== "rejected" &&
+            job.quotation.status !== "customer_declined" ? (
+              <WorkQuotation
+                jobId={job.id}
+                quote={job.quotation}
+                onChange={(next) => onChange({ ...job, quotation: next })}
+              />
+            ) : (
+              <>
+                <div className="flex items-start gap-3">
+                  <span className="flex size-tile shrink-0 items-center justify-center rounded-control bg-action-subtle text-action">
+                    <FileText className="size-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-small font-medium text-ink">
+                      Bigger job than expected?
+                    </p>
+                    <p className="text-caption text-ink-muted">
+                      Raise a quotation with a material list. It goes straight
+                      to the customer, and they pay for it when the job is
+                      finished.
+                    </p>
+                  </div>
+                </div>
+                <Button variant="secondary" className="mt-3 w-full" asChild>
+                  <Link href={`/jobs/${job.id}/quote`}>
+                    {job.quotation ? "Raise a new quotation" : "Raise a quotation"}
+                  </Link>
+                </Button>
+              </>
+            )}
           </div>
         </section>
       </div>
     </ProActionLayout>
+  );
+}
+
+/**
+ * Pro 16 — the quotation on this job, with the actions the pro still has.
+ *
+ * **Revise** reopens the quote form with the current figures. **Withdraw**
+ * closes it and frees the job for a new one, because one live quotation per job
+ * is the rule and a pro who quoted the wrong work needs a way out of it.
+ *
+ * Which of the two is offered comes from the **server** (`mayRevise`,
+ * `mayWithdraw`), not from re-deriving the rules here: an action a screen
+ * offers and the endpoint refuses is worse than one it never offered. When
+ * either is withheld, `restriction` says why — a disabled control with no
+ * explanation is the most frustrating thing in any app.
+ */
+function WorkQuotation({
+  jobId,
+  quote,
+  onChange,
+}: {
+  jobId: string;
+  quote: NonNullable<ProJob["quotation"]>;
+  onChange: (next: NonNullable<ProJob["quotation"]>) => void;
+}) {
+  const [withdrawing, setWithdrawing] = React.useState(false);
+
+  const withdraw = () => {
+    setWithdrawing(true);
+    void withdrawQuotation(quote.id)
+      .then((next) => {
+        onChange(next);
+        toast.success("Quotation withdrawn. You can raise a new one.");
+      })
+      .catch((e: unknown) =>
+        toast.error(
+          e instanceof ApiError ? e.message : "Could not withdraw that.",
+        ),
+      )
+      .finally(() => setWithdrawing(false));
+  };
+
+  const materialTotal = quote.materials.reduce((t, m) => t + m.costPaise, 0);
+  const accepted = quote.status === "customer_accepted";
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="flex items-center gap-2 text-small font-semibold text-ink">
+          <FileText className="size-4 shrink-0 text-ink-muted" aria-hidden="true" />
+          Your quotation
+        </p>
+        <QuotationStatusBadge status={quote.status} />
+      </div>
+
+      <p className="mt-2 text-caption text-ink-muted">“{quote.proNotes}”</p>
+
+      <dl className="mt-3 divide-y divide-border-soft rounded-control border border-border bg-surface">
+        {quote.materials.map((m, i) => (
+          <div
+            key={`${m.description}-${i}`}
+            className="flex items-baseline justify-between gap-3 px-3 py-2"
+          >
+            <dt className="min-w-0 truncate text-caption text-ink-muted">
+              {m.description}
+            </dt>
+            <dd className="tabular shrink-0 text-caption text-ink">
+              {formatCurrency(m.costPaise)}
+            </dd>
+          </div>
+        ))}
+        {quote.materials.length > 0 && (
+          <div className="flex items-baseline justify-between gap-3 px-3 py-2">
+            <dt className="text-caption text-ink-muted">Materials</dt>
+            <dd className="tabular shrink-0 text-caption text-ink">
+              {formatCurrency(materialTotal)}
+            </dd>
+          </div>
+        )}
+        <div className="flex items-baseline justify-between gap-3 px-3 py-2">
+          <dt className="text-caption text-ink-muted">Labour</dt>
+          <dd className="tabular shrink-0 text-caption text-ink">
+            {formatCurrency(quote.labourPaise)}
+          </dd>
+        </div>
+        <div className="flex items-baseline justify-between gap-3 bg-canvas px-3 py-2">
+          <dt className="text-small font-semibold text-ink">Total</dt>
+          <dd className="tabular shrink-0 text-small font-bold text-ink">
+            {formatCurrency(quote.totalPaise)}
+          </dd>
+        </div>
+      </dl>
+
+      {/* The office moved the figure. The pro learns it here, not from the
+          customer saying a different number at the door. */}
+      {quote.edited && (
+        <p className="mt-2 text-caption text-clock-ink">
+          The office changed this. You submitted{" "}
+          <span className="tabular font-medium">
+            {formatCurrency(quote.submittedTotalPaise)}
+          </span>
+          .
+        </p>
+      )}
+
+      {quote.restriction !== null && (
+        <p className="mt-2 text-caption text-ink-muted">{quote.restriction}</p>
+      )}
+
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        {/* The quote form reopens with these figures — it reads the job's own
+            quotation, so no id needs carrying in the URL. */}
+        {quote.mayRevise && (
+          <Button variant="secondary" className="min-w-0 flex-1" asChild>
+            <Link href={`/jobs/${jobId}/quote`}>
+              <Pencil />
+              Edit
+            </Link>
+          </Button>
+        )}
+        <Button variant="ghost" className="min-w-0 flex-1" asChild>
+          <Link href={`/jobs/${jobId}/quote/status`}>Details</Link>
+        </Button>
+      </div>
+
+      {accepted && (
+        <p className="mt-2 text-caption text-live-ink">
+          Approved by the customer. Ask for their 4-digit code on the job screen
+          to start this work.
+        </p>
+      )}
+
+      {quote.mayWithdraw && (
+        <Button
+          variant="ghost"
+          className="mt-2 w-full text-critical-ink"
+          loading={withdrawing}
+          onClick={withdraw}
+        >
+          <Trash2 />
+          Withdraw this quotation
+        </Button>
+      )}
+    </div>
   );
 }
 

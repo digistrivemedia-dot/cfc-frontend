@@ -309,6 +309,7 @@ export {
   getActiveBooking,
   getRebookable,
   type BookingTab,
+  payBooking,
 } from "./api/my-bookings";
 export {
   getProNotifications,
@@ -340,6 +341,9 @@ export { setProOnline, pingProLocation } from "./api/pro-dispatch";
 export {
   startJob,
   uploadJobPhoto,
+  startQuotedWork,
+  reviseQuotation,
+  withdrawQuotation,
   uploadJobMedia,
   type JobMediaResult,
 } from "./api/pro-lifecycle";

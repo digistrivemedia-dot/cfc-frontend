@@ -136,7 +136,16 @@ export async function submitQuotation(
 export type CompletionRejection =
   | { reason: "wrong-otp" }
   | { reason: "no-after-photos" }
-  | { reason: "too-far"; metres: number; limit: number };
+  | { reason: "too-far"; metres: number; limit: number }
+  /**
+   * An accepted quotation whose work never started.
+   *
+   * Its money is in this settlement and the customer's code is the only proof
+   * they agreed to it at the door, so the server refuses to close the job.
+   * Carries the quotation id so the screen can point at the code box rather
+   * than describing where to find it.
+   */
+  | { reason: "quote-not-started"; quotationId: string };
 
 export type CompletionResult =
   | { ok: true; earning: ProEarning }

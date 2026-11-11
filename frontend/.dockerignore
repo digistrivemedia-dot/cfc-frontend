@@ -1,0 +1,20 @@
+# Without this, `COPY . .` would ship 614 MB of local node_modules into the
+# image and then the install would overwrite it anyway — slow, and it can carry
+# macOS-built native binaries into a Linux image.
+
+node_modules
+**/node_modules
+.git
+.turbo
+**/.turbo
+**/.next
+**/.next-*
+**/*.log
+
+# Secrets and local-only configuration. The real values are passed as build
+# arguments instead — see the Dockerfile.
+**/.env
+**/.env.*
+
+# A stray npm lockfile that is not used; pnpm-lock.yaml is the real one.
+package-lock.json

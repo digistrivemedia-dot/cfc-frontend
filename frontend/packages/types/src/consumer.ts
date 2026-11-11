@@ -1,6 +1,7 @@
 import type { Id, Paise, Timestamp, Address, GeoPoint } from "./primitives";
 import type { PriceBreakdown } from "./pricing";
 import type { BookingStatus } from "./booking";
+import type { QuotationStatus } from "./quotation";
 
 /**
  * Consumer-specific domain types.
@@ -85,6 +86,24 @@ export interface Review {
  * progress, and the in-progress OTP — so one fetch serves the whole set rather
  * than each screen widening the type again.
  */
+/** The quotation on a booking, as the customer deciding on it sees it. */
+export interface ConsumerBookingQuotation {
+  id: Id;
+  status: QuotationStatus;
+  totalPaise: Paise;
+  /** What the pro found, so the booking page can say why this exists. */
+  proNotes: string;
+  /**
+   * The code the customer reads out to let the quoted work start.
+   *
+   * Null before they confirm, and null again once the professional has used it.
+   */
+  startOtp: string | null;
+  workStarted: boolean;
+  /** Set when the office sent it back, so the customer is not left guessing. */
+  rejectionReason: string | null;
+}
+
 export interface ConsumerBooking {
   id: Id;
   /** What a customer quotes on the phone, e.g. CFC12345678. */
@@ -110,6 +129,47 @@ export interface ConsumerBooking {
   breakdown: PriceBreakdown;
   /** How they paid, for the invoice. */
   paymentMethod: "upi" | "card" | "wallet" | "cash";
+
+  /**
+   * Work added after the booking was placed, and the resulting money.
+   *
+   * `totalPaise` and `breakdown` above are the booking **as invoiced** and must
+   * not move — they are a tax document. But they are not the answer to the only
+   * money question a customer asks on their booking screen, which is *what do I
+   * owe?* An on-site extra charge or an accepted quotation changes that and
+   * changed neither of those fields, so a customer who agreed to a ₹5,000 repair
+   * was still shown the original booking total as their total.
+   *
+   * GST is unaffected: it attaches to the platform fee only, never to the
+   * professional's labour or materials (`PLATFORM-FACTS`).
+   */
+  extraChargesPaise?: Paise | undefined;
+  extraCharges?: { label: string; amountPaise: Paise }[] | undefined;
+  quotedWorkPaise?: Paise | undefined;
+  /** The booking as invoiced, plus everything agreed on site. */
+  amountPayablePaise?: Paise | undefined;
+  /**
+   * Already taken. A wallet booking pays when it is placed; everything else
+   * is collected when the job is done.
+   *
+   * There is **no quotation advance** any more — the customer pays the whole
+   * amount on completion, so an accepted quotation moves no money until then.
+   */
+  amountPaidPaise?: Paise | undefined;
+
+  /**
+   * The quotation on this booking, if one has reached the customer.
+   *
+   * Carried on the booking because that is where a customer looks. The
+   * quotation had its own screen and its own notification and nothing else, so
+   * opening the booking gave no sign that a professional was waiting on a
+   * decision — and no route to the screen that would let them make it.
+   *
+   * `pending` quotations are excluded by the server: that means "waiting on the
+   * office", and showing one would invite accepting something CFC has not yet
+   * agreed to.
+   */
+  quotation?: ConsumerBookingQuotation | null | undefined;
 
   /** Null until a professional accepts. Auto-assign offers to three at once. */
   pro: {

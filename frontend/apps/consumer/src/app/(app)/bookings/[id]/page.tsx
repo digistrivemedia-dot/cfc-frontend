@@ -7,12 +7,14 @@ import {
   ArrowLeft,
   CalendarDays,
   MapPin,
+  FileText,
+  Info,
   MessageSquare,
   Phone,
   Star,
 } from "lucide-react";
-import { cancelBooking, getMyBooking } from "@cfc/mocks";
-import type { ConsumerBooking } from "@cfc/types";
+import { cancelBooking, getMyBooking, payBooking } from "@cfc/mocks";
+import { ApiError, type ConsumerBooking } from "@cfc/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -119,6 +121,23 @@ function BookingDetailPageInner() {
     (booking.status === "assigned" || booking.status === "in_progress");
   const needsRating = booking.status === "completed" && !booking.rated;
 
+  /**
+   * The money, derived once.
+   *
+   * Every figure falls back to something true for a booking the server has not
+   * sent the new fields for — an older deploy, or a cached response — so the
+   * section degrades to the booking total rather than rendering `NaN` where a
+   * customer expects a price.
+   */
+  const extrasPaise = booking.extraChargesPaise ?? 0;
+  const quotedPaise = booking.quotedWorkPaise ?? 0;
+  const payablePaise =
+    booking.amountPayablePaise ?? booking.totalPaise + extrasPaise + quotedPaise;
+  const paidPaise = booking.amountPaidPaise ?? 0;
+  const duePaise = Math.max(0, payablePaise - paidPaise);
+  /** Only worth its own section when something was actually added. */
+  const hasAddedWork = extrasPaise > 0 || quotedPaise > 0;
+
   return (
     <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
       <div className="mx-auto max-w-screen-md">
@@ -200,6 +219,23 @@ function BookingDetailPageInner() {
             Your rating helps other customers choose.
           </InlineAlert>
         </div>
+      )}
+
+      {/**
+       * Customer 22 — the quotation on this booking.
+       *
+       * **The gap this closes.** The quotation had its own screen and its own
+       * notification and nothing else: a customer who opened their booking —
+       * the obvious place to look — saw no sign that a professional was in
+       * their house waiting on a ₹5,000 decision, no way to reach the screen
+       * that would let them make it, and a "Paid" figure that still showed the
+       * original booking total.
+       *
+       * Above the professional and the details, because while a quote is
+       * waiting on the customer nothing else on this screen matters.
+       */}
+      {booking.quotation && (
+        <BookingQuotation quote={booking.quotation} />
       )}
 
       {/* The professional. */}
@@ -286,7 +322,7 @@ function BookingDetailPageInner() {
             }
           />
           <Row
-            label="Paid"
+            label="Booking"
             value={
               <span className="flex flex-wrap items-center gap-2">
                 <span className="tabular font-medium">
@@ -298,6 +334,78 @@ function BookingDetailPageInner() {
           />
         </dl>
       </section>
+
+      {/**
+       * What the job actually comes to.
+       *
+       * The row above was labelled **"Paid"** and showed `totalPaise`, which
+       * was wrong twice over: a cash booking is not paid until the job closes,
+       * and `totalPaise` is the booking as invoiced — it excludes on-site extra
+       * charges and accepted quoted work entirely. A customer who agreed to a
+       * ₹250 valve and a ₹5,000 repair saw neither, and saw the original total
+       * described as already paid.
+       *
+       * Rendered only when something was added, so an ordinary booking keeps
+       * one clean figure instead of a three-line sum of itself.
+       */}
+      {hasAddedWork && (
+        <section className="mt-4 cfc-card">
+          <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
+            What you pay
+          </h2>
+          <dl className="space-y-2 p-4">
+            <MoneyLine label="Booking" value={booking.totalPaise} />
+            {extrasPaise > 0 && (
+              <MoneyLine label="Extra charges agreed on site" value={extrasPaise} />
+            )}
+            {quotedPaise > 0 && (
+              <MoneyLine label="Approved extra work" value={quotedPaise} />
+            )}
+
+            <div className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
+              <dt className="text-small font-bold text-ink">Total</dt>
+              <dd className="tabular text-body font-extrabold text-ink">
+                {formatCurrency(payablePaise)}
+              </dd>
+            </div>
+
+            {paidPaise > 0 && (
+              <MoneyLine label="Already paid" value={-paidPaise} />
+            )}
+
+            {duePaise > 0 && (
+              <div className="mt-1 flex items-baseline justify-between gap-3 rounded-card bg-action-subtle p-3">
+                <dt className="text-small font-semibold text-action">
+                  {booking.status === "completed" ? "Outstanding" : "Due on completion"}
+                </dt>
+                <dd className="tabular text-body font-extrabold text-action">
+                  {formatCurrency(duePaise)}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </section>
+      )}
+
+      {/**
+       * Customer 30 — settle the job.
+       *
+       * **There was no way to pay anything after booking.** A cash job was
+       * marked paid by the completion itself, a wallet job paid up front, and
+       * the two online methods refused at checkout — so nothing needed a
+       * payment step. Quoted work broke that: it is agreed *during* the job and,
+       * with the advance removed, every rupee falls due at completion.
+       *
+       * Only once the professional has finished, which is the moment the
+       * customer agreed to pay at.
+       */}
+      {booking.status === "completed" && duePaise > 0 && (
+        <PayNow
+          bookingId={booking.id}
+          duePaise={duePaise}
+          onPaid={load}
+        />
+      )}
 
       {/* Photos, once there are any. */}
       {(booking.beforePhotoUrls.length > 0 ||
@@ -393,6 +501,250 @@ const PAYMENT_LABEL: Record<ConsumerBooking["paymentMethod"], string> = {
   wallet: "Wallet",
   cash: "Cash",
 };
+
+/**
+ * Customer 22 — the quotation, on the booking it belongs to.
+ *
+ * Four states, and only the first has an action:
+ *
+ *   approved           waiting on the customer. The amount, and a way to decide.
+ *   customer_accepted  the code to read out, or "under way" once it is spent.
+ *   customer_declined  the record, so they are not asked twice.
+ *   rejected           the office turned it down. Nothing was charged.
+ *
+ * It does **not** duplicate the decide buttons from `/quotes/[id]`. One place
+ * owns accepting a quotation, with the confirmation sheet and the payment
+ * choice; this card's job is to say that a decision is waiting and to get the
+ * customer there. Two accept paths would be two chances to take an advance
+ * twice.
+ */
+function BookingQuotation({
+  quote,
+}: {
+  quote: NonNullable<ConsumerBooking["quotation"]>;
+}) {
+  // `pending` is the live one; `approved` survives on rows from the old
+  // admin-approval flow and must stay decidable.
+  const awaiting = quote.status === "pending" || quote.status === "approved";
+  const accepted = quote.status === "customer_accepted";
+  const declined = quote.status === "customer_declined";
+  const rejected = quote.status === "rejected";
+
+  return (
+    <section
+      className={cn(
+        "mt-4 overflow-hidden rounded-card border",
+        awaiting && "border-clock-line",
+        accepted && "border-live-line",
+        (declined || rejected) && "border-border",
+      )}
+    >
+      <div
+        className={cn(
+          "px-4 py-3",
+          awaiting && "bg-clock-subtle",
+          accepted && "bg-live-subtle",
+          (declined || rejected) && "bg-canvas",
+        )}
+      >
+        <h2 className="flex items-center gap-2 text-small font-bold text-ink">
+          <FileText className="size-4 shrink-0" aria-hidden="true" />
+          {awaiting
+            ? "Extra work needs your approval"
+            : accepted
+              ? "Extra work approved"
+              : declined
+                ? "You declined the extra work"
+                : "Extra work was not approved"}
+        </h2>
+        {awaiting && (
+          <p className="mt-px text-caption text-clock-ink">
+            Nothing is charged until you approve it.
+          </p>
+        )}
+      </div>
+
+      <div className="p-4">
+        <p className="text-small leading-relaxed text-ink-muted">
+          “{quote.proNotes}”
+        </p>
+
+        {/* One figure, one moment. The advance is gone: the customer pays the
+            whole quotation when the job is finished. */}
+        {(awaiting || accepted) && (
+          <dl className="mt-3 rounded-card border border-border p-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-small text-ink-muted">Quotation total</dt>
+              <dd className="tabular text-body font-bold text-ink">
+                {formatCurrency(quote.totalPaise)}
+              </dd>
+            </div>
+            <p className="mt-1 text-caption text-ink-muted">
+              Nothing is taken when you approve. It is added to this booking and
+              paid once the work is finished.
+            </p>
+          </dl>
+        )}
+
+        {/* The one action. It goes to the screen that owns the decision. */}
+        {awaiting && (
+          <Button variant="primary" className="mt-3 w-full" asChild>
+            <Link href={`/quotes/${quote.id}`}>
+              Review and decide — {formatCurrency(quote.totalPaise)}
+            </Link>
+          </Button>
+        )}
+
+        {/* The code, repeated here on purpose: the customer may well have
+            navigated back to their booking before the professional asked. */}
+        {accepted && !quote.workStarted && quote.startOtp && (
+          <div className="mt-3">
+            <OtpDisplay
+              tone="action"
+              title="Code to start the extra work"
+              code={quote.startOtp}
+              hint="Read this to your professional when you are happy for them to begin."
+            />
+          </div>
+        )}
+
+        {accepted && quote.workStarted && (
+          <p className="mt-3 text-caption text-live-ink">
+            Your professional entered your code and is carrying out the work.
+          </p>
+        )}
+
+        {rejected && (
+          <p className="mt-3 text-caption text-ink-muted">
+            {quote.rejectionReason !== null && quote.rejectionReason !== ""
+              ? `Our team did not approve it: “${quote.rejectionReason}”`
+              : "Our team did not approve it. Nothing has been charged."}
+          </p>
+        )}
+
+        {declined && (
+          <p className="mt-3 text-caption text-ink-muted">
+            You are charged only for the original booking.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Customer 30 — pay what is outstanding.
+ *
+ * Three methods, and the two that cannot work say why rather than being
+ * hidden. A customer who expects to pay by card should learn that online
+ * payment is not set up yet, not wonder where the option went.
+ *
+ * `upi` and `card` come back as a 503 from the server, so the message the
+ * customer reads is the server's own rather than one guessed at here. No stub
+ * that auto-succeeds: that is how an unverified signature check reaches
+ * production, and here it would also tell a professional they had been paid
+ * when they had not.
+ */
+function PayNow({
+  bookingId,
+  duePaise,
+  onPaid,
+}: {
+  bookingId: string;
+  duePaise: number;
+  onPaid: () => void;
+}) {
+  const [busy, setBusy] = React.useState<string | null>(null);
+
+  const pay = (method: "cash" | "wallet" | "upi" | "card") => {
+    setBusy(method);
+    payBooking(bookingId, method)
+      .then(() => {
+        toast.success(
+          method === "cash"
+            ? "Recorded. Thank you."
+            : "Paid. Thank you.",
+        );
+        onPaid();
+      })
+      .catch((e: unknown) =>
+        toast.error(
+          e instanceof ApiError ? e.message : "That payment did not go through.",
+        ),
+      )
+      .finally(() => setBusy(null));
+  };
+
+  return (
+    <section className="mt-4 cfc-card overflow-hidden">
+      <h2 className="bg-action px-4 py-3 text-body font-bold text-on-action">
+        Pay {formatCurrency(duePaise)}
+      </h2>
+      <div className="p-4">
+        <p className="text-small text-ink-muted">
+          The work is finished. Choose how you would like to settle it.
+        </p>
+
+        <div className="mt-3 space-y-2">
+          <Button
+            variant="primary"
+            className="w-full"
+            loading={busy === "cash"}
+            disabled={busy !== null}
+            onClick={() => pay("cash")}
+          >
+            I paid {formatCurrency(duePaise)} in cash
+          </Button>
+          <Button
+            variant="secondary"
+            className="w-full"
+            loading={busy === "wallet"}
+            disabled={busy !== null}
+            onClick={() => pay("wallet")}
+          >
+            Pay from CFC wallet
+          </Button>
+          <Button
+            variant="secondary"
+            className="w-full"
+            loading={busy === "upi"}
+            disabled={busy !== null}
+            onClick={() => pay("upi")}
+          >
+            UPI or card
+          </Button>
+        </div>
+
+        <p className="cfc-info mt-3">
+          <Info className="cfc-info-ic size-4" aria-hidden="true" />
+          <span>
+            UPI and card are not switched on in this deployment yet. Cash goes
+            to your professional; wallet is taken from your balance.
+          </span>
+        </p>
+      </div>
+    </section>
+  );
+}
+
+/** One money line. Negative renders as a deduction rather than a minus sign. */
+function MoneyLine({ label, value }: { label: string; value: number }) {
+  const credit = value < 0;
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="text-small text-ink-muted">{label}</dt>
+      <dd
+        className={cn(
+          "tabular text-small",
+          credit ? "font-medium text-live-ink" : "text-ink",
+        )}
+      >
+        {credit ? "− " : ""}
+        {formatCurrency(Math.abs(value))}
+      </dd>
+    </div>
+  );
+}
 
 function Row({
   icon,

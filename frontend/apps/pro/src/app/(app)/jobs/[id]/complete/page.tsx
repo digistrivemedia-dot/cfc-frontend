@@ -155,6 +155,7 @@ function CompleteForm({
   jobsBefore: number;
   onDone: (earning: ProEarning) => void;
 }) {
+  const router = useRouter();
   const [otp, setOtp] = React.useState("");
   const [afterPhotos, setAfterPhotos] = React.useState<CapturedPhoto[]>([]);
   const [wrongOtp, setWrongOtp] = React.useState(false);
@@ -211,6 +212,20 @@ function CompleteForm({
           toast.error(
             `You are ${result.error.metres} m away. You need to be within ${result.error.limit} m to complete.`,
           );
+        } else if (result.error.reason === "quote-not-started") {
+          /**
+           * The quoted work was confirmed but never started with the
+           * customer's code — and its money is in this settlement.
+           *
+           * Named explicitly rather than falling into the `else` below, which
+           * would have told a pro to "add a photo of the finished work" when
+           * their photos were fine and the actual problem was a 4-digit code
+           * the customer is holding.
+           */
+          toast.error(
+            "Ask the customer for the code for the quoted work first — it is on their screen. The job cannot be closed without it.",
+          );
+          router.push(`/jobs/${job.id}`);
         } else {
           toast.error("Add at least one photo of the finished work.");
         }

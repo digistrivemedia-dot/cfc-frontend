@@ -184,6 +184,15 @@ function BookingsInner() {
  */
 function BookingCard({ booking }: { booking: ConsumerBooking }) {
   const needsRating = booking.status === "completed" && !booking.rated;
+  /**
+   * A quotation waiting on this customer.
+   *
+   * Flagged on the card because a professional is standing in their house
+   * waiting for the answer, and until now the only route to that decision was
+   * a notification. A customer who opened their bookings list instead saw
+   * nothing at all.
+   */
+  const needsQuoteDecision = booking.quotation?.status === "approved";
 
   return (
     <Link
@@ -204,6 +213,13 @@ function BookingCard({ booking }: { booking: ConsumerBooking }) {
                 screen. Blue reported it as one more status. */}
             {needsRating && (
               <span className="cfc-badge cfc-badge-promo">Rate this</span>
+            )}
+            {/* The same orange, for the same reason: it asks the customer to
+                do something rather than reporting a state. It cannot collide
+                with "Rate this" — a completed job has no quote awaiting a
+                decision. */}
+            {needsQuoteDecision && (
+              <span className="cfc-badge cfc-badge-promo">Approval needed</span>
             )}
           </div>
 
@@ -227,8 +243,11 @@ function BookingCard({ booking }: { booking: ConsumerBooking }) {
         </div>
 
         <div className="flex shrink-0 flex-col items-end gap-1">
+          {/* What the job comes to, not the booking as first placed: with an
+              accepted quotation or an on-site extra the two differ, and this
+              list is where a customer scans for what they owe. */}
           <span className="tabular text-heading font-extrabold tracking-tight text-ink">
-            {formatCurrency(booking.totalPaise)}
+            {formatCurrency(booking.amountPayablePaise ?? booking.totalPaise)}
           </span>
           <ChevronRight className="size-4 text-ink-faint" aria-hidden="true" />
         </div>

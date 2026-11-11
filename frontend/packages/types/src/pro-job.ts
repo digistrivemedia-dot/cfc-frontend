@@ -1,4 +1,5 @@
 import type { Id, Paise, Timestamp } from "./primitives";
+import type { QuotationMaterialLine, QuotationStatus } from "./quotation";
 
 /**
  * A job as the *pro* sees it.
@@ -58,6 +59,93 @@ export const PRO_JOB_STATUS_LABEL: Record<ProJobStatus, string> = {
   completed: "Completed",
   cancelled: "Cancelled",
 };
+
+/**
+ * The quotation on a job, as the *pro* sees it. Pro 17.
+ *
+ * Carried on the job rather than fetched separately, and that is the point: the
+ * pro's own status (`awaiting_quote`, labelled "Quote sent") is derived from
+ * whether this is pending, so a job list that did not know about the quotation
+ * would show "In progress" while the job screen showed "Quote sent".
+ *
+ * Both totals, always. When the office edits before approving, the pro has to
+ * learn it from us rather than from the customer saying a different number at
+ * the door — `edited` says it happened and `submittedTotalPaise` says what they
+ * had asked for.
+ */
+export interface ProJobQuotation {
+  id: Id;
+  status: QuotationStatus;
+  /** What the pro asked for. Never overwritten by an admin edit. */
+  submittedTotalPaise: Paise;
+  /** What the office approved. Equal to the above unless `edited`. */
+  totalPaise: Paise;
+  edited: boolean;
+  /**
+   * Minutes left of the **admin's edit window**. Null once it has closed.
+   *
+   * No longer a countdown to a decision — the quotation is already with the
+   * customer. It is how long the office can still change the figures, which is
+   * worth showing the pro: a quote that may still move is not one to start
+   * buying parts against.
+   */
+  minutesRemaining: number | null;
+  /**
+   * When the admin's edit window closes, exactly.
+   *
+   * Carried as well as `minutesRemaining` so a screen can tick a real
+   * second-by-second clock. Deriving mm:ss from a rounded minute count would
+   * invent precision the figure does not have.
+   */
+  decisionBy: Timestamp;
+  /** Why it was cancelled, and by whom. The pro has earned an explanation. */
+  rejectionReason: string | null;
+
+  /**
+   * What the pro actually quoted.
+   *
+   * Carried so the work screen can show the material list and the quote form
+   * can reopen with it rather than from blank. Withholding it was an omission,
+   * not a decision — the pro wrote every word of it, and could previously see
+   * that a quotation existed without seeing what was in it.
+   */
+  proNotes: string;
+  materials: QuotationMaterialLine[];
+  labourPaise: Paise;
+
+  /**
+   * What this professional may still do about their own quotation.
+   *
+   * Decided by the server and sent, rather than derived on a screen, so a
+   * button and the endpoint behind it cannot disagree — an Edit that is then
+   * refused is worse than no Edit at all.
+   *
+   * `mayRevise` closes when the **office** adjusts the quotation: two parties
+   * editing a price in turns makes `submittedTotalPaise` meaningless and the
+   * dispute it exists to settle unsettleable. `mayWithdraw` survives that,
+   * because a professional must be able to take back a price they no longer
+   * stand behind.
+   *
+   * Both close the moment the customer approves.
+   */
+  mayRevise: boolean;
+  mayWithdraw: boolean;
+  /** Why not, in words the pro can act on. Null when they may do both. */
+  restriction: string | null;
+
+  /**
+   * Whether the customer's start code has been entered for the quoted work.
+   *
+   * **The code itself is never sent to the pro.** It is read aloud at the door,
+   * and a code the pro could pull out of their own job response would prove
+   * nothing — they could start, and be paid for, work the customer never
+   * confirmed. The server compares it; this is only whether it happened.
+   *
+   * It gates completion: an accepted quotation that never started refuses to
+   * close the job, because its money is already in the settlement.
+   */
+  workStarted: boolean;
+}
 
 export interface ProJob {
   id: Id;
@@ -121,6 +209,14 @@ export interface ProJob {
    */
   beforePhotoUrls: string[];
   afterPhotoUrls: string[];
+
+  /**
+   * The quotation raised on this job, or null if there is none.
+   *
+   * The most recent one: a rejected quote can be revised, and what the pro
+   * needs to see is where they stand now.
+   */
+  quotation: ProJobQuotation | null;
 }
 
 /**

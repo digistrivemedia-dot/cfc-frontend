@@ -147,7 +147,9 @@ export function PinMap({ markers, className, zoom }: PinMapProps) {
       cancelled = true;
     };
     // `markers` is intentionally absent — `signature` stands in for it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // (No eslint-disable here: this package's config does not load the
+    // react-hooks plugin, and a disable naming an unloaded rule is itself an
+    // ESLint error.)
   }, [signature, zoom]);
 
   // Torn down only on unmount, not on every marker change.

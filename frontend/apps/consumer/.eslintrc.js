@@ -17,9 +17,11 @@ module.exports = {
   overrides: [
     ...(shared.overrides ?? []),
     {
-      // `interactions.js` is plain ES5 browser JavaScript, not TypeScript, so
-      // the type-aware parser cannot handle it - it is not in tsconfig, and
-      // adding it there would pull untyped JS into the typecheck.
+      // `home/interactions.js` - the signed-in home's script, the only .js
+      // left under (home) now that the landing page's own `interactions.js`
+      // has been ported to hooks - is plain ES5 browser JavaScript, not
+      // TypeScript, so the type-aware parser cannot handle it: it is not in
+      // tsconfig, and adding it there would pull untyped JS into the typecheck.
       files: ["src/app/(home)/**/*.js"],
       parser: "espree",
       parserOptions: { ecmaVersion: 2020, sourceType: "module", project: null },

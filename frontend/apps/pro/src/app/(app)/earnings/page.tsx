@@ -29,7 +29,6 @@ import {
   ChartFrame,
   ErrorState,
   LineChart,
-  MoneyBreakdown,
   Skeleton,
   Tabs,
   TabsList,
@@ -39,6 +38,7 @@ import {
   formatCurrencyAxis,
 } from "@cfc/ui";
 import { currentProId } from "@/lib/pro-session";
+import { YouEarn } from "@/components/you-earn";
 
 /**
  * Pro 22 — earnings.
@@ -152,20 +152,9 @@ export default function ProEarningsPage() {
           {summary === null ? (
             <Skeleton className="h-block-sm w-full rounded-card" />
           ) : summary.jobCount === 0 ? null : (
-            <MoneyBreakdown
-              grossPaise={summary.grossPaise}
-              cfcFeePaise={summary.cfcFeePaise}
+            <YouEarn
               netPaise={summary.netPaise}
-              // The period's effective rate rather than a flat 15%: a month
-              // spanning the end of the free-jobs offer is genuinely a blend,
-              // and stating 15% there would not match the arithmetic above it.
-              cfcFeeBps={
-                summary.grossPaise === 0
-                  ? 0
-                  : Math.round((summary.cfcFeePaise / summary.grossPaise) * 10_000)
-              }
               commissionFree={summary.cfcFeePaise === 0}
-              gstNote
             />
           )}
         </div>
@@ -192,7 +181,7 @@ function Headline({
   return (
     <section className="rounded-card bg-structure p-5 md:p-6">
       <p className="text-small text-on-structure-muted">
-        {EARNINGS_PERIOD_LABEL[period]}, after CFC fee
+        You earned {EARNINGS_PERIOD_LABEL[period].toLowerCase()}
       </p>
 
       {summary === null ? (

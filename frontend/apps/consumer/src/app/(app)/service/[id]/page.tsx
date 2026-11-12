@@ -112,7 +112,7 @@ export default function ServiceDetailPage() {
 
   if (error) {
     return (
-      <div className="cfc-wrap py-12">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6 py-12">
         <ErrorState
           title="This service is not available"
           description="It may have been removed from the catalogue."
@@ -124,7 +124,7 @@ export default function ServiceDetailPage() {
 
   if (service === null) {
     return (
-      <div className="cfc-wrap py-6">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6 py-6">
         {/* `aspect-card`, matching the gallery it stands in for: a fixed-height
             skeleton made the page jump the moment the photograph arrived. */}
         <Skeleton className="aspect-card w-full rounded-card" />
@@ -135,11 +135,11 @@ export default function ServiceDetailPage() {
   }
 
   return (
-    /* `cfc-band-wash` is the home page's pale-teal ground. White cards on a
+    /* `bg-canvas` is the home page's pale-teal ground. White cards on a
        tinted ground is the construction that makes a card read as PLACED on
        the page rather than outlined on it. */
-    <div className="cfc-band cfc-band-wash min-h-screen pt-4 md:pb-12">
-      <div className="cfc-wrap">
+    <div className="w-full bg-canvas min-h-screen pt-4 md:pb-12">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6">
       <Link
         href="/categories"
         // M2 - measured 137x16. The only way back to the category.
@@ -243,7 +243,7 @@ export default function ServiceDetailPage() {
             /* A white card on the page's wash ground, the way the home page
                builds every list. Flat text on flat white was the single
                biggest reason this screen read duller than the home page. */
-            <section className="cfc-card cfc-card-pad">
+            <section className="rounded-card bg-surface shadow-sm cfc-card-pad">
               <h2 className="text-heading font-semibold text-ink md:text-heading-lg">
                 What is included
               </h2>
@@ -271,7 +271,7 @@ export default function ServiceDetailPage() {
           )}
 
           {faqs !== null && faqs.length > 0 && (
-            <section className="cfc-card cfc-card-pad">
+            <section className="rounded-card bg-surface shadow-sm cfc-card-pad">
               <h2 className="mb-3 text-heading font-semibold text-ink md:text-heading-lg">
                 Common questions
               </h2>
@@ -369,7 +369,7 @@ function BookingCard({
     /* P3: a heavier shadow than a content card. This is the most important
        element on the screen and it had the lightest treatment of anything on
        it. */
-    <div className="cfc-card p-4 shadow-md">
+    <div className="rounded-card bg-surface p-4 shadow-md">
       {/* C3: "Starting at" is only true before a choice is made. Once an
           option is selected this shows that option's price - and on the 2-ton
           window unit, the DEAREST one, it was still labelled "Starting at".
@@ -611,7 +611,7 @@ function ReviewList({ reviews }: { reviews: Review[] | null }) {
     /* Reviews was the only major section without a card: it floated on the
        page background while everything above it sat on white, which made the
        page look like it had run out halfway down. */
-    <section className="cfc-card cfc-card-pad">
+    <section className="rounded-card bg-surface shadow-sm cfc-card-pad">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-heading font-semibold text-ink md:text-heading-lg">
           Reviews{" "}
@@ -693,7 +693,7 @@ function ServiceGallery({ images, name }: { images: string[]; name: string }) {
           the height problem by shrinking the whole photo, which left a band of
           empty page down both sides on a desktop - the image looked marooned
           rather than placed. The ratio does that job instead: see below. */}
-      <div className="cfc-media border border-border bg-canvas">
+      <div className="relative overflow-hidden rounded-card border border-border bg-canvas">
         {hasPhoto ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img

@@ -94,7 +94,7 @@ export default function LegalPage() {
        for a document. Terms and a privacy policy set at that width run to a
        column of four or five words per line, which is unreadable at length.
        65ch is the measure long-form text is set at. */
-    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+    <div className="bg-canvas min-h-screen px-4 pb-20 pt-6 md:px-6">
       <div className="mx-auto max-w-detail">
       <Link
         href="/settings"
@@ -117,7 +117,7 @@ export default function LegalPage() {
         {doc.sections.map((section, i) => (
           <li
             key={section}
-            className="cfc-card p-4"
+            className="rounded-card bg-surface shadow-sm p-4"
           >
             <p className="text-small font-medium text-ink">
               <span className="tabular mr-2 text-ink-faint">{i + 1}.</span>

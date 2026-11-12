@@ -104,7 +104,7 @@ function WalletInner() {
   }
 
   return (
-    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+    <div className="bg-canvas min-h-screen px-4 pb-20 pt-6 md:px-6">
       <div className="mx-auto max-w-screen-md">
       <h1 className="text-section text-ink">Wallet</h1>
 
@@ -191,7 +191,7 @@ function WalletInner() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="mt-3 cfc-card">
+        <div className="mt-3 rounded-card bg-surface shadow-sm">
           <EmptyState
             icon={<WalletIcon />}
             title="Nothing here yet"
@@ -203,7 +203,7 @@ function WalletInner() {
           />
         </div>
       ) : (
-        <ul className="mt-3 divide-y divide-border-soft overflow-hidden cfc-card">
+        <ul className="mt-3 divide-y divide-border-soft overflow-hidden rounded-card bg-surface shadow-sm">
           {rows.map((t) => (
             <li key={t.id}>
               <TransactionRow transaction={t} />

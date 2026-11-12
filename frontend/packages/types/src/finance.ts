@@ -28,6 +28,23 @@ export interface TransactionListItem {
   method: TransactionMethod;
   status: TransactionStatus;
   createdAt: Timestamp;
+  /**
+   * Where the booking happened.
+   *
+   * Carried on the money records so admin can filter payments, settlements and
+   * refunds by state / city / area — the client asked for that on every menu,
+   * and without this field those screens had three dropdowns that could only
+   * ever empty the table.
+   *
+   * It is the booking's area, copied onto the money record rather than joined
+   * at read time: a settlement is a historical document, and if a customer
+   * later moves, last quarter's report must not change underneath it.
+   *
+   * Optional because the BACKEND will own this. Every existing caller keeps
+   * working without it, and a record that arrives without an area is excluded
+   * from a location filter rather than silently passing it.
+   */
+  area?: string | undefined;
 }
 
 /**
@@ -48,6 +65,23 @@ export interface Settlement {
   gstPaise: Paise;
   netToProPaise: Paise;
   settledAt: Timestamp;
+  /**
+   * Where the booking happened.
+   *
+   * Carried on the money records so admin can filter payments, settlements and
+   * refunds by state / city / area — the client asked for that on every menu,
+   * and without this field those screens had three dropdowns that could only
+   * ever empty the table.
+   *
+   * It is the booking's area, copied onto the money record rather than joined
+   * at read time: a settlement is a historical document, and if a customer
+   * later moves, last quarter's report must not change underneath it.
+   *
+   * Optional because the BACKEND will own this. Every existing caller keeps
+   * working without it, and a record that arrives without an area is excluded
+   * from a location filter rather than silently passing it.
+   */
+  area?: string | undefined;
 }
 
 export const REFUND_STATUSES = ["requested", "approved", "rejected", "paid"] as const;
@@ -61,6 +95,23 @@ export interface RefundRequest {
   reason: string;
   status: RefundStatus;
   requestedAt: Timestamp;
+  /**
+   * Where the booking happened.
+   *
+   * Carried on the money records so admin can filter payments, settlements and
+   * refunds by state / city / area — the client asked for that on every menu,
+   * and without this field those screens had three dropdowns that could only
+   * ever empty the table.
+   *
+   * It is the booking's area, copied onto the money record rather than joined
+   * at read time: a settlement is a historical document, and if a customer
+   * later moves, last quarter's report must not change underneath it.
+   *
+   * Optional because the BACKEND will own this. Every existing caller keeps
+   * working without it, and a record that arrives without an area is excluded
+   * from a location filter rather than silently passing it.
+   */
+  area?: string | undefined;
 }
 
 export interface GstReportRow {

@@ -62,6 +62,9 @@ import {
   useReorder,
   type DateRange,
 } from "@cfc/ui";
+import { PrintButton, PrintHeader } from "@/components/printable";
+import { GeoFilter, useGeoFilter } from "@/components/geo-filter";
+import { matchesGeo } from "@/lib/geography";
 
 /**
  * Admin 35–37 — Promotions and banners.
@@ -128,6 +131,10 @@ function CouponsTab() {
   const [rows, setRows] = React.useState<Coupon[] | null>(null);
   const [search, setSearch] = React.useState("");
   const [state, setState] = React.useState<string | null>(null);
+  // Geography. Named `geo` so it cannot be confused with `state` above, which
+  // is the coupon's own live/paused/expired status - that filter is relabelled
+  // "Status" below for the same reason.
+  const { geo, setGeo, activeCount: geoCount, clear: clearGeo } = useGeoFilter();
   const [error, setError] = React.useState<string | null>(null);
 
   const load = React.useCallback(() => {
@@ -157,6 +164,14 @@ function CouponsTab() {
 
   const visible = React.useMemo(() => {
     let items = rows ?? [];
+    // A coupon can target several areas at once, and an empty list means it
+    // runs everywhere - so an unrestricted coupon matches every location
+    // rather than none.
+    items = items.filter((c) => {
+      const areas = c.restrictions.areas;
+      if (areas.length === 0) return true;
+      return areas.some((a) => matchesGeo(a, geo));
+    });
     const q = search.trim().toLowerCase();
     if (q) items = items.filter((c) => c.code.toLowerCase().includes(q));
     if (state === "live")
@@ -164,7 +179,7 @@ function CouponsTab() {
     if (state === "expired") items = items.filter(isExpired);
     if (state === "paused") items = items.filter((c) => !c.active);
     return items;
-  }, [rows, search, state]);
+  }, [rows, search, state, geo]);
 
   const live = (rows ?? []).filter((c) => c.active && !isExpired(c));
   const redeemed = (rows ?? []).reduce((s, c) => s + c.usedCount, 0);
@@ -172,10 +187,11 @@ function CouponsTab() {
     (c) => c.maxUses > 0 && c.usedCount / c.maxUses >= NEARLY_SPENT,
   );
 
-  const activeFilters = state ? 1 : 0;
+  const activeFilters = (state ? 1 : 0) + geoCount;
   const clearAll = () => {
     setState(null);
     setSearch("");
+    clearGeo();
   };
 
   return (
@@ -220,6 +236,7 @@ function CouponsTab() {
       </div>
 
       <div className="overflow-hidden rounded-card border border-border bg-surface shadow-sm">
+        <PrintHeader title="Promotions" geo={geo} rowCount={visible.length} />
         <FilterBar
           search={search}
           onSearchChange={setSearch}
@@ -228,9 +245,10 @@ function CouponsTab() {
           activeCount={activeFilters}
           onClearAll={clearAll}
           resultLabel={rows ? `${visible.length} of ${rows.length}` : undefined}
+          actions={<PrintButton disabled={!rows || visible.length === 0} />}
         >
           <FilterSelect
-            label="State"
+            label="Status"
             value={state}
             onChange={setState}
             allLabel="All codes"
@@ -240,6 +258,7 @@ function CouponsTab() {
               { value: "expired", label: "Expired" },
             ]}
           />
+          <GeoFilter value={geo} onChange={setGeo} />
         </FilterBar>
 
         {error ? (

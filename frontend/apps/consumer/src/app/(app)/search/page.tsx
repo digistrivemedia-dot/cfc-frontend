@@ -242,11 +242,11 @@ function SearchInner() {
   }, [results, sort]);
 
   return (
-    <div className="cfc-band-wash min-h-screen pb-12 pt-4">
-      {/* `cfc-wrap` is the box the app bar and footer use. A page that sets its
+    <div className="bg-canvas min-h-screen pb-12 pt-4">
+      {/* `mx-auto w-full max-w-wrap px-4 md:px-6` is the box the app bar and footer use. A page that sets its
           own container is 100px wider with less padding, so its first line of
           content starts visibly left of the logo above it. */}
-      <div className="cfc-wrap">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6">
       {/* The search field is present at every width. It used to be
           `md:hidden` on the reasoning that the desktop header carries one —
           but on the results page that left a desktop customer with no visible
@@ -671,7 +671,7 @@ function Results({
 
   if (rows === null) {
     return (
-      <div className="cfc-card mt-4 grid grid-cols-2 gap-3 p-4 md:grid-cols-3 md:p-6 lg:grid-cols-4">
+      <div className="rounded-card bg-surface shadow-sm mt-4 grid grid-cols-2 gap-3 p-4 md:grid-cols-3 md:p-6 lg:grid-cols-4">
         {Array.from({ length: 6 }, (_, i) => (
           <Skeleton key={i} className="h-block-md rounded-card" />
         ))}
@@ -746,7 +746,7 @@ function Results({
 
       {/* Results sit on white, on the page's wash - the same construction as
           the Categories grid, so the two screens read as one product. */}
-      <ul className="cfc-card grid grid-cols-2 gap-3 p-4 md:grid-cols-3 md:p-6 lg:grid-cols-4">
+      <ul className="rounded-card bg-surface shadow-sm grid grid-cols-2 gap-3 p-4 md:grid-cols-3 md:p-6 lg:grid-cols-4">
         {rows.map((service) => (
           <li key={service.id}>
             {/* Results carry an Add button like every other list of services.
@@ -773,7 +773,7 @@ export default function SearchPage() {
   return (
     <Suspense
       fallback={
-        <div className="cfc-wrap py-6">
+        <div className="mx-auto w-full max-w-wrap px-4 md:px-6 py-6">
           <Skeleton className="h-touch rounded-control" />
         </div>
       }

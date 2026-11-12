@@ -81,7 +81,7 @@ export default function CartPage() {
   if (lines === null) {
     return (
       <div className="min-h-screen bg-surface pb-20 pt-6">
-        <div className="cfc-wrap">
+        <div className="mx-auto w-full max-w-wrap px-4 md:px-6">
           <div className="h-block-lg animate-pulse rounded-card bg-neutral-subtle" />
         </div>
       </div>
@@ -91,9 +91,9 @@ export default function CartPage() {
   if (lines.length === 0) {
     return (
       <div className="min-h-screen bg-surface pb-20 pt-6">
-        <div className="cfc-wrap">
+        <div className="mx-auto w-full max-w-wrap px-4 md:px-6">
           <h1 className="text-section text-ink">Your cart</h1>
-          <div className="cfc-card mt-5">
+          <div className="rounded-card bg-surface shadow-sm mt-5">
             <EmptyState
               icon={<ShoppingCart />}
               title="Nothing to check out yet"
@@ -111,7 +111,7 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-surface pb-20 pt-6">
-      <div className="cfc-wrap">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6">
       {/* ORANGE on the eyebrow.
 
           The teal eyebrow was one more teal thing on a screen that already had
@@ -146,7 +146,7 @@ export default function CartPage() {
                  separating it. This is a real step darker and reads as a
                  surface rather than as a hairline on the page. */
               style={{ backgroundColor: "var(--teal-wash)" }}
-              className="cfc-card flex gap-3 border-action-line p-4 transition-all duration-base hover:border-action hover:shadow-md"
+              className="rounded-card bg-surface shadow-sm flex gap-3 border-action-line p-4 transition-all duration-base hover:border-action hover:shadow-md"
             >
               {/* The photo sits on a tinted panel, as the client's mockup sets
                   its media (`--panel-l`). A photograph on white has nothing
@@ -302,7 +302,7 @@ export default function CartPage() {
               href="/categories"
               style={{ backgroundColor: "var(--teal-wash)" }}
               className={cn(
-                "cfc-card group flex items-center gap-3 border-action-line p-4",
+                "rounded-card bg-surface shadow-sm group flex items-center gap-3 border-action-line p-4",
                 "transition-all duration-base hover:-translate-y-1 hover:border-action hover:bg-surface hover:shadow-md",
                 "focus-visible:outline-none focus-visible:outline-focus",
               )}
@@ -333,7 +333,7 @@ export default function CartPage() {
             surfaces of the same value, with nothing saying which one holds the
             decision. A teal head marks it as the panel that matters, which is
             how the approved home page separates its own bands. */}
-        <div className="cfc-card overflow-hidden shadow-md lg:sticky lg:top-bar-tall">
+        <div className="rounded-card bg-surface overflow-hidden shadow-md lg:sticky lg:top-bar-tall">
           {/* BLUE, not teal.
 
               A teal head sat directly above a teal Continue button, so the

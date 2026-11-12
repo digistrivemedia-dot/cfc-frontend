@@ -120,7 +120,7 @@ export function OptionsStep({
   return (
     <div className="mt-4 space-y-4">
       {variants.length > 1 && (
-        <section className="cfc-card">
+        <section className="rounded-card bg-surface shadow-sm">
           <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
             Choose an option
           </h2>
@@ -141,7 +141,7 @@ export function OptionsStep({
 
       {quantityFromCart ? (
         quantity > 1 && (
-          <div className="flex items-baseline justify-between gap-3 cfc-card px-4 py-3">
+          <div className="flex items-baseline justify-between gap-3 rounded-card bg-surface shadow-sm px-4 py-3">
             <p className="text-small text-ink">
               <span className="tabular font-semibold">{quantity}</span> of this
               service
@@ -165,7 +165,7 @@ export function OptionsStep({
       )}
 
       {addOns.length > 0 && (
-        <section className="cfc-card">
+        <section className="rounded-card bg-surface shadow-sm">
           <div className="border-b border-border px-4 py-3">
             <h2 className="text-small font-semibold text-ink">
               Add anything else?
@@ -192,7 +192,7 @@ export function OptionsStep({
           that is the slot on the next step, and conflating the two is how a
           customer ends up expecting a 60-minute job to be finished 60 minutes
           after booking. */}
-      <div className="flex items-baseline justify-between gap-3 cfc-card px-4 py-3">
+      <div className="flex items-baseline justify-between gap-3 rounded-card bg-surface shadow-sm px-4 py-3">
         <div className="min-w-0">
           <p className="text-caption text-ink-muted">
             Estimated time on site
@@ -342,7 +342,7 @@ function QuantityPicker({
   onChange: (next: number) => void;
 }) {
   return (
-    <section className="cfc-card p-4">
+    <section className="rounded-card bg-surface shadow-sm p-4">
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <h2 className="text-small font-semibold text-ink">How many?</h2>
@@ -429,7 +429,7 @@ export function SummaryStep({
 }) {
   return (
     <div className="mt-4 space-y-4">
-      <section className="cfc-card">
+      <section className="rounded-card bg-surface shadow-sm">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           Your booking
         </h2>
@@ -503,7 +503,7 @@ export function SummaryStep({
       </section>
 
       {/* Customer 19 — the coupon entry point. */}
-      <section className="cfc-card p-4">
+      <section className="rounded-card bg-surface shadow-sm p-4">
         {coupon === null ? (
           <button
             type="button"
@@ -595,7 +595,7 @@ export function PriceBreakdownCard({
        was a white card with a hairline heading - the same weight as the notes
        around it. Blue marks it without competing with the teal Pay button
        below. */
-    <section className="cfc-card overflow-hidden">
+    <section className="rounded-card bg-surface shadow-sm overflow-hidden">
       <h2 className="flex items-center gap-2 bg-clock px-4 py-3 text-body font-bold text-on-action">
         <IndianRupee className="size-4 shrink-0" aria-hidden="true" />
         Payment details
@@ -892,7 +892,7 @@ export function PaymentStep({
 
   return (
     <div className="mt-4 space-y-4">
-      <section className="cfc-card">
+      <section className="rounded-card bg-surface shadow-sm">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           How would you like to pay?
         </h2>

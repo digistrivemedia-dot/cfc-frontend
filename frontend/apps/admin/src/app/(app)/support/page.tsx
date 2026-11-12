@@ -65,6 +65,7 @@ import {
   type Column,
   type SortDir,
 } from "@cfc/ui";
+import { PrintButton, PrintHeader } from "@/components/printable";
 
 /**
  * Admin 43–46 — Support & Communications.
@@ -361,6 +362,7 @@ function TicketsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }) {
 
   return (
     <div className="space-y-3">
+      <PrintHeader title="Support tickets" rowCount={filtered?.length ?? 0} />
       <FilterBar
         search={search}
         onSearchChange={setSearch}
@@ -373,6 +375,7 @@ function TicketsTab({ onOpenDetail }: { onOpenDetail: (id: string) => void }) {
             ? `${filtered.length} of ${rows.length} · ${openCount} open`
             : undefined
         }
+        actions={<PrintButton disabled={!filtered || filtered.length === 0} />}
       >
         <FilterSelect
           label="Status"

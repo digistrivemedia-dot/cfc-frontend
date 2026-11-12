@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { Suspense } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { KeyRound, Plus, Save, ShieldCheck, Trash2, TriangleAlert, UserCog } from "lucide-react";
+import { KeyRound, Plus, Save, ShieldCheck, Trash2, TriangleAlert, UserCog, Users } from "lucide-react";
 import {
   getPlatformSettings,
   getServiceAreas,
@@ -62,6 +63,7 @@ import {
   validatePincode,
 } from "@cfc/ui";
 import { ApiError } from "@cfc/types";
+import { PrintButton, PrintHeader } from "@/components/printable";
 import { useActor } from "@/lib/actor";
 
 /**
@@ -114,7 +116,10 @@ function SettingsInner() {
       <PageHeader
         title="Settings"
         description="Platform configuration, your own account, and the admins you delegate to."
+        actions={<PrintButton />}
       />
+
+      <PrintHeader title="Settings" />
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
@@ -1170,7 +1175,19 @@ function SubAdminsTab() {
         <p className="text-small text-ink-muted">
           Sub admins and area admins, and the scope each one has.
         </p>
-        <AddSubAdminDialog open={addOpen} onOpenChange={setAddOpen} onAdd={handleAdd} />
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Edit everyone at once. With ten or more admins, granting one
+              section to the team was one edit per person. Permissions belong
+              to the ROLE now - set it once and every admin holding that role
+              follows, including the next one hired. See settings/permissions. */}
+          <Button variant="secondary" size="sm" asChild>
+            <Link href="/settings/permissions">
+              <Users className="size-4" aria-hidden="true" />
+              Role permissions
+            </Link>
+          </Button>
+          <AddSubAdminDialog open={addOpen} onOpenChange={setAddOpen} onAdd={handleAdd} />
+        </div>
       </div>
 
       {/* The agreement fixes the Super Admin at one. Saying so here stops

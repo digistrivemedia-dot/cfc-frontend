@@ -96,6 +96,9 @@ import {
   type Column,
   type DateRange,
 } from "@cfc/ui";
+import { PrintButton, PrintHeader } from "@/components/printable";
+import { GeoFilter, useGeoFilter } from "@/components/geo-filter";
+import { matchesGeo } from "@/lib/geography";
 
 /**
  * Admin 30–34 — Payments & Finance.
@@ -355,6 +358,9 @@ function TransactionsTab() {
   const [total, setTotal] = React.useState(0);
   const [status, setStatus] = React.useState<TransactionStatus | null>(null);
   const [method, setMethod] = React.useState<TransactionMethod | null>(null);
+  // Geography. `area` is now on the transaction record, so this filters for
+  // real rather than emptying the table.
+  const { geo, setGeo, activeCount: geoCount, clear: clearGeo } = useGeoFilter();
   const [range, setRange] = React.useState<DateRange | undefined>();
   const [search, setSearch] = React.useState("");
   const [page, setPage] = React.useState(1);
@@ -381,6 +387,7 @@ function TransactionsTab() {
   // Method, date and search are not server filters in the mock query yet.
   const visible = React.useMemo(() => {
     let items = rows ?? [];
+    items = items.filter((t) => matchesGeo(t.area ?? null, geo));
     if (method) items = items.filter((t) => t.method === method);
 
     if (range?.from) {
@@ -402,16 +409,17 @@ function TransactionsTab() {
           t.customerName.toLowerCase().includes(q),
       );
     return items;
-  }, [rows, method, range, search]);
+  }, [rows, method, range, search, geo]);
 
   const failed = (rows ?? []).filter((t) => t.status === "failed");
   const activeFilters =
-    (status ? 1 : 0) + (method ? 1 : 0) + (range?.from ? 1 : 0);
+    (status ? 1 : 0) + (method ? 1 : 0) + (range?.from ? 1 : 0) + geoCount;
   const clearAll = () => {
     setStatus(null);
     setMethod(null);
     setRange(undefined);
     setSearch("");
+    clearGeo();
   };
 
   const exportCsv = () => {
@@ -521,6 +529,7 @@ function TransactionsTab() {
       )}
 
       <div className="overflow-hidden rounded-card border border-border bg-surface shadow-sm">
+        <PrintHeader title="Transactions" geo={geo} rowCount={visible.length} />
         <FilterBar
           search={search}
           onSearchChange={setSearch}
@@ -530,16 +539,19 @@ function TransactionsTab() {
           onClearAll={clearAll}
           resultLabel={rows ? `${visible.length} of ${total}` : undefined}
           actions={
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={exportCsv}
-              loading={exporting}
-              disabled={visible.length === 0}
-            >
-              <Download />
-              Export
-            </Button>
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={exportCsv}
+                loading={exporting}
+                disabled={visible.length === 0}
+              >
+                <Download />
+                Export
+              </Button>
+              <PrintButton disabled={visible.length === 0} />
+            </>
           }
         >
           <FilterSelect
@@ -563,6 +575,7 @@ function TransactionsTab() {
             }))}
           />
           <DateRangePicker value={range} onChange={setRange} />
+          <GeoFilter value={geo} onChange={setGeo} />
         </FilterBar>
 
         <DataTable
@@ -635,8 +648,10 @@ function SettlementTab() {
 
   React.useEffect(() => load(), [load]);
 
+  const { geo, setGeo, activeCount: geoCount, clear: clearGeo } = useGeoFilter();
+
   const visible = React.useMemo(() => {
-    const items = rows ?? [];
+    const items = (rows ?? []).filter((r) => matchesGeo(r.area ?? null, geo));
     const q = search.trim().toLowerCase();
     return q
       ? items.filter(
@@ -646,7 +661,7 @@ function SettlementTab() {
             s.proName.toLowerCase().includes(q),
         )
       : items;
-  }, [rows, search]);
+  }, [rows, search, geo]);
 
   const totals = (rows ?? []).reduce(
     (acc, s) => ({
@@ -688,13 +703,19 @@ function SettlementTab() {
       </div>
 
       <div className="overflow-hidden rounded-card border border-border bg-surface shadow-sm">
+        <PrintHeader title="Settlement" geo={geo} rowCount={visible.length} />
         <FilterBar
           search={search}
           onSearchChange={setSearch}
           searchPlaceholder="Search by booking, customer or pro"
           searchLabel="Search settlements"
+          activeCount={geoCount}
+          onClearAll={clearGeo}
           resultLabel={rows ? `${visible.length} of ${rows.length}` : undefined}
-        />
+          actions={<PrintButton />}
+        >
+          <GeoFilter value={geo} onChange={setGeo} />
+        </FilterBar>
 
         {error ? (
           <ErrorState
@@ -858,9 +879,11 @@ function RefundsTab() {
     );
   };
 
+  const { geo, setGeo, activeCount: geoCount, clear: clearGeo } = useGeoFilter();
+  const geoRows = (rows ?? []).filter((r) => matchesGeo(r.area ?? null, geo));
   const visible = status
-    ? (rows ?? []).filter((r) => r.status === status)
-    : (rows ?? []);
+    ? geoRows.filter((r) => r.status === status)
+    : geoRows;
   const requested = (rows ?? []).filter((r) => r.status === "requested");
   const owed = requested.reduce((s, r) => s + r.amountPaise, 0);
 
@@ -888,10 +911,15 @@ function RefundsTab() {
       </div>
 
       <div className="overflow-hidden rounded-card border border-border bg-surface shadow-sm">
+        <PrintHeader title="Refunds" geo={geo} rowCount={visible.length} />
         <FilterBar
-          activeCount={status ? 1 : 0}
-          onClearAll={() => setStatus(null)}
+          activeCount={(status ? 1 : 0) + geoCount}
+          onClearAll={() => {
+            setStatus(null);
+            clearGeo();
+          }}
           resultLabel={rows ? `${visible.length} of ${rows.length}` : undefined}
+          actions={<PrintButton />}
         >
           <FilterSelect
             label="Status"
@@ -903,6 +931,7 @@ function RefundsTab() {
               label: s.charAt(0).toUpperCase() + s.slice(1),
             }))}
           />
+          <GeoFilter value={geo} onChange={setGeo} />
         </FilterBar>
 
         {error ? (

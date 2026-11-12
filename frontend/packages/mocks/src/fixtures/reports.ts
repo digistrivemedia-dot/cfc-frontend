@@ -38,6 +38,7 @@ export const bookingsSeries: BookingsPoint[] = DAY_LABELS.map((label) => ({
 
 export const proPerformance: ProPerformanceRow[] = PRO_NAMES.map((proName) => ({
   proName,
+  area: pickFrom(rand, AREAS),
   completionRateBps: Math.floor(8500 + rand() * 1400),
   avgRating: Math.round((3.6 + rand() * 1.4) * 10) / 10,
   jobsCompleted: Math.floor(20 + rand() * 380),

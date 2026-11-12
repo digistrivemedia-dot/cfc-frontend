@@ -52,13 +52,16 @@ import { currentProId } from "@/lib/pro-session";
  * "balance" would offer a pro an amount they cannot take — so the two figures
  * are separate and the pending one says when it clears.
  *
- * ## The minimum threshold has no source
+ * ## The Pro security balance
  *
- * The inventory asks for a "minimum threshold" and **the agreement never states
- * one.** Rather than invent ₹500 — a commitment a developer is not entitled to
- * make on the client's behalf — the value comes from config, currently zero, so
- * no threshold is shown at all. The moment the client gives a figure it appears
- * here with no code change. PRO-OPEN-ITEMS 1.2.
+ * ₹500 stays in the account and cannot be withdrawn. The client set that figure
+ * in their revision list (Pro correction 3); the agreement itself is silent,
+ * which is why this was zero until now (PRO-OPEN-ITEMS 1.2).
+ *
+ * It is RETAINED, not a qualifying threshold: a pro with ₹700 settled withdraws
+ * ₹200, not ₹700 and not nothing. The subtraction happens in
+ * `getPayoutBalance`, so the figure on this screen is already what would
+ * actually arrive — the screen never shows an amount the pro cannot have.
  *
  * ## Why it confirms
  *
@@ -118,7 +121,7 @@ export default function ProPayoutPage() {
         toast.error(
           result.reason === "nothing-available"
             ? "Nothing has cleared yet. Money from a completed job is available within 48 hours."
-            : "Your balance is below the minimum for a payout.",
+            : "Your settled balance is still within the Pro security balance.",
         );
         return;
       }
@@ -164,18 +167,48 @@ export default function ProPayoutPage() {
     <ProActionLayout
       action={
         <ProAction>
-          <div className="border-b border-border pb-3">
-            <p className="text-small text-ink-muted">Withdrawing</p>
-            <p className="mt-px tabular text-title font-semibold text-ink">
-              {formatCurrency(balance.availablePaise)}
-            </p>
-          </div>
+          {/* The sum, written out.
+              "Withdrawing ₹1,891.91" with a note underneath saying ₹500 is
+              held left a pro unable to tell whether the ₹500 had already come
+              off or was about to - and that is the one thing worth knowing
+              before tapping a button that moves money. Three lines of
+              arithmetic answer it without asking anyone to trust a figure. */}
+          {balance.securityBalancePaise > 0 ? (
+            <dl className="border-b border-border pb-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-caption text-ink-muted">Cleared balance</dt>
+                <dd className="tabular text-small text-ink">
+                  {formatCurrency(balance.settledPaise)}
+                </dd>
+              </div>
+              <div className="mt-1 flex items-baseline justify-between gap-3">
+                <dt className="text-caption text-ink-muted">
+                  Pro security balance
+                </dt>
+                <dd className="tabular text-small text-ink-muted">
+                  − {formatCurrency(balance.securityBalancePaise)}
+                </dd>
+              </div>
+              <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-border pt-2">
+                <dt className="text-small font-medium text-ink">Withdrawing</dt>
+                <dd className="tabular text-title font-semibold text-ink">
+                  {formatCurrency(balance.availablePaise)}
+                </dd>
+              </div>
+            </dl>
+          ) : (
+            <div className="border-b border-border pb-3">
+              <p className="text-small text-ink-muted">Withdrawing</p>
+              <p className="mt-px tabular text-title font-semibold text-ink">
+                {formatCurrency(balance.availablePaise)}
+              </p>
+            </div>
+          )}
 
-          {/* Only rendered when a threshold actually exists. A "minimum ₹0"
-              line would be noise standing in for an answer we do not have. */}
-          {balance.minimumPaise > 0 && (
+          {balance.securityBalancePaise > 0 && (
             <p className="mt-3 text-caption text-ink-muted">
-              Minimum payout {formatCurrency(balance.minimumPaise)}.
+              The security balance stays in your account and cannot be
+              withdrawn.
             </p>
           )}
 
@@ -192,7 +225,7 @@ export default function ProPayoutPage() {
             <p className="mt-2 text-caption text-clock-ink">
               {balance.pendingPaise > 0
                 ? `${formatCurrency(balance.pendingPaise)} is still clearing. It will be available within 48 hours of each job.`
-                : "You have nothing available to withdraw yet."}
+                : `You have nothing available to withdraw yet. The first ${formatCurrency(balance.securityBalancePaise)} is held as your Pro security balance.`}
             </p>
           )}
         </ProAction>
@@ -221,6 +254,16 @@ export default function ProPayoutPage() {
               <dd className="mt-px tabular text-display font-semibold text-ink">
                 {formatCurrency(balance.availablePaise)}
               </dd>
+              {/* Where the number came from. This card is the first thing read
+                  on the screen, and a figure lower than the pro's cleared
+                  earnings with nothing to explain it reads as money missing. */}
+              {balance.securityBalancePaise > 0 && (
+                <dd className="mt-1 text-caption text-ink-muted">
+                  {formatCurrency(balance.settledPaise)} cleared, less{" "}
+                  {formatCurrency(balance.securityBalancePaise)} held as your
+                  Pro security balance
+                </dd>
+              )}
             </div>
             <div className="px-4 py-3">
               <dt className="flex items-center gap-2 text-small text-ink-muted">
@@ -308,6 +351,14 @@ export default function ProPayoutPage() {
               This will be transferred to your{" "}
               {destination?.kind === "upi" ? "UPI" : "bank account"} (
               {destination?.detail}). Transfers usually arrive within a day.
+              {balance.securityBalancePaise > 0 ? (
+                <>
+                  {" "}
+                  This is after the minimum Pro security balance of{" "}
+                  {formatCurrency(balance.securityBalancePaise)}, which stays in
+                  your account and cannot be withdrawn.
+                </>
+              ) : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

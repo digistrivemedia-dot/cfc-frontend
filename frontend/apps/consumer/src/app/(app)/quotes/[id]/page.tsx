@@ -152,7 +152,7 @@ function QuotationPageInner() {
   const rejectedByCfc = quote.status === "rejected";
 
   return (
-    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+    <div className="bg-canvas min-h-screen px-4 pb-20 pt-6 md:px-6">
       <div className="mx-auto max-w-screen-md">
       <Link
         href="/bookings"
@@ -267,7 +267,7 @@ function QuotationPageInner() {
       )}
 
       {/* What the professional found. */}
-      <section className="mt-4 cfc-card p-4">
+      <section className="mt-4 rounded-card bg-surface shadow-sm p-4">
         <h2 className="text-small font-semibold text-ink">
           What {quote.proName} found
         </h2>
@@ -281,7 +281,7 @@ function QuotationPageInner() {
 
       {/* Customer 22 — before photos. Evidence, so they open full size. */}
       {quote.beforePhotoUrls.length > 0 && (
-        <section className="mt-4 cfc-card p-4">
+        <section className="mt-4 rounded-card bg-surface shadow-sm p-4">
           <h2 className="text-small font-semibold text-ink">Photos</h2>
           <p className="mb-2 text-caption text-ink-muted">
             Taken on site before any work.
@@ -291,7 +291,7 @@ function QuotationPageInner() {
       )}
 
       {/* Customer 22 — the material list, itemised. */}
-      <section className="mt-4 cfc-card">
+      <section className="mt-4 rounded-card bg-surface shadow-sm">
         <h2 className="border-b border-border px-4 py-3 text-small font-semibold text-ink">
           What it costs
         </h2>

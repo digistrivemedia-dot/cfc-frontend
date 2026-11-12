@@ -6,7 +6,7 @@ import type {
   TransactionMethod,
   TransactionStatus,
 } from "@cfc/types";
-import { CUSTOMER_NAMES, PRO_NAMES, seeded, pickFrom } from "./seed";
+import { AREAS, CUSTOMER_NAMES, PRO_NAMES, seeded, pickFrom } from "./seed";
 
 const rand = seeded(20260909);
 const pick = <T,>(xs: readonly T[]): T => pickFrom(rand, xs);
@@ -23,6 +23,9 @@ export const transactions: TransactionListItem[] = Array.from(
       id: `txn_${(i + 1).toString().padStart(4, "0")}`,
       bookingRef: `CFC${(10_000_000 + Math.floor(rand() * 89_999_999)).toString()}`,
       customerName: pick(CUSTOMER_NAMES),
+      // The same AREAS the bookings, customers and pros fixtures use, so a
+      // location filter tells a consistent story across every admin screen.
+      area: pick(AREAS),
       amountPaise,
       method: pick(METHODS),
       status,
@@ -46,6 +49,7 @@ export const settlements: Settlement[] = Array.from({ length: 40 }, (_, i) => {
     bookingRef: `CFC${(10_000_000 + Math.floor(rand() * 89_999_999)).toString()}`,
     customerName: pick(CUSTOMER_NAMES),
     proName: pick(PRO_NAMES),
+    area: pick(AREAS),
     customerPaidPaise,
     proSharePaise,
     platformFeePaise,
@@ -63,6 +67,7 @@ export const refunds: RefundRequest[] = Array.from({ length: 12 }, (_, i) => ({
   id: `ref_${(i + 1).toString().padStart(3, "0")}`,
   bookingRef: `CFC${(10_000_000 + Math.floor(rand() * 89_999_999)).toString()}`,
   customerName: pick(CUSTOMER_NAMES),
+  area: pick(AREAS),
   amountPaise: Math.floor(50000 + rand() * 200000),
   reason: pick([
     "Pro did not arrive within the scheduled window.",

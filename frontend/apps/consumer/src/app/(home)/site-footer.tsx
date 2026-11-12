@@ -14,7 +14,7 @@ import { PRO_APP_URL } from '@/lib/links';
  * `ConsumerFooter` on the other forty screens. A customer moving from the home
  * page into a category saw the footer change shape under them.
  *
- * It is styled by `home-pages.css` (`.foot`, `.foot-grid`, `.foot-soc`), so any
+ * It is styled by `styles/landing/` (`.foot`, `.foot-grid`, `.foot-soc`), so any
  * route rendering it must sit inside a `.cfc-page` wrapper and import that
  * stylesheet - which the `(home)` group already does.
  *

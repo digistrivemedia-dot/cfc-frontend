@@ -109,7 +109,7 @@ function NotificationsInner() {
   }
 
   return (
-    <div className="cfc-band-wash min-h-screen px-4 pb-20 pt-6 md:px-6">
+    <div className="bg-canvas min-h-screen px-4 pb-20 pt-6 md:px-6">
       <div className="mx-auto max-w-screen-md">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-title font-bold text-ink">Notifications</h1>
@@ -164,7 +164,7 @@ function NotificationsInner() {
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="mt-3 cfc-card">
+        <div className="mt-3 rounded-card bg-surface shadow-sm">
           <EmptyState
             icon={<BellOff />}
             title={

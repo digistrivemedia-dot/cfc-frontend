@@ -77,7 +77,7 @@ export default function ProProfilePage() {
 
   if (error) {
     return (
-      <div className="cfc-wrap py-12">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6 py-12">
         <ErrorState
           title="This profile is not available"
           description="The professional may no longer be taking bookings."
@@ -92,7 +92,7 @@ export default function ProProfilePage() {
   // the content it replaces makes the page jump when the data lands.
   if (pro === null) {
     return (
-      <div className="cfc-wrap py-6">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6 py-6">
         <div className="grid gap-6 lg:grid-cols-detail">
           <div className="order-2 min-w-0 space-y-4 lg:order-1">
             <Skeleton className="h-block-sm rounded-card" />
@@ -107,10 +107,10 @@ export default function ProProfilePage() {
   }
 
   return (
-    <div className="cfc-band-wash min-h-screen pt-4 md:pb-12">
-      {/* `cfc-wrap` is the box the app bar and footer use, so the first line of
+    <div className="bg-canvas min-h-screen pt-4 md:pb-12">
+      {/* `mx-auto w-full max-w-wrap px-4 md:px-6` is the box the app bar and footer use, so the first line of
           content starts on the same left edge as the logo above it. */}
-      <div className="cfc-wrap">
+      <div className="mx-auto w-full max-w-wrap px-4 md:px-6">
       <button
         type="button"
         onClick={() => router.back()}
@@ -195,7 +195,7 @@ export default function ProProfilePage() {
  */
 function IdentityCard({ pro }: { pro: PublicPro }) {
   return (
-    <div className="cfc-card overflow-hidden">
+    <div className="rounded-card bg-surface shadow-sm overflow-hidden">
       {/* A teal cap so the avatar has something to sit against. It was navy
           carrying a radial gradient - a dark band plus a gradient fill, both
           of which the approved design removed. Flat brand colour instead,
@@ -347,13 +347,13 @@ function ReviewSection({
           ))}
         </div>
       ) : reviews.length === 0 ? (
-        <p className="cfc-card mt-3 p-4 text-small text-ink-muted">
+        <p className="rounded-card bg-surface shadow-sm mt-3 p-4 text-small text-ink-muted">
           No reviews yet.
         </p>
       ) : (
         <>
           {spread !== null && pro.rating > 0 && (
-            <div className="cfc-card mt-3 flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+            <div className="rounded-card bg-surface shadow-sm mt-3 flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
               <div className="shrink-0 text-center sm:w-clock">
                 <p className="tabular text-display font-semibold leading-none text-ink">
                   {pro.rating.toFixed(1)}
@@ -415,7 +415,7 @@ function ReviewSection({
             {reviews.map((r) => (
               <li
                 key={r.id}
-                className="cfc-card p-4"
+                className="rounded-card bg-surface shadow-sm p-4"
               >
                 <div className="flex items-center justify-between gap-2">
                   <StarRating value={r.rating} starsOnly />
